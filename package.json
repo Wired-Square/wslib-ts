@@ -9,7 +9,7 @@
   "scripts": {
     "build": "npm run build -w @wired-square/tokens && npm run build -w @wired-square/kit",
     "check": "npm run build && npm run gates && npm run typecheck && npm test && npm run fixture",
-    "gates": "node scripts/forbidden-names.mjs && node scripts/no-colour.mjs",
+    "gates": "node scripts/forbidden-names.mjs && node scripts/no-colour.mjs && node scripts/theme-css.mjs --check",
     "typecheck": "tsc -p packages/tokens && tsc -p packages/tokens/test && tsc -p packages/kit && tsc -p packages/kit/test && tsc -p fixtures/consumer",
     "test": "npm test -w @wired-square/tokens && npm test -w @wired-square/kit",
     "fixture": "node scripts/fixture.mjs",

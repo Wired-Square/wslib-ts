@@ -164,8 +164,8 @@ versions the peer ranges claim: solid-js 1.9.11, vitest 4.1.2, vite 6.4.1, and v
 babel-preset-solid 1.9.10.
 
 `check` builds `dist/` (the compiled `./core`, which `npm pack` builds too), then runs the gates (no name of another
-repository, and no colour literal outside a `theme.css`), the typecheck, the tests, and a build of `fixtures/consumer`
-against the packed kit.
+repository, no colour literal outside `theme.css` and the token values, and `theme.css` as `scripts/theme-css.mjs`
+writes it from `packages/tokens`), the typecheck, the tests, and a build of `fixtures/consumer` against the packed kit.
 
 ## Releasing a package
 
