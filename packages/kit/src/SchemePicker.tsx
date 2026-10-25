@@ -5,13 +5,14 @@ import type { Scheme } from "@wired-square/kit/core";
 import { IconButton } from "./Button";
 import { useIcons } from "./icons";
 import type { KitIcons } from "./icons";
-import { SCHEMES } from "./scheme";
 
 const LABELS: Record<Scheme, string> = {
   system: "System colour scheme",
   light: "Light colour scheme",
   dark: "Dark colour scheme",
 };
+
+const ALL = Object.keys(LABELS) as Scheme[];
 
 const GLYPHS: Record<Scheme, keyof KitIcons> = {
   system: "schemeSystem",
@@ -31,7 +32,7 @@ export function SchemePicker(props: { choices?: readonly Scheme[] }) {
   const [chosen, setChosen] = createSignal(appliedScheme());
   return (
     <div role="group" aria-label="Colour scheme" class="app-scheme-picker">
-      <For each={props.choices ?? SCHEMES}>
+      <For each={props.choices ?? ALL}>
         {(scheme) => (
           <IconButton
             label={LABELS[scheme]}
