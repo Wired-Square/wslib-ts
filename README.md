@@ -16,6 +16,15 @@ The package is published to the Forgejo registry. Point the scope at it in the a
 @wired-square:registry=https://forge.wiredsquare.com/api/packages/wired-square/npm/
 ```
 
+Reads need a `read:package` Forgejo token, kept machine-wide in `~/.npmrc`:
+
+```sh
+npm config set -- '//forge.wiredsquare.com/api/packages/wired-square/npm/:_authToken' <token>
+```
+
+The host must trust the CA that signs `forge.wiredsquare.com`. Node keeps its own CA store, so point it at the
+system's with `NODE_OPTIONS=--use-system-ca` (Node 22.15 or later), or at the CA with `NODE_EXTRA_CA_CERTS`.
+
 ```sh
 npm install @wired-square/kit solid-js
 ```
@@ -104,7 +113,14 @@ A helper that puts its own provider around a caller's `wrap` passes it as `aroun
 
 ```sh
 npm install
-npm run check
+scripts/ci.sh
+```
+
+`scripts/ci.sh` is the CI definition: the lockfile, the commit-message and dossier gates, no runtime dependencies in
+the kit, then `npm run check`. `--tag` adds `npm run floor`. Run it before every push, once per clone:
+
+```sh
+git config core.hooksPath scripts/hooks
 ```
 
 `npm run floor` (needs the network) reruns the typecheck, the tests and the fixture in a temp install of the oldest
@@ -114,3 +130,18 @@ babel-preset-solid 1.9.10.
 `check` builds `dist/` (the compiled `./core`, which `npm pack` builds too), then runs the gates (no name of another
 repository, and no colour literal outside a `theme.css`), the typecheck, the tests, and a build of `fixtures/consumer`
 against the packed kit.
+
+## Releasing a package
+
+Bump the package's `version` and give `CHANGELOG.md` a heading for it in the PR. Once that is merged, on `main`, with
+`.env` filled in from `.env.example`:
+
+```sh
+scripts/release.sh kit --execute
+git push origin kit-v<version>
+```
+
+`scripts/release.sh` runs `scripts/ci.sh --tag`, packs the package, reads the `write:package` token from 1Password at
+`WSLIB_REGISTRY_TOKEN_REF` (so it never sits on disk, and no build script sees it), publishes, and tags
+`<package>-v<version>`. Without `--execute` it stops before publishing. The tag records what was published; consumers
+pin the registry version, not the tag.
