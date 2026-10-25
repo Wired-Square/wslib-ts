@@ -11,6 +11,7 @@
     "gates": "node scripts/forbidden-names.mjs && node scripts/no-colour.mjs",
     "typecheck": "tsc -p packages/kit && tsc -p packages/kit/test && tsc -p fixtures/consumer",
     "test": "npm test -w @wired-square/kit",
-    "fixture": "node scripts/fixture.mjs"
+    "fixture": "node scripts/fixture.mjs",
+    "floor": "node scripts/floor.mjs"
   }
 }

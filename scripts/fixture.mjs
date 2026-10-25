@@ -1,21 +1,24 @@
 // Builds fixtures/consumer against the kit as an installed package: packed, so
 // `files` is what ships, and copied into node_modules rather than linked, since
 // vite treats a linked workspace as the app's own source and would prove
-// nothing about the `solid` export condition.
+// nothing about the `solid` export condition. KIT_MODULES names another
+// node_modules to take solid-js, vite and vite-plugin-solid from.
 import { execFileSync } from "node:child_process";
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync } from "node:fs";
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
 import { JSDOM } from "jsdom";
-import { build, createServer } from "vite";
 
 import { fail } from "./files.mjs";
 
 const repo = resolve(import.meta.dirname, "..");
 const fixture = join(repo, "fixtures/consumer");
-const work = mkdtempSync(join(tmpdir(), "kit-consumer-"));
+const deps = process.env.KIT_MODULES ?? join(repo, "node_modules");
+const { build, createServer } = await import(pathToFileURL(join(deps, "vite/dist/node/index.js")).href);
+// Real path: vite 6 refuses to serve a file whose resolved path lies outside a symlinked root, as macOS's tmpdir is.
+const work = realpathSync(mkdtempSync(join(tmpdir(), "kit-consumer-")));
 const problems = [];
 
 try {
@@ -25,7 +28,7 @@ try {
   const modules = join(work, "node_modules");
   mkdirSync(join(modules, "@wired-square"), { recursive: true });
   for (const dep of ["solid-js", "vite", "vite-plugin-solid"]) {
-    symlinkSync(join(repo, "node_modules", dep), join(modules, dep), "dir");
+    symlinkSync(join(deps, dep), join(modules, dep), "dir");
   }
 
   const tarball = execFileSync("npm", ["pack", "--silent", "--pack-destination", work, "-w", "@wired-square/kit"], {
@@ -50,6 +53,8 @@ try {
       problems.push("the dev server did not compile the kit's TSX with Solid's transform");
     }
   } finally {
+    // Vite 6 never settles close() while the pre-transforms of main.tsx's imports are in flight.
+    await server.waitForRequestsIdle();
     await server.close();
   }
 

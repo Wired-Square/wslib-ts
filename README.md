@@ -95,5 +95,8 @@ npm install
 npm run check
 ```
 
+`npm run floor` (needs the network) reruns the typecheck, the tests and the fixture in a temp install of the oldest
+versions the peer ranges claim: solid-js 1.9.11, vitest 4.1.2, vite 6.4.1 and vite-plugin-solid 2.11.10.
+
 `check` runs the gates (no name of another repository, and no colour literal outside a `theme.css`), the typecheck,
 the tests, and a build of `fixtures/consumer` against the packed kit.
