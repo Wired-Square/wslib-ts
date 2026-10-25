@@ -25,6 +25,18 @@ npm config set -- '//forge.wiredsquare.com/api/packages/wired-square/npm/:_authT
 The host must trust the CA that signs `forge.wiredsquare.com`. Node keeps its own CA store, so point it at the
 system's with `NODE_OPTIONS=--use-system-ca` (Node 22.15 or later), or at the CA with `NODE_EXTRA_CA_CERTS`.
 
+Off the network, and in CI, read the read-only mirror instead, with its own token:
+
+```ini
+@wired-square:registry=https://mirror.wiredsquare.com/npm/
+//mirror.wiredsquare.com/npm/:_authToken=${NPM_MIRROR_TOKEN}
+```
+
+Its tarballs keep the `integrity` Forgejo gave them, so a lockfile's pins hold on either.
+
+npm 10's `npm install` can fail with "Cannot read properties of null (reading 'edgesOut')" over the optional `vitest`
+peer. `npm ci` and npm 11 are unaffected.
+
 ```sh
 npm install @wired-square/kit solid-js
 ```
@@ -145,9 +157,12 @@ Bump the package's `version` and give `CHANGELOG.md` a heading for it in the PR.
 ```sh
 scripts/release.sh kit --execute
 git push origin kit-v<version>
+scripts/mirror.sh
 ```
 
 `scripts/release.sh` runs `scripts/ci.sh --tag`, packs the package, reads the `write:package` token from 1Password at
 `WSLIB_REGISTRY_TOKEN_REF` (so it never sits on disk, and no build script sees it), publishes, and tags
 `<package>-v<version>`. Without `--execute` it stops before publishing. The tag records what was published; consumers
-pin the registry version, not the tag.
+pin the registry version, not the tag. `scripts/mirror.sh` copies every package on the registry to the mirror, with
+each `dist.tarball` rewritten onto the mirror's host and each tarball checked against its `integrity`; `--dry-run`
+shows what would change.
