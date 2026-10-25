@@ -12,6 +12,12 @@ export type { ButtonProps, ButtonTone, IconButtonProps } from "./Button";
 export { Confirm } from "./Confirm";
 export type { ConfirmProps } from "./Confirm";
 
+export { CopyButton } from "./CopyButton";
+export type { CopyButtonProps } from "./CopyButton";
+
+export { DateModeToggle, DateModes, When, useDateModes } from "./DateModes";
+export type { DateModesProps, WhenProps } from "./DateModes";
+
 export { Dialog, DialogActions } from "./Dialog";
 export type { DialogActionsProps, DialogProps } from "./Dialog";
 
@@ -32,6 +38,9 @@ export type { MenuItemProps, MenuItemUnavailableProps, MenuProps } from "./Menu"
 export { Notice } from "./Notice";
 export type { NoticeProps, Tone } from "./Notice";
 
+export { Popover, PopoverOption } from "./Popover";
+export type { PopoverOptionProps, PopoverProps } from "./Popover";
+
 export { PendingChange } from "./PendingChange";
 export type { PendingChangeProps } from "./PendingChange";
 
@@ -48,6 +57,9 @@ export type { ScreenBoundaryProps } from "./ScreenBoundary";
 
 export { Section } from "./Section";
 export type { SectionProps } from "./Section";
+
+export { createSelection } from "./selection";
+export type { Selection } from "./selection";
 
 export { Select } from "./Select";
 export type { SelectProps } from "./Select";

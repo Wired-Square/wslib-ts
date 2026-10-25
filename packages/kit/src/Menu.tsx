@@ -1,8 +1,10 @@
 import { Show, createContext, createEffect, createSignal, createUniqueId, onCleanup, useContext } from "solid-js";
 import type { JSX } from "solid-js";
 
+import { cx } from "@wired-square/kit/core";
 import { useIcons } from "./icons";
 import { arrowTo } from "./keys";
+import { pinTo } from "./Popover";
 
 const MenuClose = createContext<() => void>(() => {});
 
@@ -35,16 +37,9 @@ export function Menu(props: MenuProps) {
   const items = () => [...panel.querySelectorAll<HTMLElement>("[role=menuitem]")];
   const dismiss = () => panel.hidePopover();
 
-  // Measured at the origin, where no label wraps against the viewport's edge,
-  // and hidden since `beforetoggle` so nothing paints at the last open's place.
-  // CSS anchor positioning would do this and is not portable yet.
+  // Hidden since `beforetoggle`, so nothing paints at the last open's place.
   const place = () => {
-    panel.style.top = panel.style.left = "0px";
-    const at = trigger.getBoundingClientRect();
-    const { offsetHeight: height, offsetWidth: width } = panel;
-    const below = window.innerHeight - at.bottom;
-    panel.style.top = below < height + 8 ? `${at.top - height - 4}px` : `${at.bottom + 4}px`;
-    panel.style.left = `${Math.max(8, at.right - width)}px`;
+    pinTo(trigger, panel, { align: "end", matchWidth: false });
     panel.style.visibility = "";
     panel.querySelector<HTMLElement>("[role=menuitem]")?.focus({ preventScroll: true });
   };
@@ -119,6 +114,10 @@ export function Menu(props: MenuProps) {
 
 export interface MenuItemProps {
   onSelect: () => void;
+  /** An irreversible act, in `--app-alert`. */
+  danger?: boolean;
+  /** Greyed and inert; `MenuItemUnavailable` says why. */
+  disabled?: boolean;
   children: JSX.Element;
 }
 
@@ -128,8 +127,10 @@ export function MenuItem(props: MenuItemProps) {
     <button
       type="button"
       role="menuitem"
-      class="app-menu__item"
+      class={cx("app-menu__item", props.danger && "app-menu__item--danger")}
+      aria-disabled={props.disabled || undefined}
       onClick={() => {
+        if (props.disabled) return;
         // Closed first, so a dialog opened from an item is not fighting a popover for the top layer.
         close();
         props.onSelect();

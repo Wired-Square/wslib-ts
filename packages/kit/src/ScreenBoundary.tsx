@@ -7,7 +7,7 @@ import { Notice } from "./Notice";
 
 export interface ScreenBoundaryProps {
   /** Anything that changes when somebody navigates, which clears the failure. */
-  pathname: () => string;
+  pathname?: () => string;
   children: JSX.Element;
 }
 
@@ -20,7 +20,7 @@ export function ScreenBoundary(props: ScreenBoundaryProps) {
     <ErrorBoundary
       fallback={(error, reset) => {
         if (unanswered(error)) throw error;
-        createEffect(on(props.pathname, () => reset(), { defer: true }));
+        if (props.pathname) createEffect(on(props.pathname, () => reset(), { defer: true }));
         return (
           <Notice tone="bad">
             {refusalMessage(error)}{" "}

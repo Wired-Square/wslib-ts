@@ -44,3 +44,20 @@ test("a request nothing answered goes on to the boundary around the app", () => 
   const { root } = bounded(true);
   expect(root.textContent).toMatch(new RegExp(`^${BOUNDARY}`));
 });
+
+test("a ScreenBoundary given no path still offers Try again", () => {
+  const state = { failing: true };
+  const Screen = () => {
+    if (state.failing) throw new Refusal("the vault is locked");
+    return "the screen";
+  };
+  const root = mount(() => (
+    <ScreenBoundary>
+      <Screen />
+    </ScreenBoundary>
+  ));
+  expect(root.textContent).toBe("the vault is locked Try again");
+  state.failing = false;
+  button("Try again").click();
+  expect(root.textContent).toBe("the screen");
+});

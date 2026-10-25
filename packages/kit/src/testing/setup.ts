@@ -1,6 +1,7 @@
 /**
- * A vitest `setupFiles` entry: what jsdom lacks that `Dialog`, `Menu` and
- * `Pulse` stand on, no network, and everything mounted taken down after each test.
+ * A vitest `setupFiles` entry: what jsdom lacks that `Dialog`, `Menu`,
+ * `Popover` and `Pulse` stand on, no network, and everything mounted taken
+ * down after each test.
  */
 import { afterEach, vi } from "vitest";
 
@@ -24,9 +25,14 @@ function toggle(panel: HTMLElement, newState: "open" | "closed") {
   if (!panel.dispatchEvent(before)) return;
   if (newState === "open") shown.add(panel);
   else shown.delete(panel);
+  // jsdom's stylesheet hides every `[popover]`, never matching `:popover-open`, and focus skips what is hidden.
+  panel.style.display = newState === "open" ? "block" : "";
   panel.dispatchEvent(Object.assign(new Event("toggle"), { newState }));
 }
 
+HTMLElement.prototype.showPopover = function () {
+  if (!shown.has(this)) toggle(this, "open");
+};
 HTMLElement.prototype.hidePopover = function () {
   if (shown.has(this)) toggle(this, "closed");
 };

@@ -57,6 +57,11 @@ styles.
 `kit.css` puts every rule in the cascade layer `kit`, a public name that will not change. An app's own unlayered rules
 beat the kit's whatever their specificity, and a rule the app adds to `@layer kit` sits at the kit's precedence instead.
 
+### Browsers
+
+`Menu` and `Popover` stand on the `popover` attribute, which sets the floor at WebKit 17 (Safari 17, and a WKWebView on
+the same).
+
 ### The three seams
 
 **Tokens.** Every value the kit draws is an `--app-*` custom property defined in `theme.css`. Restyle by redefining any
@@ -68,8 +73,9 @@ the default), and `SchemePicker` offers the `choices` given, all three by defaul
 A token set inline on `<html>`, by `documentElement.style.setProperty` say, beats that sheet, so an app that applies its
 theme that way should switch to `applyTheme`.
 
-**`IconSet`** replaces the glyphs the kit draws: `schemeSystem`, `schemeLight`, `schemeDark`, `empty` (`NothingYet`) and
-`more` (`Menu`'s trigger). Each is a `() => JSX.Element`, and a nested set merges over the outer one.
+**`IconSet`** replaces the glyphs the kit draws: `schemeSystem`, `schemeLight`, `schemeDark`, `empty` (`NothingYet`),
+`more` (`Menu`'s trigger) and `copy` (`CopyButton`). Each is a `() => JSX.Element`, and a nested set merges over the
+outer one.
 
 ```tsx
 <IconSet icons={{ schemeDark: () => <MoonIcon /> }}>
@@ -87,7 +93,7 @@ request nothing answered with `new Refusal(message, { unanswered: true })`. A tr
 ### Plain node
 
 `@wired-square/kit/core` is compiled JavaScript, so node imports it without a bundler: `Refusal`, `refusalMessage`,
-`unanswered`, the formatters, `duration`, `cx`, `unchanged`, the `Pending` types, and the scheme and theme functions.
+`unanswered`, the formatters (with `formatWhen`), `placePopover`, `duration`, `cx`, `unchanged`, the `Pending` types, and the scheme and theme functions.
 It is the same module the components import, so a `Refusal` from either entry is one class.
 
 ### Testing

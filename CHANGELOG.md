@@ -2,6 +2,22 @@
 
 ## `@wired-square/kit`
 
+### 0.2.0
+
+- `Confirm` takes a `reason` (`{ label, placeholder? }`): a required field, with Confirm disabled until it is non-blank
+  and `act` given it trimmed. `tone` is `danger` by default, or `primary`. Cancel stays disabled while it acts.
+- `Popover` and `PopoverOption`: a panel pinned to any element on `popover="manual"`, closed by a press outside,
+  Escape, a scroll outside or a resize, and taking focus only with `focusFirstItem`. `placePopover` is the one
+  placement rule, and `Menu` now follows it, capping its height and keeping inside both edges. `MenuItem` takes
+  `danger` and `disabled`. `testing/setup` shims `showPopover`. The `popover` attribute sets a WebKit 17 floor.
+- `createSelection(visible, keyOf, resetOn)`, and `Tick`'s `mixed` for a select-all over part of it.
+- `CopyButton`, with a `write` seam (default `navigator.clipboard.writeText`) and `IconSet`'s `copy` glyph.
+- Times in three modes: `DateMode`, `formatWhen(at, mode, { locale, now, relative })`, and `DateModes` around the app
+  with `DateModeToggle`, `When` and `useDateModes()` below it.
+- `createAction`'s `succeed(sentence)` and `succeeded()`: a success sentence, for four seconds or until the next run.
+- `ScreenBoundary`'s `pathname` is optional.
+- `formatWhen`, `DateMode` and `placePopover` are in `@wired-square/kit/core` too.
+
 ### 0.1.0
 
 The component kit from a prior appliance, as its own package.
