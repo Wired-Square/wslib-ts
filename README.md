@@ -5,6 +5,7 @@ Wired Square's shared TypeScript packages, as npm workspaces.
 | Package | What |
 |---|---|
 | [`@wired-square/kit`](packages/kit) | SolidJS components, the `--app-*` tokens they read, and test helpers |
+| [`@wired-square/tokens`](packages/tokens) | The `--app-*` tokens' names and defaults, as TypeScript and JSON |
 
 ## `@wired-square/kit`
 
@@ -127,6 +128,22 @@ button("Save").click();
 A helper that puts its own provider around a caller's `wrap` passes it as `around`, and `mount` still returns what
 `wrap` yields.
 
+## `@wired-square/tokens`
+
+The kit's `--app-*` tokens with their light and dark defaults, as data, installed from the same registry. It has no
+dependencies and no peers.
+
+```ts
+import { applyTheme } from "@wired-square/kit";
+import type { Tokens } from "@wired-square/tokens";
+
+const brand = { "--app-accent": "#0b5cad" } satisfies Partial<Tokens>;
+applyTheme(brand);
+```
+
+`light` and `dark` hold the defaults, `groups` the same tokens in `theme.css`'s groups with their notes, and
+`@wired-square/tokens/tokens.json` maps each name to `{ "light": "…", "dark"?: "…" }`.
+
 ## Development
 
 ```sh
@@ -135,7 +152,8 @@ scripts/ci.sh
 ```
 
 `scripts/ci.sh` is the CI definition: the lockfile, the commit-message and dossier gates, no runtime dependencies in
-the kit, then `npm run check`. `--tag` adds `npm run floor`. Run it before every push, once per clone:
+the packages and no peers in tokens, then `npm run check`. `--tag` adds `npm run floor`. Run it before every push,
+once per clone:
 
 ```sh
 git config core.hooksPath scripts/hooks

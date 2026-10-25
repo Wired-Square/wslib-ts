@@ -22,9 +22,10 @@ step "No other repository is named in a commit message"
 step "No reference to the project dossier"
 ! git grep -nIE --untracked '\[\[[A-Za-z][^]]*\]\]' -- ':!scripts/ci.sh' || die "the dossier is cited; state the constraint here"
 
-step "The kit has no runtime dependencies"
-node -e 'process.exit(Object.keys(require("./packages/kit/package.json").dependencies ?? {}).length)' \
-  || die "packages/kit declares dependencies; solid-js is a peer"
+step "The packages have no runtime dependencies, and tokens no peers"
+node -e 'const [kit, tokens] = ["kit", "tokens"].map((name) => require(`./packages/${name}/package.json`));
+process.exit(Object.keys({ ...kit.dependencies, ...tokens.dependencies, ...tokens.peerDependencies }).length)' \
+  || die "a package declares dependencies, or tokens declares peers; solid-js is the kit's peer"
 
 step "Build, gates, typecheck, tests and the consumer fixture"
 npm run check

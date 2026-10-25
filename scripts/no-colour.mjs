@@ -1,5 +1,4 @@
 import { readFileSync } from "node:fs";
-import { basename } from "node:path";
 
 import { fail, repoFiles } from "./files.mjs";
 
@@ -27,12 +26,16 @@ const NAMED = new RegExp(
   "i",
 );
 
+// In tokens.ts, only a token's light and dark values may name a colour.
+const TOKENS = "packages/tokens/src/tokens.ts";
+const withoutValues = (text) => text.replace(/\b(light|dark): ("[^"]*"|'[^']*')/g, "$1: ''");
+
 const hits = repoFiles()
-  .filter((file) => file.startsWith("packages/kit/src/") && /\.(tsx?|css)$/.test(file) && basename(file) !== "theme.css")
+  .filter((file) => /^packages\/(kit|tokens)\/src\/.*\.(tsx?|css)$/.test(file) && file !== "packages/kit/src/theme.css")
   .flatMap((file) => {
     const css = file.endsWith(".css");
     const text = readFileSync(file, "utf8");
-    return (css ? text.replace(/\/\*[\s\S]*?\*\//g, (c) => c.replace(/[^\n]/g, " ")) : text)
+    return (css ? text.replace(/\/\*[\s\S]*?\*\//g, (c) => c.replace(/[^\n]/g, " ")) : file === TOKENS ? withoutValues(text) : text)
       .split("\n")
       .flatMap((line, i) =>
         LITERAL.test(line) || (css && !line.trimStart().startsWith("--") && NAMED.test(line))
@@ -41,4 +44,4 @@ const hits = repoFiles()
       );
   });
 
-fail("a colour outside theme.css — every value a component uses must come from a token", hits);
+fail("a colour outside theme.css and the token values — every value a component uses must come from a token", hits);
