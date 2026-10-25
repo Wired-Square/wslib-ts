@@ -1,0 +1,35 @@
+{
+  "name": "@wired-square/tokens",
+  "version": "0.1.0",
+  "description": "The --app-* tokens with their light and dark defaults, as TypeScript and JSON.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "github:Wired-Square/wslib-ts",
+    "directory": "packages/tokens"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/tokens.d.ts",
+      "default": "./dist/tokens.js"
+    },
+    "./tokens.json": "./dist/tokens.json"
+  },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "registry": "https://forge.wiredsquare.com/api/packages/wired-square/npm/"
+  },
+  "scripts": {
+    "build": "rm -rf dist && tsc -p tsconfig.build.json && node json.mjs",
+    "prepack": "npm run build",
+    "test": "node --test test/*.test.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "typescript": "^5.9.3"
+  }
+}

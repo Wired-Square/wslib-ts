@@ -4,7 +4,7 @@
 // nothing about the `solid` export condition. KIT_MODULES names another
 // node_modules to take solid-js, vite and vite-plugin-solid from.
 import { execFileSync } from "node:child_process";
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, symlinkSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -31,13 +31,14 @@ try {
     symlinkSync(join(deps, dep), join(modules, dep), "dir");
   }
 
-  const tarball = execFileSync("npm", ["pack", "--silent", "--pack-destination", work, "-w", "@wired-square/kit"], {
-    cwd: repo,
-    encoding: "utf8",
-  }).trim();
-  const kit = join(modules, "@wired-square/kit");
-  mkdirSync(kit);
-  execFileSync("tar", ["-xzf", join(work, tarball), "-C", kit, "--strip-components", "1"]);
+  for (const name of ["@wired-square/kit", "@wired-square/tokens"]) {
+    const tarball = execFileSync("npm", ["pack", "--silent", "--pack-destination", work, "-w", name], {
+      cwd: repo,
+      encoding: "utf8",
+    }).trim();
+    mkdirSync(join(modules, name));
+    execFileSync("tar", ["-xzf", join(work, tarball), "-C", join(modules, name), "--strip-components", "1"]);
+  }
 
   const plain = `
     const { Refusal, unanswered } = await import("@wired-square/kit/core");
@@ -47,6 +48,16 @@ try {
   if (execFileSync("node", ["--input-type=module", "-e", plain], { cwd: work, encoding: "utf8" }) !== "true") {
     problems.push("plain node imported @wired-square/kit/core, but its Refusal misbehaved");
   }
+
+  const tokens = `
+    const { light, dark } = await import("@wired-square/tokens");
+    const { default: json } = await import("@wired-square/tokens/tokens.json", { with: { type: "json" } });
+    process.stdout.write(String(Object.keys(json).length === Object.keys(light).length && json["--app-bg"].dark === dark["--app-bg"]));
+  `;
+  if (execFileSync("node", ["--input-type=module", "-e", tokens], { cwd: work, encoding: "utf8" }) !== "true") {
+    problems.push("plain node imported @wired-square/tokens and its tokens.json, but they disagree");
+  }
+  if (!existsSync(join(modules, "@wired-square/tokens/dist/tokens.d.ts"))) problems.push("the packed tokens carry no types");
 
   // The dev server's pre-bundler is esbuild, which compiles JSX for React: the
   // kit must be served as source and through vite-plugin-solid.
@@ -119,4 +130,4 @@ try {
 }
 
 fail("consumer fixture", problems);
-console.log("consumer fixture: built and ran against the packed kit, with no helper, and imported core in plain node");
+console.log("consumer fixture: built against the packed kit; core and tokens imported in plain node");

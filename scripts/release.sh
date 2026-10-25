@@ -3,7 +3,7 @@
 # it <package>-v<version>; reads elsewhere use the read token in ~/.npmrc.
 # Without --execute it stops before publishing.
 #
-#   scripts/release.sh kit [--execute]
+#   scripts/release.sh kit|tokens [--execute]
 set -eu
 cd "$(dirname "$0")/.."
 die() { printf 'release: %s\n' "$*" >&2; exit 1; }
@@ -22,7 +22,8 @@ version=$(node -p "require('./$dir/package.json').version")
 registry=$(node -p "require('./$dir/package.json').publishConfig.registry")
 tag=$name-v$version
 ! git rev-parse -q --verify "refs/tags/$tag" >/dev/null || die "$tag already exists"
-grep -q "^### $version\$" CHANGELOG.md || die "CHANGELOG.md has no heading for $version"
+awk -v pkg="## \`@wired-square/$name\`" -v ver="### $version" '/^## /{here = $0 == pkg} here && $0 == ver{found = 1} END{exit !found}' CHANGELOG.md \
+  || die "CHANGELOG.md has no heading for $version under @wired-square/$name"
 
 scripts/ci.sh --tag
 

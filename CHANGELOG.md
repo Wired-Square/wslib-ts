@@ -37,3 +37,11 @@ The component kit from a prior appliance, as its own package.
 - `@wired-square/kit/testing` (`mount`, `unmountAll`, `button`, `field`, `type`, `text`) and
   `@wired-square/kit/testing/setup` for vitest with jsdom; `mount`'s `around` goes outside a caller's `wrap`.
 - `@wired-square/kit/core`: the modules with no JSX, compiled to JavaScript for plain node.
+
+## `@wired-square/tokens`
+
+### 0.1.0
+
+The kit's 32 `--app-*` tokens as data: `light`, `dark`, the `TokenName` and `Tokens` types for `satisfies`, and
+`groups`, with each token's group and note. `@wired-square/tokens/tokens.json` holds the same values as
+`{ "--app-x": { "light": "…", "dark"?: "…" } }`. No dependencies and no peers.
