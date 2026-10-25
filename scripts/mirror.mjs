@@ -1,6 +1,7 @@
 // Copies every package in the Forgejo npm registry to a read-only mirror, with
 // each tarball URL rewritten onto the mirror, since npm sends the mirror's token
-// only to its own host. A tarball already on the mirror is never rewritten.
+// only to its own host, and each version's manifest restored from its tarball.
+// A tarball already on the mirror is never rewritten.
 // Settings come from .env (see .env.example).
 //
 //   scripts/mirror.sh [--dry-run]
@@ -9,6 +10,8 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+
+import { withManifest } from "./packument.mjs";
 
 if (existsSync(".env")) process.loadEnvFile(".env");
 const setting = (key) => process.env[key] || die(`set ${key} in .env`);
@@ -44,7 +47,8 @@ const stage = mkdtempSync(join(tmpdir(), "mirror-"));
 try {
   for (const name of names) {
     const packument = await (await get(`${forge}/api/packages/${owner}/npm/${name.replace("/", "%2f")}`)).json();
-    for (const [version, { dist }] of Object.entries(packument.versions)) {
+    for (const [version, entry] of Object.entries(packument.versions)) {
+      const { dist } = entry;
       const file = decodeURIComponent(new URL(dist.tarball).pathname.split("/").pop());
       const tarball = Buffer.from(await (await get(dist.tarball)).arrayBuffer());
       const integrity = `sha512-${createHash("sha512").update(tarball).digest("base64")}`;
@@ -54,6 +58,7 @@ try {
       mkdirSync(dirname(path), { recursive: true });
       writeFileSync(path, tarball);
       dist.tarball = `${mirror}${name}/-/${file}`;
+      packument.versions[version] = withManifest(entry, path);
     }
     writeFileSync(join(stage, name, "index.json"), JSON.stringify(packument));
     console.log(`mirror: ${name}`);
