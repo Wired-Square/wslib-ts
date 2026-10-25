@@ -1,0 +1,143 @@
+/*
+ * The kit's tokens, each with a neutral value. An app restyles the kit by
+ * redefining any subset in a stylesheet imported after this one, or at runtime
+ * with `applyTheme`. No component names a colour, so these are the only values
+ * there are.
+ *
+ * The palette is deliberately anonymous: an app still looking like this has not
+ * been branded, and that should be obvious.
+ */
+
+:root {
+  /* --- surfaces, back to front ------------------------------------------ */
+  --app-bg: #f7f8f9;
+  --app-surface: #ffffff;
+  --app-surface-sunken: #eef0f2;
+  --app-border: #d9dde1;
+  --app-border-strong: #b6bec5;
+
+  /* --- text ------------------------------------------------------------- */
+  --app-text: #1a1f24;
+  --app-text-muted: #5b666f;
+  --app-text-inverted: #ffffff;
+
+  /* --- brand ------------------------------------------------------------ */
+  /* `-contrast` goes on top of the accent: a light accent needs dark text, and
+   * only the app can know which it chose. */
+  --app-accent: #4a5568;
+  --app-accent-contrast: #ffffff;
+  --app-accent-sunken: #37414f;
+  /* Solid, where an opacity would show what is behind a disabled primary button. */
+  --app-accent-disabled: color-mix(in srgb, var(--app-accent) 55%, var(--app-surface));
+  --app-accent-edge: color-mix(in srgb, var(--app-accent-sunken) 50%, var(--app-text));
+
+  /* --- status ----------------------------------------------------------- */
+  /* Four tones, not three: "no answer yet" is not a warning, and rendering it
+   * as one trains people to ignore amber. */
+  --app-good: #2f7a4f;
+  --app-warn: #9a6114;
+  --app-bad: #b02a2a;
+  --app-neutral: #78838c;
+  --app-good-bg: #e8f4ec;
+  --app-warn-bg: #fbf1e0;
+  --app-bad-bg: #f9e9e9;
+  --app-neutral-bg: #eef0f2;
+
+  /* Destructive intent, which an app may want to differ from "bad news". */
+  --app-alert: #b02a2a;
+  --app-alert-contrast: #ffffff;
+  --app-alert-edge: color-mix(in srgb, var(--app-alert) 50%, var(--app-text));
+
+  /* --- type ------------------------------------------------------------- */
+  --app-font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --app-font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  /* --- shape ------------------------------------------------------------ */
+  --app-radius: 0.375rem;
+  --app-radius-lg: 0.75rem;
+  /* The widest a field's input grows in a bare form; a dialog sets it to `none`. */
+  --app-field-max: 28rem;
+  /* Shared by buttons and fields, so the two are as tall as each other in a row. */
+  --app-control-line-height: 1.2;
+  --app-shadow: 0 1px 2px rgb(0 0 0 / 0.06), 0 1px 3px rgb(0 0 0 / 0.08);
+  --app-focus: 0 0 0 3px color-mix(in srgb, var(--app-accent) 35%, transparent);
+}
+
+/*
+ * The dark palette, for a page that opts in with `data-app-scheme="light dark"`
+ * while the system prefers dark, or forces it with `data-app-scheme="dark"`.
+ * `:where` keeps an app's own `:root` rule, imported after this file, winning;
+ * an app that redefines one of these tokens redefines its dark value too.
+ */
+@media (prefers-color-scheme: dark) {
+  :root:where([data-app-scheme~="dark"]) {
+    color-scheme: light dark;
+
+    --app-bg: #14171a;
+    --app-surface: #1c2024;
+    --app-surface-sunken: #111316;
+    --app-border: #30363c;
+    --app-border-strong: #4a535b;
+
+    --app-text: #e4e7ea;
+    --app-text-muted: #9aa4ad;
+    --app-text-inverted: #14171a;
+
+    --app-accent: #a3b1c2;
+    --app-accent-contrast: #14171a;
+    --app-accent-sunken: #8795a7;
+
+    --app-good: #5cb98a;
+    --app-warn: #d9a250;
+    --app-bad: #e46a6a;
+    --app-neutral: #8e99a2;
+    --app-good-bg: #1b3326;
+    --app-warn-bg: #3a2d15;
+    --app-bad-bg: #3d1e1e;
+    --app-neutral-bg: #262b30;
+
+    --app-alert: #c43c3c;
+
+    --app-shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 1px 3px rgb(0 0 0 / 0.5);
+  }
+}
+
+/* The block above, forced; a test holds the tokens equal. */
+:root:where([data-app-scheme="dark"]) {
+  color-scheme: dark;
+
+  --app-bg: #14171a;
+  --app-surface: #1c2024;
+  --app-surface-sunken: #111316;
+  --app-border: #30363c;
+  --app-border-strong: #4a535b;
+
+  --app-text: #e4e7ea;
+  --app-text-muted: #9aa4ad;
+  --app-text-inverted: #14171a;
+
+  --app-accent: #a3b1c2;
+  --app-accent-contrast: #14171a;
+  --app-accent-sunken: #8795a7;
+
+  --app-good: #5cb98a;
+  --app-warn: #d9a250;
+  --app-bad: #e46a6a;
+  --app-neutral: #8e99a2;
+  --app-good-bg: #1b3326;
+  --app-warn-bg: #3a2d15;
+  --app-bad-bg: #3d1e1e;
+  --app-neutral-bg: #262b30;
+
+  --app-alert: #c43c3c;
+
+  --app-shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 1px 3px rgb(0 0 0 / 0.5);
+}
+
+:root:where([data-app-scheme="light"]) {
+  color-scheme: light;
+}
+
+.numeric {
+  font-variant-numeric: tabular-nums;
+}

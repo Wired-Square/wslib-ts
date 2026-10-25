@@ -1,0 +1,16 @@
+{
+  "name": "kit-consumer-fixture",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build"
+  },
+  "dependencies": {
+    "@wired-square/kit": "^0.1.0",
+    "solid-js": "^1.9.17"
+  },
+  "devDependencies": {
+    "vite": "^8.3.5",
+    "vite-plugin-solid": "^2.11.14"
+  }
+}

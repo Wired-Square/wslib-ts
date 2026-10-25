@@ -1,0 +1,116 @@
+# wslib-ts
+
+Wired Square's shared TypeScript packages, as npm workspaces.
+
+| Package | What |
+|---|---|
+| [`@wired-square/kit`](packages/kit) | SolidJS components, the `--app-*` tokens they read, and test helpers |
+
+## `@wired-square/kit`
+
+### Install
+
+The package is published to the Forgejo registry. Point the scope at it in the app's `.npmrc`:
+
+```ini
+@wired-square:registry=https://forge.wiredsquare.com/api/packages/wired-square/npm/
+```
+
+```sh
+npm install @wired-square/kit solid-js
+```
+
+It ships TSX source behind a `solid` export condition. `vite-plugin-solid` finds it, compiles it with the app and keeps
+it out of vite's pre-bundler, so the app's vite config needs nothing beyond the plugin:
+
+```ts
+import { defineConfig } from "vite";
+import solid from "vite-plugin-solid";
+
+export default defineConfig({ plugins: [solid()] });
+```
+
+When trying a local checkout through `link:` or `file:`, add `resolve: { dedupe: ["solid-js"] }`. A linked package
+resolves `solid-js` from its own directory, and two copies of Solid are two reactive graphs.
+
+### Styles
+
+Import the tokens, then the components' styles, once, in the entry module:
+
+```ts
+import "@wired-square/kit/theme.css";
+import "@wired-square/kit/kit.css";
+```
+
+No component names a colour, and neither file loads a font or a URL, so a strict CSP needs no `unsafe-inline` for
+styles.
+
+`kit.css` puts every rule in the cascade layer `kit`, a public name that will not change. An app's own unlayered rules
+beat the kit's whatever their specificity, and a rule the app adds to `@layer kit` sits at the kit's precedence instead.
+
+### The three seams
+
+**Tokens.** Every value the kit draws is an `--app-*` custom property defined in `theme.css`. Restyle by redefining any
+subset in a stylesheet imported after it, with dark values under both of `theme.css`'s dark selectors. The colour scheme
+is `<html data-app-scheme>`: `applyScheme()` before `render` applies the stored choice (`storedScheme(fallback)` names
+the default), and `SchemePicker` offers the `choices` given, all three by default.
+
+**`applyTheme(tokens, darkTokens?)`** applies token values at runtime as one adopted stylesheet, replaced on each call.
+A token set inline on `<html>`, by `documentElement.style.setProperty` say, beats that sheet, so an app that applies its
+theme that way should switch to `applyTheme`.
+
+**`IconSet`** replaces the glyphs the kit draws: `schemeSystem`, `schemeLight`, `schemeDark`, `empty` (`NothingYet`) and
+`more` (`Menu`'s trigger). Each is a `() => JSX.Element`, and a nested set merges over the outer one.
+
+```tsx
+<IconSet icons={{ schemeDark: () => <MoonIcon /> }}>
+  <App />
+</IconSet>
+```
+
+### Errors
+
+Throw `Refusal` with a sentence written for a person, and `Form`, `Confirm`, `createAction`, `Loaded`,
+`ScreenBoundary` and `PendingChange` show it as it is. Anything else thrown shows a fixed sentence and is logged. Mark a
+request nothing answered with `new Refusal(message, { unanswered: true })`. A transport's own error class can extend
+`Refusal`.
+
+### Plain node
+
+`@wired-square/kit/core` is compiled JavaScript, so node imports it without a bundler: `Refusal`, `refusalMessage`,
+`unanswered`, the formatters, `duration`, `cx`, `unchanged`, the `Pending` types, and the scheme and theme functions.
+It is the same module the components import, so a `Refusal` from either entry is one class.
+
+### Testing
+
+With vitest and jsdom, name the setup in `setupFiles`, then mount and find things by their words:
+
+```ts
+// vitest.config.ts
+test: { environment: "jsdom", setupFiles: ["@wired-square/kit/testing/setup"] }
+```
+
+```tsx
+import { button, mount, text } from "@wired-square/kit/testing";
+
+mount(() => <Settings />, { wrap: (screen) => <Router>{screen()}</Router> });
+button("Save").click();
+```
+
+A helper that puts its own provider around a caller's `wrap` passes it as `around`, and `mount` still returns what
+`wrap` yields.
+
+## Development
+
+```sh
+npm install
+npm run check
+```
+
+`npm run floor` (needs the network) reruns the typecheck, the tests and the fixture in a temp install of the oldest
+versions the peer ranges claim: solid-js 1.9.11, vitest 4.1.2, vite 6.4.1, and vite-plugin-solid 2.11.10 with
+babel-preset-solid 1.9.10.
+
+`check` builds `dist/` (the compiled `./core`, which `npm pack` builds too), then runs the gates (no name of another
+repository, and no colour literal outside a `theme.css`), the typecheck, the tests, and a build of `fixtures/consumer`
+against the packed kit.

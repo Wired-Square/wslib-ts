@@ -1,0 +1,65 @@
+{
+  "name": "@wired-square/kit",
+  "version": "0.1.0",
+  "description": "SolidJS components, tokens and test helpers for Wired Square's browser apps.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "github:Wired-Square/wslib-ts",
+    "directory": "packages/kit"
+  },
+  "type": "module",
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "exports": {
+    ".": {
+      "solid": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./core": {
+      "types": "./dist/core.d.ts",
+      "default": "./dist/core.js"
+    },
+    "./testing": {
+      "solid": "./src/testing/index.ts",
+      "default": "./src/testing/index.ts"
+    },
+    "./testing/setup": {
+      "solid": "./src/testing/setup.ts",
+      "default": "./src/testing/setup.ts"
+    },
+    "./theme.css": "./src/theme.css",
+    "./kit.css": "./src/kit.css"
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "publishConfig": {
+    "registry": "https://forge.wiredsquare.com/api/packages/wired-square/npm/"
+  },
+  "scripts": {
+    "build": "rm -rf dist && tsc -p tsconfig.build.json",
+    "prepack": "npm run build",
+    "test": "vitest run"
+  },
+  "peerDependencies": {
+    "solid-js": "^1.9.11",
+    "vitest": "^4.0.0 || ^5.0.0"
+  },
+  "peerDependenciesMeta": {
+    "vitest": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "jsdom": "^30.1.3",
+    "solid-js": "^1.9.17",
+    "typescript": "^5.9.3",
+    "vite": "^8.3.5",
+    "vite-plugin-solid": "^2.11.14",
+    "vitest": "^5.0.5"
+  }
+}
