@@ -39,6 +39,15 @@ try {
   mkdirSync(kit);
   execFileSync("tar", ["-xzf", join(work, tarball), "-C", kit, "--strip-components", "1"]);
 
+  const plain = `
+    const { Refusal, unanswered } = await import("@wired-square/kit/core");
+    const refusal = new Refusal("x", { unanswered: true });
+    process.stdout.write(String(refusal instanceof Error && refusal.message === "x" && unanswered(refusal)));
+  `;
+  if (execFileSync("node", ["--input-type=module", "-e", plain], { cwd: work, encoding: "utf8" }) !== "true") {
+    problems.push("plain node imported @wired-square/kit/core, but its Refusal misbehaved");
+  }
+
   // The dev server's pre-bundler is esbuild, which compiles JSX for React: the
   // kit must be served as source and through vite-plugin-solid.
   const server = await createServer({ root: work, logLevel: "silent", server: { middlewareMode: true, ws: false } });
@@ -47,6 +56,14 @@ try {
     const kitImport = main?.code.match(/from\s+"([^"]*@wired-square[_/]kit[^"]*)"/)?.[1] ?? "";
     if (!/\/node_modules\/@wired-square\/kit\/src\/index\.ts/.test(kitImport)) {
       problems.push(`the dev server imports the kit from ${kitImport || "nowhere"}, not its source`);
+    }
+    const coreImports = await Promise.all(
+      ["/src/main.tsx", "/node_modules/@wired-square/kit/src/ScreenBoundary.tsx"].map(
+        async (url) => (await server.transformRequest(url))?.code.match(/from\s+"([^"]*@wired-square[_/]kit[^"]*core\.js[^"]*)"/)?.[1],
+      ),
+    );
+    if (coreImports.some((url) => !/^\/node_modules\/@wired-square\/kit\/dist\/core\.js/.test(url ?? ""))) {
+      problems.push(`the app and the kit's source import core from ${coreImports.join(" and ")}, not one dist/core.js`);
     }
     const notice = await server.transformRequest("/node_modules/@wired-square/kit/src/Notice.tsx");
     if (!/_\$template\(/.test(notice?.code ?? "") || /React|jsxDEV|jsx\(/.test(notice?.code ?? "")) {
@@ -94,9 +111,12 @@ try {
   } else if (!app.textContent.includes("Pressed 2 times")) {
     problems.push("the built app's kit components do not react to the app's signal");
   }
+  if (!app.textContent.includes("Refused through core") || !app.textContent.includes("Recognised by core")) {
+    problems.push("a Refusal from core and one from the root are not one class in the built app");
+  }
 } finally {
   rmSync(work, { recursive: true, force: true });
 }
 
 fail("consumer fixture", problems);
-console.log("consumer fixture: built and ran against the packed kit, with no helper");
+console.log("consumer fixture: built and ran against the packed kit, with no helper, and imported core in plain node");

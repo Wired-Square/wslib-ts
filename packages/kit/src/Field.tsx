@@ -1,7 +1,6 @@
 import { Show, createSignal, createUniqueId, splitProps } from "solid-js";
 import type { JSX } from "solid-js";
-
-import { cx } from "./cx";
+import { cx } from "@wired-square/kit/core";
 
 export interface FieldProps extends JSX.InputHTMLAttributes<HTMLInputElement> {
   label: string;

@@ -7,7 +7,8 @@
     "fixtures/*"
   ],
   "scripts": {
-    "check": "npm run gates && npm run typecheck && npm test && npm run fixture",
+    "build": "npm run build -w @wired-square/kit",
+    "check": "npm run build && npm run gates && npm run typecheck && npm test && npm run fixture",
     "gates": "node scripts/forbidden-names.mjs && node scripts/no-colour.mjs",
     "typecheck": "tsc -p packages/kit && tsc -p packages/kit/test && tsc -p fixtures/consumer",
     "test": "npm test -w @wired-square/kit",

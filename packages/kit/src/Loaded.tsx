@@ -1,9 +1,9 @@
 import { Match, Show, Switch } from "solid-js";
 import type { Accessor, JSX, Resource } from "solid-js";
+import { refusalMessage } from "@wired-square/kit/core";
 
 import { Button } from "./Button";
 import { Notice } from "./Notice";
-import { refusalMessage } from "./refusal";
 
 /** A screen's one resource: reading, refused with a Try again, or handed on narrowed. */
 export function Loaded<T>(props: {

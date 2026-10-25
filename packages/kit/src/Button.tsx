@@ -1,7 +1,6 @@
 import { splitProps } from "solid-js";
 import type { JSX } from "solid-js";
-
-import { cx } from "./cx";
+import { cx } from "@wired-square/kit/core";
 
 /** `danger` is an irreversible act, read from `--app-alert` rather than `--app-bad`. */
 export type ButtonTone = "default" | "primary" | "danger" | "plain";

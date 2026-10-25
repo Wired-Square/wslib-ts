@@ -1,12 +1,12 @@
 import { For, Show, createSignal, onCleanup, untrack } from "solid-js";
 import type { JSX } from "solid-js";
+import { refusalMessage, unanswered as nothingAnswered } from "@wired-square/kit/core";
+import type { Pending } from "@wired-square/kit/core";
 
 import { Badge } from "./Badge";
 import { Button } from "./Button";
 import { startCountdown, stillOpen } from "./countdown";
-import { badge, rereadPacer, rereadsGoOn } from "./pending";
-import type { Pending } from "./pending";
-import { refusalMessage, unanswered as nothingAnswered } from "./refusal";
+import { badge, rereadPacer, rereadsGoOn } from "./reread";
 
 export interface PendingChangeProps<T> {
   /** Read once, at mount: remount it (`<Show when={…} keyed>`) to follow another change. */

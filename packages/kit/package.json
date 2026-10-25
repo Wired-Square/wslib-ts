@@ -17,6 +17,10 @@
       "solid": "./src/index.ts",
       "default": "./src/index.ts"
     },
+    "./core": {
+      "types": "./dist/core.d.ts",
+      "default": "./dist/core.js"
+    },
     "./testing": {
       "solid": "./src/testing/index.ts",
       "default": "./src/testing/index.ts"
@@ -29,12 +33,15 @@
     "./kit.css": "./src/kit.css"
   },
   "files": [
+    "dist",
     "src"
   ],
   "publishConfig": {
     "registry": "https://forge.wiredsquare.com/api/packages/wired-square/npm/"
   },
   "scripts": {
+    "build": "rm -rf dist && tsc -p tsconfig.build.json",
+    "prepack": "npm run build",
     "test": "vitest run"
   },
   "peerDependencies": {

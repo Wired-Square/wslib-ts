@@ -1,9 +1,9 @@
 import { ErrorBoundary, createEffect, on } from "solid-js";
 import type { JSX } from "solid-js";
+import { refusalMessage, unanswered } from "@wired-square/kit/core";
 
 import { Button } from "./Button";
 import { Notice } from "./Notice";
-import { refusalMessage, unanswered } from "./refusal";
 
 export interface ScreenBoundaryProps {
   /** Anything that changes when somebody navigates, which clears the failure. */

@@ -18,4 +18,5 @@ The component kit from a prior appliance, as its own package.
 - `IconSet` and `KitIcons`, for the glyphs the kit draws.
 - `applyTheme(tokens, darkTokens?)`, for token values applied at runtime.
 - `@wired-square/kit/testing` (`mount`, `unmountAll`, `button`, `field`, `type`, `text`) and
-  `@wired-square/kit/testing/setup` for vitest with jsdom.
+  `@wired-square/kit/testing/setup` for vitest with jsdom; `mount`'s `around` goes outside a caller's `wrap`.
+- `@wired-square/kit/core`: the modules with no JSX, compiled to JavaScript for plain node.

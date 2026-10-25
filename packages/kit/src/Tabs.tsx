@@ -1,7 +1,7 @@
 import { For, Show, children, createMemo, splitProps } from "solid-js";
 import type { JSX } from "solid-js";
+import { cx } from "@wired-square/kit/core";
 
-import { cx } from "./cx";
 import { arrowTo } from "./keys";
 
 export interface Tab<T extends string> {

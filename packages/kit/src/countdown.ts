@@ -1,4 +1,4 @@
-import type { Pending } from "./pending";
+import type { Pending } from "@wired-square/kit/core";
 
 /**
  * Calls `show` with the milliseconds left, now, every second, and on every

@@ -1,6 +1,6 @@
 import type { JSX } from "solid-js";
+import { cx } from "@wired-square/kit/core";
 
-import { cx } from "./cx";
 import type { Tone } from "./Notice";
 
 export interface BadgeProps {

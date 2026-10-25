@@ -45,6 +45,9 @@ import "@wired-square/kit/kit.css";
 No component names a colour, and neither file loads a font or a URL, so a strict CSP needs no `unsafe-inline` for
 styles.
 
+`kit.css` puts every rule in the cascade layer `kit`, a public name that will not change. An app's own unlayered rules
+beat the kit's whatever their specificity, and a rule the app adds to `@layer kit` sits at the kit's precedence instead.
+
 ### The three seams
 
 **Tokens.** Every value the kit draws is an `--app-*` custom property defined in `theme.css`. Restyle by redefining any
@@ -72,6 +75,12 @@ Throw `Refusal` with a sentence written for a person, and `Form`, `Confirm`, `cr
 request nothing answered with `new Refusal(message, { unanswered: true })`. A transport's own error class can extend
 `Refusal`.
 
+### Plain node
+
+`@wired-square/kit/core` is compiled JavaScript, so node imports it without a bundler: `Refusal`, `refusalMessage`,
+`unanswered`, the formatters, `duration`, `cx`, `unchanged`, the `Pending` types, and the scheme and theme functions.
+It is the same module the components import, so a `Refusal` from either entry is one class.
+
 ### Testing
 
 With vitest and jsdom, name the setup in `setupFiles`, then mount and find things by their words:
@@ -88,6 +97,9 @@ mount(() => <Settings />, { wrap: (screen) => <Router>{screen()}</Router> });
 button("Save").click();
 ```
 
+A helper that puts its own provider around a caller's `wrap` passes it as `around`, and `mount` still returns what
+`wrap` yields.
+
 ## Development
 
 ```sh
@@ -96,7 +108,9 @@ npm run check
 ```
 
 `npm run floor` (needs the network) reruns the typecheck, the tests and the fixture in a temp install of the oldest
-versions the peer ranges claim: solid-js 1.9.11, vitest 4.1.2, vite 6.4.1 and vite-plugin-solid 2.11.10.
+versions the peer ranges claim: solid-js 1.9.11, vitest 4.1.2, vite 6.4.1, and vite-plugin-solid 2.11.10 with
+babel-preset-solid 1.9.10.
 
-`check` runs the gates (no name of another repository, and no colour literal outside a `theme.css`), the typecheck,
-the tests, and a build of `fixtures/consumer` against the packed kit.
+`check` builds `dist/` (the compiled `./core`, which `npm pack` builds too), then runs the gates (no name of another
+repository, and no colour literal outside a `theme.css`), the typecheck, the tests, and a build of `fixtures/consumer`
+against the packed kit.

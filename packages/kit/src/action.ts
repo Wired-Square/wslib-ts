@@ -1,6 +1,5 @@
 import { createSignal } from "solid-js";
-
-import { refusalMessage } from "./refusal";
+import { refusalMessage } from "@wired-square/kit/core";
 
 export interface Action {
   pending: () => boolean;

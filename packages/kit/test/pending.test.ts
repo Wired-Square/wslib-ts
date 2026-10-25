@@ -1,7 +1,7 @@
 import { expect, test } from "vitest";
 
 import type { Pending } from "../src/index";
-import { badge, rereadPacer, rereadsGoOn } from "../src/pending";
+import { badge, rereadPacer, rereadsGoOn } from "../src/reread";
 
 test("re-reads back off from the hint to 15 s, or to the hint when it is longer", () => {
   const nextWait = rereadPacer();

@@ -1,8 +1,8 @@
 import { Show, createUniqueId, onCleanup, onMount } from "solid-js";
 import type { JSX } from "solid-js";
+import { cx } from "@wired-square/kit/core";
 
 import { Button } from "./Button";
-import { cx } from "./cx";
 
 export interface DialogProps {
   /** Absent when the content brings its own heading. */

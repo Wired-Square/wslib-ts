@@ -5,7 +5,13 @@ import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:f
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
-const floor = { "solid-js": "1.9.11", vitest: "4.1.2", vite: "6.4.1", "vite-plugin-solid": "2.11.10" };
+const floor = {
+  "solid-js": "1.9.11",
+  vitest: "4.1.2",
+  vite: "6.4.1",
+  "vite-plugin-solid": "2.11.10",
+  "babel-preset-solid": "1.9.10",
+};
 
 const repo = resolve(import.meta.dirname, "..");
 const kit = join(repo, "packages/kit");
@@ -15,7 +21,7 @@ const run = (cmd, args, options = {}) => execFileSync(cmd, args, { cwd: work, st
 
 try {
   cpSync(join(repo, "tsconfig.base.json"), join(root, "tsconfig.base.json"));
-  for (const entry of ["src", "test", "tsconfig.json", "vitest.config.ts"]) {
+  for (const entry of ["src", "test", "tsconfig.json", "tsconfig.build.json", "vitest.config.ts"]) {
     cpSync(join(kit, entry), join(work, entry), { recursive: true });
   }
   const { name, type, exports, devDependencies } = JSON.parse(readFileSync(join(kit, "package.json"), "utf8"));
@@ -29,6 +35,7 @@ try {
     if (version !== floor[dep]) throw new Error(`${dep} installed at ${version}, not ${floor[dep]}`);
   }
   console.log(`floor: ${Object.entries(floor).map(([dep, v]) => `${dep}@${v}`).join(", ")}`);
+  run("npx", ["tsc", "-p", "tsconfig.build.json"]);
   run("npx", ["tsc", "-p", "."]);
   run("npx", ["tsc", "-p", "test"]);
   run("npx", ["vitest", "run"]);

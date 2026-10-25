@@ -1,7 +1,7 @@
 import { createUniqueId } from "solid-js";
+import { cx } from "@wired-square/kit/core";
 
 import type { ButtonTone } from "./Button";
-import { cx } from "./cx";
 
 interface PickFileCommon {
   /** Name what is being chosen, not the act. */

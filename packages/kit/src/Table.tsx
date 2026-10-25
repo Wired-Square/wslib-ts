@@ -1,7 +1,6 @@
 import { Show } from "solid-js";
 import type { JSX } from "solid-js";
-
-import { cx } from "./cx";
+import { cx } from "@wired-square/kit/core";
 
 export interface TableProps {
   head: JSX.Element;

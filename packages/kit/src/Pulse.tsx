@@ -1,7 +1,5 @@
 import { Show, createEffect, createSignal, on, onCleanup } from "solid-js";
-
-import { cx } from "./cx";
-import { ago } from "./format";
+import { ago, cx } from "@wired-square/kit/core";
 
 export interface PulseProps {
   /** Any value whose identity changes per event; a running total beats a timestamp, which two events can share. */

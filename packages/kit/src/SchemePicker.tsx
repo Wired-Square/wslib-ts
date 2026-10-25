@@ -1,10 +1,11 @@
 import { For, createSignal } from "solid-js";
+import { chooseScheme } from "@wired-square/kit/core";
+import type { Scheme } from "@wired-square/kit/core";
 
 import { IconButton } from "./Button";
 import { useIcons } from "./icons";
 import type { KitIcons } from "./icons";
-import { SCHEMES, chooseScheme } from "./scheme";
-import type { Scheme } from "./scheme";
+import { SCHEMES } from "./scheme";
 
 const LABELS: Record<Scheme, string> = {
   system: "System colour scheme",

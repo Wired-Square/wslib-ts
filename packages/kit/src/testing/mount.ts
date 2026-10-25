@@ -6,6 +6,8 @@ const mounted: (() => void)[] = [];
 export interface MountOptions {
   /** What goes around the screen: a router, a session provider. */
   wrap?: (screen: () => JSX.Element) => JSX.Element;
+  /** What goes around `wrap`'s view, for a helper that layers its own provider over a caller's `wrap`. */
+  around?: (view: () => JSX.Element) => JSX.Element;
 }
 
 /** What a `wrap` puts around the screen, and what `mount` returns: a router's history, say. */
@@ -16,6 +18,7 @@ export interface Wrapped<T> {
 
 export interface YieldingMountOptions<T> {
   wrap: (screen: () => JSX.Element) => Wrapped<T>;
+  around?: (view: () => JSX.Element) => JSX.Element;
 }
 
 const isWrapped = (out: JSX.Element | Wrapped<unknown>): out is Wrapped<unknown> =>
@@ -33,7 +36,8 @@ export function mount(screen: () => JSX.Element, options: MountOptions | Yieldin
     yielded = out.yields;
     return out.view;
   };
-  mounted.push(render(wrapped, root));
+  const { around } = options;
+  mounted.push(render(around ? () => around(wrapped) : wrapped, root));
   return yielded;
 }
 
