@@ -195,3 +195,35 @@ test("a danger MenuItem is drawn in alert, and a disabled one neither closes the
   expect(selected).not.toHaveBeenCalled();
   expect(document.querySelector(".app-menu")!.textContent).toContain("Renew");
 });
+
+test("Escape closes a Menu and goes no further, so a dialog around it stays open, and focus returns to the trigger", () => {
+  mount(() => (
+    <Menu aria-label="Actions">
+      <MenuItem onSelect={() => {}}>Rename</MenuItem>
+    </Menu>
+  ));
+  const trigger = document.querySelector<HTMLElement>(".app-menu__trigger")!;
+  trigger.click();
+  const beyond = vi.fn();
+  window.addEventListener("keydown", beyond);
+  const escape = new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true });
+  button("Rename").dispatchEvent(escape);
+  window.removeEventListener("keydown", beyond);
+  expect(escape.defaultPrevented).toBe(true);
+  expect(beyond).not.toHaveBeenCalled();
+  expect(document.querySelector(".app-menu")!.matches(":popover-open")).toBe(false);
+  expect(document.activeElement).toBe(trigger);
+});
+
+test("choosing a MenuItem returns focus to the trigger before the item acts", () => {
+  let focused: Element | null = null;
+  mount(() => (
+    <Menu aria-label="Actions">
+      <MenuItem onSelect={() => (focused = document.activeElement)}>Rename</MenuItem>
+    </Menu>
+  ));
+  const trigger = document.querySelector<HTMLElement>(".app-menu__trigger")!;
+  trigger.click();
+  button("Rename").click();
+  expect(focused).toBe(trigger);
+});

@@ -9,7 +9,8 @@
 - `Popover` and `PopoverOption`: a panel pinned to any element on `popover="manual"`, closed by a press outside,
   Escape, a scroll outside or a resize, and taking focus only with `focusFirstItem`. `placePopover` is the one
   placement rule, and `Menu` now follows it, capping its height and keeping inside both edges. `MenuItem` takes
-  `danger` and `disabled`. `testing/setup` shims `showPopover`. The `popover` attribute sets a WebKit 17 floor.
+  `danger` and `disabled`. Escape closes a `Menu` without reaching a dialog around it, and closing one returns
+  focus to its trigger. `testing/setup` shims `showPopover`. The `popover` attribute sets a WebKit 17 floor.
 - `createSelection(visible, keyOf, resetOn)`, and `Tick`'s `mixed` for a select-all over part of it.
 - `CopyButton`, with a `write` seam (default `navigator.clipboard.writeText`) and `IconSet`'s `copy` glyph.
 - Times in three modes: `DateMode`, `formatWhen(at, mode, { locale, now, relative })`, and `DateModes` around the app

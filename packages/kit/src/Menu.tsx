@@ -22,8 +22,8 @@ export interface MenuProps {
 }
 
 /**
- * Actions behind one button, on the `popover` attribute: light dismiss, Escape
- * and the top layer come from the platform. The trigger is the panel's
+ * Actions behind one button, on the `popover` attribute: light dismiss and the
+ * top layer come from the platform. The trigger is the panel's
  * `popovertarget`, so the platform knows not to light-dismiss on its own press.
  * Items are built when the menu opens, not at mount.
  */
@@ -35,7 +35,11 @@ export function Menu(props: MenuProps) {
   const [open, setOpen] = createSignal(false);
 
   const items = () => [...panel.querySelectorAll<HTMLElement>("[role=menuitem]")];
-  const dismiss = () => panel.hidePopover();
+  // Focus would otherwise fall to the body, or to a dialog around the menu.
+  const dismiss = () => {
+    panel.hidePopover();
+    trigger.focus({ preventScroll: true });
+  };
 
   // Hidden since `beforetoggle`, so nothing paints at the last open's place.
   const place = () => {
@@ -59,6 +63,13 @@ export function Menu(props: MenuProps) {
   // leaves for nowhere before the click on an item lands.
   const navigate = (e: KeyboardEvent) => {
     if (e.key === "Tab") {
+      dismiss();
+      return;
+    }
+    // Default prevented as well: a modal dialog's cancel is Escape's default action.
+    if (e.key === "Escape") {
+      e.preventDefault();
+      e.stopPropagation();
       dismiss();
       return;
     }
