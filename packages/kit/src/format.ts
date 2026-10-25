@@ -43,3 +43,45 @@ export function ago(at: number, now: number): string {
   const hours = Math.floor(minutes / 60);
   return hours < 24 ? `${hours}h ago` : `${Math.floor(hours / 24)}d ago`;
 }
+
+export type DateMode = "utc" | "local" | "relative";
+
+export type RelativeWording = (at: Date, now: number) => string;
+
+const LAYOUT: Intl.DateTimeFormatOptions = {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+  hourCycle: "h23",
+};
+
+const UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
+  ["year", 365 * 86_400],
+  ["month", 30 * 86_400],
+  ["week", 7 * 86_400],
+  ["day", 86_400],
+  ["hour", 3_600],
+  ["minute", 60],
+  ["second", 1],
+];
+
+function relativeTo(at: Date, now: number, locale: string | undefined): string {
+  const seconds = Math.round((at.getTime() - now) / 1000);
+  const [unit, span] = UNITS.find(([, span]) => Math.abs(seconds) >= span) ?? ["second", 1];
+  return new Intl.RelativeTimeFormat(locale, { numeric: "auto" }).format(Math.trunc(seconds / span), unit);
+}
+
+/** `at` in a mode; `relative` replaces the platform's wording, a countdown say. `now` defaults to the clock. */
+export function formatWhen(
+  at: Date,
+  mode: DateMode,
+  options: { locale?: string | undefined; now?: number; relative?: RelativeWording | undefined } = {},
+): string {
+  const { locale, now = Date.now(), relative } = options;
+  if (mode === "relative") return relative ? relative(at, now) : relativeTo(at, now, locale);
+  if (mode === "utc") return `${new Intl.DateTimeFormat(locale, { ...LAYOUT, timeZone: "UTC" }).format(at)} UTC`;
+  return new Intl.DateTimeFormat(locale, { ...LAYOUT, timeZoneName: "short" }).format(at);
+}

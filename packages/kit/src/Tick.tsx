@@ -1,10 +1,12 @@
-import { Show } from "solid-js";
+import { Show, createRenderEffect } from "solid-js";
 import type { JSX } from "solid-js";
 
 export interface TickProps {
   label: JSX.Element;
   hint?: JSX.Element | undefined;
   checked: boolean;
+  /** Neither ticked nor not: a select-all over a partial selection. */
+  mixed?: boolean;
   disabled?: boolean;
   /** Cannot be ticked, and stays focusable so the reason `describedBy` names is read. */
   unavailable?: boolean;
@@ -20,6 +22,7 @@ export function Tick(props: TickProps) {
         <input
           type="checkbox"
           class="app-tick__box"
+          ref={(box) => createRenderEffect(() => (box.indeterminate = !!props.mixed))}
           checked={props.checked}
           disabled={props.disabled}
           aria-disabled={props.unavailable ? "true" : undefined}

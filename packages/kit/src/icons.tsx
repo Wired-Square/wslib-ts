@@ -9,6 +9,8 @@ export interface KitIcons {
   empty: () => JSX.Element;
   /** `Menu`'s trigger, when it is given none. */
   more: () => JSX.Element;
+  /** `CopyButton`'s glyph. */
+  copy: () => JSX.Element;
 }
 
 const defaults: KitIcons = {
@@ -47,6 +49,21 @@ const defaults: KitIcons = {
     </svg>
   ),
   more: () => "⋮",
+  copy: () => (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 16 16"
+      width="1em"
+      height="1em"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="1.5"
+      stroke-linejoin="round"
+    >
+      <rect x="5" y="5" width="9" height="9" rx="1.5" />
+      <rect x="2" y="2" width="9" height="9" rx="1.5" />
+    </svg>
+  ),
 };
 
 const Icons = createContext(defaults);
