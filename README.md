@@ -146,6 +146,8 @@ applyTheme(brand);
 
 ## Development
 
+The repo's tooling needs Node 22.18 or later, which runs TypeScript tests without a build.
+
 ```sh
 npm install
 scripts/ci.sh
