@@ -57,6 +57,9 @@ export { SchemePicker } from "./SchemePicker";
 export { ScreenBoundary } from "./ScreenBoundary";
 export type { ScreenBoundaryProps } from "./ScreenBoundary";
 
+export { SearchInput } from "./SearchInput";
+export type { SearchInputProps } from "./SearchInput";
+
 export { Section } from "./Section";
 export type { SectionProps } from "./Section";
 

@@ -812,6 +812,46 @@ select.app-field__input {
   color: var(--app-text-muted);
 }
 
+/* --- search ------------------------------------------------------------- */
+
+.app-search {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+}
+
+/* Room for the clear button; WebKit's own is hidden, so there is one. */
+.app-search__input {
+  padding-inline-end: 2rem;
+}
+
+.app-search__input::-webkit-search-cancel-button {
+  appearance: none;
+}
+
+.app-search__clear {
+  position: absolute;
+  inset-inline-end: 0.3rem;
+  display: inline-flex;
+  padding: 0.25rem;
+  border: 1px solid transparent;
+  border-radius: var(--app-radius);
+  background: transparent;
+  color: var(--app-text-muted);
+  cursor: pointer;
+}
+
+.app-search__clear:hover {
+  background: var(--app-surface-sunken);
+  color: var(--app-text);
+}
+
+.app-search__clear:focus-visible {
+  outline: none;
+  box-shadow: var(--app-focus);
+}
+
 /* --- tables ------------------------------------------------------------- */
 
 .app-table-scroll {
@@ -948,7 +988,7 @@ select.app-field__input {
 
 /* Forced colours drop the box-shadow ring. Last, to outrank `outline: none`. */
 @media (forced-colors: active) {
-  :is(.app-field__input, .app-btn, .app-tab, .app-menu__item, .app-popover__option, .app-switch):focus-visible,
+  :is(.app-field__input, .app-btn, .app-tab, .app-menu__item, .app-popover__option, .app-switch, .app-search__clear):focus-visible,
   .app-visually-hidden:focus-visible + .app-pick-file__label {
     outline: 2px solid Highlight;
   }

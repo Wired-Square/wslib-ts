@@ -27,7 +27,9 @@ test("the kit's controls share a line-height, a select is drawn but native under
   expect(rule(css, ".app-field__input")).toMatch(shared);
   expect(rule(css, "select.app-field__input")).toMatch(/appearance: none;[^}]*background-image:/);
   expect(rule(forcedColours(css), "select.app-field__input")).toMatch(/appearance: auto;\s*background-image: none;/);
-  const ring = css.lastIndexOf(":is(.app-field__input, .app-btn, .app-tab, .app-menu__item, .app-popover__option, .app-switch):focus-visible");
+  const ring = css.lastIndexOf(
+    ":is(.app-field__input, .app-btn, .app-tab, .app-menu__item, .app-popover__option, .app-switch, .app-search__clear):focus-visible",
+  );
   expect(ring, "the forced-colours ring follows every outline: none it overrides").toBeGreaterThan(
     css.lastIndexOf("outline: none"),
   );

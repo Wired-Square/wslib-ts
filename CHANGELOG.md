@@ -13,6 +13,8 @@
 - `createFlash(ms = 2000)` returns `[on, flashAfter]`: `on` turns true for `ms` once the promise given to
   `flashAfter` resolves, and a second flash restarts the timer. `flashAfter` hands back the promise's value or
   rejection, and a rejection leaves `on` off. `CopyButton` is built on it.
+- `SearchInput` (`label`, `value`, `onValue`): a search box with autocorrect, autocapitalise and spellcheck off, and a
+  Clear button while it holds a value, which empties it and returns focus to the box. Its glyph is `IconSet`'s `clear`.
 
 ### 0.2.0
 

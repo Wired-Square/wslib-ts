@@ -11,6 +11,8 @@ export interface KitIcons {
   more: () => JSX.Element;
   /** `CopyButton`'s glyph. */
   copy: () => JSX.Element;
+  /** `SearchInput`'s clear button. */
+  clear: () => JSX.Element;
 }
 
 const defaults: KitIcons = {
@@ -62,6 +64,20 @@ const defaults: KitIcons = {
     >
       <rect x="5" y="5" width="9" height="9" rx="1.5" />
       <rect x="2" y="2" width="9" height="9" rx="1.5" />
+    </svg>
+  ),
+  clear: () => (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 16 16"
+      width="1em"
+      height="1em"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="1.5"
+      stroke-linecap="round"
+    >
+      <path d="m4 4 8 8m0-8-8 8" />
     </svg>
   ),
 };
