@@ -74,6 +74,10 @@ room `SearchInput` keeps for its Clear button. Put such resets in a layer declar
 `@layer reset, kit;`, so the kit wins over them. Drop any unlayered override written against the old order at the
 same time: a leftover `.app-btn:focus-visible { box-shadow: none }` then removes the kit's only focus ring.
 
+`CopyButton`'s negative inline margin lines its value up with plain text, but a shrink-to-fit parent, such as a flex
+item sized by its content, then comes out 12px narrower than the button and wraps short values mid-word. Let such a
+parent take the space instead: `flex: 1; min-width: 0`.
+
 ### Browsers
 
 `Menu` and `Popover` stand on the `popover` attribute, which sets the floor at WebKit 17 (Safari 17, and a WKWebView on
