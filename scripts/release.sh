@@ -3,7 +3,7 @@
 # it <package>-v<version>; reads elsewhere use the read token in ~/.npmrc.
 # Without --execute it stops before publishing.
 #
-#   scripts/release.sh kit|tokens [--execute]
+#   scripts/release.sh kit|tokens|mcp-bridge [--execute]
 set -eu
 cd "$(dirname "$0")/.."
 die() { printf 'release: %s\n' "$*" >&2; exit 1; }
