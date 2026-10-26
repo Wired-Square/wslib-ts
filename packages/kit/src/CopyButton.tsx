@@ -11,7 +11,7 @@ export interface CopyButtonProps {
   children: JSX.Element;
 }
 
-/** Copies `value`, then says "Copied" in place of the glyph for two seconds once the write has landed. */
+/** Copies `value`, then says "Copied" in place of the glyph and in a status region for two seconds once the write has landed. */
 export function CopyButton(props: CopyButtonProps) {
   const icons = useIcons();
   const [copied, setCopied] = createSignal(false);
@@ -31,9 +31,16 @@ export function CopyButton(props: CopyButtonProps) {
   };
 
   return (
-    <button type="button" class="app-copy" onClick={() => void copy()}>
-      <span class="app-copy__value">{props.children}</span>
-      <span class="app-copy__glyph">{copied() ? "Copied" : icons.copy()}</span>
-    </button>
+    <>
+      <button type="button" class="app-copy" onClick={() => void copy()}>
+        <span class="app-copy__value">{props.children}</span>
+        <span class="app-copy__glyph" aria-hidden="true">
+          {copied() ? "Copied" : icons.copy()}
+        </span>
+      </button>
+      <span role="status" class="app-visually-hidden">
+        {copied() ? "Copied" : ""}
+      </span>
+    </>
   );
 }

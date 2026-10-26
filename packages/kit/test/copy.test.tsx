@@ -21,6 +21,27 @@ test("a CopyButton writes its value, then says Copied in place of the glyph for 
   expect(glyph.querySelector("svg")).not.toBeNull();
 });
 
+test("a CopyButton announces Copied through a status region outside the button, there before the copy, and keeps its name", async () => {
+  vi.useFakeTimers();
+  const root = mount(() => (
+    <CopyButton value="AB:CD" write={async () => {}}>
+      AB:CD
+    </CopyButton>
+  ));
+  const button = root.querySelector("button")!;
+  const status = root.querySelector("[role=status]")!;
+  expect(button.contains(status)).toBe(false);
+  expect(status.className).toBe("app-visually-hidden");
+  expect(status.textContent).toBe("");
+  expect(button.querySelector(".app-copy__glyph")!.getAttribute("aria-hidden")).toBe("true");
+
+  button.click();
+  await vi.waitFor(() => expect(status.textContent).toBe("Copied"));
+  expect(root.querySelector("[role=status]")).toBe(status);
+  vi.advanceTimersByTime(2_000);
+  expect(status.textContent).toBe("");
+});
+
 test("a CopyButton says nothing when the write is refused, and writes to the clipboard by default", async () => {
   const refused = mount(() => (
     <CopyButton value="secret" write={() => Promise.reject(new Error("not allowed"))}>
@@ -39,9 +60,10 @@ test("a CopyButton says nothing when the write is refused, and writes to the cli
         <CopyButton value="AB:CD">Copy</CopyButton>
       </IconSet>
     ));
-    expect(root.textContent).toBe("Copy⧉");
-    root.querySelector("button")!.click();
-    await vi.waitFor(() => expect(root.textContent).toBe("CopyCopied"));
+    const button = root.querySelector("button")!;
+    expect(button.textContent).toBe("Copy⧉");
+    button.click();
+    await vi.waitFor(() => expect(button.textContent).toBe("CopyCopied"));
     expect(writeText).toHaveBeenCalledWith("AB:CD");
   } finally {
     vi.unstubAllGlobals();
