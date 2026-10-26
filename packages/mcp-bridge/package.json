@@ -1,0 +1,51 @@
+{
+  "name": "@wired-square/mcp-bridge",
+  "version": "0.1.0",
+  "description": "The page half of wslib-mcp: DOM ops for its dom tools, and their bridge over Tauri events.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "github:Wired-Square/wslib-ts",
+    "directory": "packages/mcp-bridge"
+  },
+  "type": "module",
+  "sideEffects": [
+    "./dist/dom-ops.js"
+  ],
+  "exports": {
+    "./dom-ops": {
+      "types": "./dist/dom-ops.d.ts",
+      "default": "./dist/dom-ops.js"
+    },
+    "./tauri-bridge": {
+      "types": "./dist/tauri-bridge.d.ts",
+      "default": "./dist/tauri-bridge.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "registry": "https://forge.wiredsquare.com/api/packages/wired-square/npm/"
+  },
+  "scripts": {
+    "build": "rm -rf dist && tsc -p tsconfig.build.json",
+    "prepack": "npm run build",
+    "test": "node --test test/*.test.ts"
+  },
+  "peerDependencies": {
+    "@tauri-apps/api": "^2.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@tauri-apps/api": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@tauri-apps/api": "^2.12.4",
+    "@types/jsdom": "^30.0.0",
+    "@types/node": "^22.20.5",
+    "jsdom": "^30.1.3",
+    "typescript": "^5.9.3"
+  }
+}
