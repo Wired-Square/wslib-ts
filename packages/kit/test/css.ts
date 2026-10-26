@@ -14,3 +14,9 @@ export function rule(css: string, selector: string): string {
   if (at < 0) throw new Error(`no rule for ${selector}`);
   return css.slice(at, css.indexOf("}", at));
 }
+
+/** The rules inside every `@media (forced-colors: active)` block, outdented so `rule` finds them. */
+export const forcedColours = (css: string) =>
+  [...css.matchAll(/@media \(forced-colors: active\) \{\n([\s\S]*?)\n\}/g)]
+    .map(([, body]) => `\n${body!.replace(/^ {2}/gm, "")}`)
+    .join("\n");

@@ -2,6 +2,12 @@
 
 ## `@wired-square/kit`
 
+### 0.3.0
+
+- Under forced colours, a selected tab, filter or pill and a selected `PopoverOption` take `Highlight` rather than
+  bold alone, and unselected tabs lose the underline forced colours gave every tab. A disabled field and an
+  `aria-disabled` button or `MenuItem` read in `GrayText`, and `FeedStatus`'s dot stays drawn.
+
 ### 0.2.0
 
 - `Confirm` takes a `reason` (`{ label, placeholder? }`): a required field, with Confirm disabled until it is non-blank

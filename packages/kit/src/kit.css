@@ -130,6 +130,13 @@
   border-color: var(--app-accent-disabled);
 }
 
+@media (forced-colors: active) {
+  .app-btn[aria-disabled="true"] {
+    color: GrayText;
+    border-color: GrayText;
+  }
+}
+
 .app-btn--danger {
   background: var(--app-alert);
   color: var(--app-alert-contrast);
@@ -247,17 +254,22 @@ select.app-field__input {
   box-shadow: var(--app-focus);
 }
 
+.app-field__input:disabled {
+  background-color: var(--app-surface-sunken);
+  color: var(--app-text-muted);
+  cursor: not-allowed;
+}
+
 @media (forced-colors: active) {
   select.app-field__input {
     appearance: auto;
     background-image: none;
   }
-}
 
-.app-field__input:disabled {
-  background-color: var(--app-surface-sunken);
-  color: var(--app-text-muted);
-  cursor: not-allowed;
+  .app-field__input:disabled {
+    color: GrayText;
+    border-color: GrayText;
+  }
 }
 
 .app-field__input[aria-invalid="true"] {
@@ -419,6 +431,25 @@ select.app-field__input {
   font-weight: 600;
 }
 
+/* Forced colours paint a transparent border, so every tab would be underlined, and a
+   backplate in `Canvas` behind text, so text on `Highlight` needs `forced-color-adjust: none`. */
+@media (forced-colors: active) {
+  .app-tab:not([aria-selected="true"], [aria-pressed="true"], [aria-current="page"]) {
+    border-block-end-style: none;
+  }
+
+  .app-tab:is([aria-selected="true"], [aria-pressed="true"], [aria-current="page"]) {
+    color: Highlight;
+    border-color: Highlight;
+  }
+
+  .app-tablist--pill .app-tab:is([aria-selected="true"], [aria-pressed="true"]) {
+    forced-color-adjust: none;
+    background: Highlight;
+    color: HighlightText;
+  }
+}
+
 /* --- nothing yet -------------------------------------------------------- */
 
 .app-nothing-yet {
@@ -544,6 +575,12 @@ select.app-field__input {
   cursor: not-allowed;
 }
 
+@media (forced-colors: active) {
+  .app-menu__item[aria-disabled="true"] {
+    color: GrayText;
+  }
+}
+
 /* --- popovers ----------------------------------------------------------- */
 
 .app-popover__option {
@@ -569,6 +606,15 @@ select.app-field__input {
 
 .app-popover__option[aria-selected="true"] {
   font-weight: 600;
+}
+
+@media (forced-colors: active) {
+  .app-popover__option[aria-selected="true"] {
+    forced-color-adjust: none;
+    background: Highlight;
+    color: HighlightText;
+    border-color: CanvasText;
+  }
 }
 
 /* --- switch ------------------------------------------------------------- */
@@ -708,6 +754,12 @@ select.app-field__input {
   border-radius: 50%;
   background: currentcolor;
   flex: none;
+}
+
+@media (forced-colors: active) {
+  .app-pulse {
+    background: CanvasText;
+  }
 }
 
 /* --- copy --------------------------------------------------------------- */

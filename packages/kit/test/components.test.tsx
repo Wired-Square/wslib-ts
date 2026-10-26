@@ -2,7 +2,7 @@ import { expect, test, vi } from "vitest";
 
 import { FeedStatus, IconSet, Menu, MenuItemUnavailable, NothingYet, Notice, TabButton, Tabs, Tick, Toggle, Views, viewOf } from "../src/index";
 import { mount } from "../src/testing";
-import { read, rule, sourceFiles } from "./css";
+import { forcedColours, read, rule, sourceFiles } from "./css";
 
 test("a hovered button's edge highlights, in its own fill's edge on primary and danger, easing in except under reduced motion", () => {
   const css = read("kit.css");
@@ -25,9 +25,7 @@ test("the kit's controls share a line-height, a select is drawn but native under
   expect(rule(css, ".app-btn")).toMatch(shared);
   expect(rule(css, ".app-field__input")).toMatch(shared);
   expect(rule(css, "select.app-field__input")).toMatch(/appearance: none;[^}]*background-image:/);
-  expect(css).toMatch(
-    /@media \(forced-colors: active\) \{\s*select\.app-field__input \{\s*appearance: auto;\s*background-image: none;\s*\}\s*\}/,
-  );
+  expect(rule(forcedColours(css), "select.app-field__input")).toMatch(/appearance: auto;\s*background-image: none;/);
   const ring = css.lastIndexOf(":is(.app-field__input, .app-btn, .app-tab, .app-menu__item, .app-popover__option, .app-switch):focus-visible");
   expect(ring, "the forced-colours ring follows every outline: none it overrides").toBeGreaterThan(
     css.lastIndexOf("outline: none"),
@@ -43,6 +41,22 @@ test("the kit's controls share a line-height, a select is drawn but native under
   );
   expect(css).toMatch(/\n\.app-tablist--pill \.app-tab\[aria-selected="true"\],\n\.app-tablist--pill \.app-tab\[aria-pressed="true"\] \{/);
   expect(read("theme.css")).toMatch(/:root \{[^}]*--app-control-line-height: /);
+});
+
+test("under forced colours, disabled, selected and live states keep a system colour rather than vanishing into CanvasText", () => {
+  const forced = forcedColours(read("kit.css"));
+  const selected = ':is([aria-selected="true"], [aria-pressed="true"]';
+  expect(rule(forced, '.app-btn[aria-disabled="true"]')).toMatch(/color: GrayText;/);
+  expect(rule(forced, ".app-field__input:disabled")).toMatch(/color: GrayText;/);
+  expect(rule(forced, '.app-menu__item[aria-disabled="true"]')).toMatch(/color: GrayText;/);
+  expect(rule(forced, `.app-tab${selected}, [aria-current="page"])`)).toMatch(/border-color: Highlight;/);
+  expect(rule(forced, `.app-tab:not([aria-selected="true"], [aria-pressed="true"], [aria-current="page"])`)).toMatch(
+    /border-block-end-style: none;/,
+  );
+  for (const onHighlight of [`.app-tablist--pill .app-tab${selected})`, '.app-popover__option[aria-selected="true"]']) {
+    expect(rule(forced, onHighlight), onHighlight).toMatch(/forced-color-adjust: none;\s*background: Highlight;\s*color: HighlightText;/);
+  }
+  expect(rule(forced, ".app-pulse")).toMatch(/background: CanvasText;/);
 });
 
 test("app-muted keeps the line's size inside a line of text and as a whole description or cell, after the rule that sets it small", () => {
