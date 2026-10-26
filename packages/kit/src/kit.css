@@ -130,6 +130,13 @@
   border-color: var(--app-accent-disabled);
 }
 
+@media (forced-colors: active) {
+  .app-btn[aria-disabled="true"] {
+    color: GrayText;
+    border-color: GrayText;
+  }
+}
+
 .app-btn--danger {
   background: var(--app-alert);
   color: var(--app-alert-contrast);
@@ -137,6 +144,7 @@
 }
 
 .app-btn--danger:hover:not(:disabled, [aria-disabled="true"]) {
+  background: var(--app-alert);
   filter: brightness(0.92);
   border-color: var(--app-alert-edge);
 }
@@ -247,17 +255,22 @@ select.app-field__input {
   box-shadow: var(--app-focus);
 }
 
+.app-field__input:disabled {
+  background-color: var(--app-surface-sunken);
+  color: var(--app-text-muted);
+  cursor: not-allowed;
+}
+
 @media (forced-colors: active) {
   select.app-field__input {
     appearance: auto;
     background-image: none;
   }
-}
 
-.app-field__input:disabled {
-  background-color: var(--app-surface-sunken);
-  color: var(--app-text-muted);
-  cursor: not-allowed;
+  .app-field__input:disabled {
+    color: GrayText;
+    border-color: GrayText;
+  }
 }
 
 .app-field__input[aria-invalid="true"] {
@@ -419,6 +432,25 @@ select.app-field__input {
   font-weight: 600;
 }
 
+/* Forced colours paint a transparent border, so every tab would be underlined, and a
+   backplate in `Canvas` behind text, so text on `Highlight` needs `forced-color-adjust: none`. */
+@media (forced-colors: active) {
+  .app-tab:not([aria-selected="true"], [aria-pressed="true"], [aria-current="page"]) {
+    border-block-end-style: none;
+  }
+
+  .app-tab:is([aria-selected="true"], [aria-pressed="true"], [aria-current="page"]) {
+    color: Highlight;
+    border-color: Highlight;
+  }
+
+  .app-tablist--pill .app-tab:is([aria-selected="true"], [aria-pressed="true"]) {
+    forced-color-adjust: none;
+    background: Highlight;
+    color: HighlightText;
+  }
+}
+
 /* --- nothing yet -------------------------------------------------------- */
 
 .app-nothing-yet {
@@ -544,6 +576,12 @@ select.app-field__input {
   cursor: not-allowed;
 }
 
+@media (forced-colors: active) {
+  .app-menu__item[aria-disabled="true"] {
+    color: GrayText;
+  }
+}
+
 /* --- popovers ----------------------------------------------------------- */
 
 .app-popover__option {
@@ -569,6 +607,15 @@ select.app-field__input {
 
 .app-popover__option[aria-selected="true"] {
   font-weight: 600;
+}
+
+@media (forced-colors: active) {
+  .app-popover__option[aria-selected="true"] {
+    forced-color-adjust: none;
+    background: Highlight;
+    color: HighlightText;
+    border-color: CanvasText;
+  }
 }
 
 /* --- switch ------------------------------------------------------------- */
@@ -710,6 +757,12 @@ select.app-field__input {
   flex: none;
 }
 
+@media (forced-colors: active) {
+  .app-pulse {
+    background: CanvasText;
+  }
+}
+
 /* --- copy --------------------------------------------------------------- */
 
 /* Negative margin, so a value made a button sits where its plain text would. */
@@ -757,6 +810,46 @@ select.app-field__input {
 
 .app-copy__glyph svg {
   color: var(--app-text-muted);
+}
+
+/* --- search ------------------------------------------------------------- */
+
+.app-search {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+}
+
+/* Room for the clear button; WebKit's own is hidden, so there is one. */
+.app-search__input {
+  padding-inline-end: 2rem;
+}
+
+.app-search__input::-webkit-search-cancel-button {
+  appearance: none;
+}
+
+.app-search__clear {
+  position: absolute;
+  inset-inline-end: 0.3rem;
+  display: inline-flex;
+  padding: 0.25rem;
+  border: 1px solid transparent;
+  border-radius: var(--app-radius);
+  background: transparent;
+  color: var(--app-text-muted);
+  cursor: pointer;
+}
+
+.app-search__clear:hover {
+  background: var(--app-surface-sunken);
+  color: var(--app-text);
+}
+
+.app-search__clear:focus-visible {
+  outline: none;
+  box-shadow: var(--app-focus);
 }
 
 /* --- tables ------------------------------------------------------------- */
@@ -895,7 +988,7 @@ select.app-field__input {
 
 /* Forced colours drop the box-shadow ring. Last, to outrank `outline: none`. */
 @media (forced-colors: active) {
-  :is(.app-field__input, .app-btn, .app-tab, .app-menu__item, .app-popover__option, .app-switch):focus-visible,
+  :is(.app-field__input, .app-btn, .app-tab, .app-menu__item, .app-popover__option, .app-switch, .app-search__clear):focus-visible,
   .app-visually-hidden:focus-visible + .app-pick-file__label {
     outline: 2px solid Highlight;
   }

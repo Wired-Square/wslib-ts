@@ -2,6 +2,20 @@
 
 ## `@wired-square/kit`
 
+### 0.3.0
+
+- Under forced colours, a selected tab, filter or pill and a selected `PopoverOption` take `Highlight` rather than
+  bold alone, and unselected tabs lose the underline forced colours gave every tab. A disabled field and an
+  `aria-disabled` button or `MenuItem` read in `GrayText`, and `FeedStatus`'s dot stays drawn.
+- `CopyButton` announces "Copied" through a polite status region beside the button. The glyph is hidden from the
+  button's name, which no longer changes when it copies.
+- A hovered danger button keeps its red background; the generic hover rule had replaced it.
+- `createFlash(ms = 2000)` returns `[on, flashAfter]`: `on` turns true for `ms` once the promise given to
+  `flashAfter` resolves, and a second flash restarts the timer. `flashAfter` hands back the promise's value or
+  rejection, and a rejection leaves `on` off. `CopyButton` is built on it.
+- `SearchInput` (`label`, `value`, `onValue`): a search box with autocorrect, autocapitalise and spellcheck off, and a
+  Clear button while it holds an editable value, which empties it and returns focus to the box. Its glyph is `IconSet`'s `clear`.
+
 ### 0.2.0
 
 - `Confirm` takes a `reason` (`{ label, placeholder? }`): a required field, with Confirm disabled until it is non-blank

@@ -24,6 +24,8 @@ export type { DialogActionsProps, DialogProps } from "./Dialog";
 export { Field } from "./Field";
 export type { FieldProps } from "./Field";
 
+export { createFlash } from "./flash";
+
 export { Form } from "./Form";
 export type { FormProps } from "./Form";
 
@@ -54,6 +56,9 @@ export { SchemePicker } from "./SchemePicker";
 
 export { ScreenBoundary } from "./ScreenBoundary";
 export type { ScreenBoundaryProps } from "./ScreenBoundary";
+
+export { SearchInput } from "./SearchInput";
+export type { SearchInputProps } from "./SearchInput";
 
 export { Section } from "./Section";
 export type { SectionProps } from "./Section";
