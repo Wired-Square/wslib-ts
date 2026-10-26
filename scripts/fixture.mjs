@@ -30,8 +30,10 @@ try {
   for (const dep of ["solid-js", "vite", "vite-plugin-solid"]) {
     symlinkSync(join(deps, dep), join(modules, dep), "dir");
   }
+  mkdirSync(join(modules, "@tauri-apps"));
+  symlinkSync(join(repo, "node_modules/@tauri-apps/api"), join(modules, "@tauri-apps/api"), "dir");
 
-  for (const name of ["@wired-square/kit", "@wired-square/tokens"]) {
+  for (const name of ["@wired-square/kit", "@wired-square/tokens", "@wired-square/mcp-bridge"]) {
     const tarball = execFileSync("npm", ["pack", "--silent", "--pack-destination", work, "-w", name], {
       cwd: repo,
       encoding: "utf8",
@@ -58,6 +60,19 @@ try {
     problems.push("plain node imported @wired-square/tokens and its tokens.json, but they disagree");
   }
   if (!existsSync(join(modules, "@wired-square/tokens/dist/tokens.d.ts"))) problems.push("the packed tokens carry no types");
+
+  const bridge = `
+    globalThis.window = new EventTarget();
+    const { DOM_OPS, DOM_OP_CLASS } = await import("@wired-square/mcp-bridge/dom-ops");
+    const { REQUEST_EVENT, startHarnessBridge } = await import("@wired-square/mcp-bridge/tauri-bridge");
+    process.stdout.write(String(DOM_OPS.length === 6 && DOM_OP_CLASS.query === "read" && REQUEST_EVENT === "harness:request" && typeof startHarnessBridge === "function"));
+  `;
+  if (execFileSync("node", ["--input-type=module", "-e", bridge], { cwd: work, encoding: "utf8" }) !== "true") {
+    problems.push("plain node imported @wired-square/mcp-bridge's entry points, but they misbehaved");
+  }
+  for (const entry of ["dom-ops", "tauri-bridge"]) {
+    if (!existsSync(join(modules, `@wired-square/mcp-bridge/dist/${entry}.d.ts`))) problems.push(`the packed mcp-bridge's ${entry} carries no types`);
+  }
 
   // The dev server's pre-bundler is esbuild, which compiles JSX for React: the
   // kit must be served as source and through vite-plugin-solid.
@@ -130,4 +145,4 @@ try {
 }
 
 fail("consumer fixture", problems);
-console.log("consumer fixture: built against the packed kit; core and tokens imported in plain node");
+console.log("consumer fixture: built against the packed kit; core, tokens and mcp-bridge imported in plain node");

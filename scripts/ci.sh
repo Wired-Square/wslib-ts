@@ -22,10 +22,12 @@ step "No other repository is named in a commit message"
 step "No reference to the project dossier"
 ! git grep -nIE --untracked '\[\[[A-Za-z][^]]*\]\]' -- ':!scripts/ci.sh' || die "the dossier is cited; state the constraint here"
 
-step "The packages have no runtime dependencies, and tokens no peers"
-node -e 'const [kit, tokens] = ["kit", "tokens"].map((name) => require(`./packages/${name}/package.json`));
-process.exit(Object.keys({ ...kit.dependencies, ...tokens.dependencies, ...tokens.peerDependencies }).length)' \
-  || die "a package declares dependencies, or tokens declares peers; solid-js is the kit's peer"
+step "The packages have no runtime dependencies, tokens no peers, and mcp-bridge one optional peer"
+node -e 'const [kit, tokens, bridge] = ["kit", "tokens", "mcp-bridge"].map((name) => require(`./packages/${name}/package.json`));
+const declared = { ...kit.dependencies, ...tokens.dependencies, ...tokens.peerDependencies, ...bridge.dependencies };
+const tauriOnly = Object.keys(bridge.peerDependencies).join() === "@tauri-apps/api" && bridge.peerDependenciesMeta["@tauri-apps/api"].optional;
+process.exit(Object.keys(declared).length || !tauriOnly ? 1 : 0)' \
+  || die "a package declares dependencies, tokens declares peers, or mcp-bridge a peer beyond optional @tauri-apps/api"
 
 step "Build, gates, typecheck, tests and the consumer fixture"
 npm run check

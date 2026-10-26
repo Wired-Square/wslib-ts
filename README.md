@@ -6,6 +6,7 @@ Wired Square's shared TypeScript packages, as npm workspaces.
 |---|---|
 | [`@wired-square/kit`](packages/kit) | SolidJS components, the `--app-*` tokens they read, and test helpers |
 | [`@wired-square/tokens`](packages/tokens) | The `--app-*` tokens' names and defaults, as TypeScript and JSON |
+| [`@wired-square/mcp-bridge`](packages/mcp-bridge) | The page half of wslib-mcp's `dom` tools, and their bridge over Tauri events |
 
 ## `@wired-square/kit`
 
@@ -152,6 +153,28 @@ applyTheme(brand);
 `light` and `dark` hold the defaults, `groups` the same tokens in `theme.css`'s groups with their notes, and
 `@wired-square/tokens/tokens.json` maps each name to `{ "light": "…", "dark"?: "…" }`.
 
+## `@wired-square/mcp-bridge`
+
+The page half of wslib-mcp's `dom` and `tauri-bridge` features, installed from the same registry. It has no
+dependencies; `@tauri-apps/api` 2 is an optional peer, needed only by `./tauri-bridge`.
+
+```ts
+import "@wired-square/mcp-bridge/dom-ops";
+import { startHarnessBridge } from "@wired-square/mcp-bridge/tauri-bridge";
+
+await startHarnessBridge({ navigate: ({ path }) => router.navigate(String(path)) });
+```
+
+`startHarnessBridge(appOps?)` answers each `harness:request` `{ id, op, args }` with a `harness:reply` `{ id, ok }` or
+`{ id, error }`, trying the app's own ops before the DOM ops. Over another transport, hand each request to
+`answer(request, appOps?)`, or to `runDomOp(op, args)` from `./dom-ops`.
+
+Importing `./dom-ops` wraps `console.error` and `console.warn` and listens for `window` `error` and
+`unhandledrejection`, keeping the last 200 for the `console` op, so import it before anything that can fail.
+
+The contract with the Rust half is data: `DOM_OPS` lists the ops, `DOM_OP_CLASS` marks each `read` or `drive`, and
+`REQUEST_EVENT` and `REPLY_EVENT` name the events.
+
 ## Development
 
 The repo's tooling needs Node 22.18 or later, which runs TypeScript tests without a build.
@@ -162,7 +185,7 @@ scripts/ci.sh
 ```
 
 `scripts/ci.sh` is the CI definition: the lockfile, the commit-message and dossier gates, no runtime dependencies in
-the packages and no peers in tokens, then `npm run check`. `--tag` adds `npm run floor`. Run it before every push,
+the packages, no peers in tokens and only the optional `@tauri-apps/api` in mcp-bridge, then `npm run check`. `--tag` adds `npm run floor`. Run it before every push,
 once per clone:
 
 ```sh
@@ -173,9 +196,9 @@ git config core.hooksPath scripts/hooks
 versions the peer ranges claim: solid-js 1.9.11, vitest 4.1.2, vite 6.4.1, and vite-plugin-solid 2.11.10 with
 babel-preset-solid 1.9.10.
 
-`check` builds `dist/` (the compiled `./core`, which `npm pack` builds too), then runs the gates (no name of another
+`check` builds `dist/` (the kit's compiled `./core`, the tokens and mcp-bridge, which `npm pack` builds too), then runs the gates (no name of another
 repository, no colour literal outside `theme.css` and the token values, and `theme.css` as `scripts/theme-css.mjs`
-writes it from `packages/tokens`), the typecheck, the tests, and a build of `fixtures/consumer` against the packed kit.
+writes it from `packages/tokens`), the typecheck, the tests, and a build of `fixtures/consumer` against the packed kit, with the packed tokens and mcp-bridge imported in plain node.
 
 ## Releasing a package
 

@@ -60,3 +60,18 @@ The component kit from a prior appliance, as its own package.
 The kit's 32 `--app-*` tokens as data: `light`, `dark`, the `TokenName` and `Tokens` types for `satisfies`, and
 `groups`, with each token's group and note. `@wired-square/tokens/tokens.json` holds the same values as
 `{ "--app-x": { "light": "…", "dark"?: "…" } }`. No dependencies and no peers.
+
+## `@wired-square/mcp-bridge`
+
+### 0.1.0
+
+The page half of wslib-mcp 0.1.1's `dom` and `tauri-bridge` features, as its own package, with behaviour and export
+names unchanged.
+
+- `@wired-square/mcp-bridge/dom-ops`: `domOps`, `DomOp`, `DOM_OPS`, `runDomOp`, `rectInViewport`,
+  `clippingAncestor` and `describe`. Importing it starts capturing the console.
+- `@wired-square/mcp-bridge/tauri-bridge`: `startHarnessBridge`, `answer`, `HarnessArgs`, `HarnessRequest`,
+  `HarnessReply` and `AppOps`.
+- The contract as data: `DOM_OP_CLASS` (`DomOpClass`, `read` or `drive` for each op), `REQUEST_EVENT`
+  (`harness:request`) and `REPLY_EVENT` (`harness:reply`).
+- No dependencies; `@tauri-apps/api` 2 is an optional peer, for `./tauri-bridge`.
