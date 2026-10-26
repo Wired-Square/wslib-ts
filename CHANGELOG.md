@@ -9,6 +9,8 @@
   `aria-disabled` button or `MenuItem` read in `GrayText`, and `FeedStatus`'s dot stays drawn.
 - `CopyButton` announces "Copied" through a polite status region beside the button. The glyph is hidden from the
   button's name, which no longer changes when it copies.
+- A hovered danger button keeps its red background; the generic hover rule had replaced it.
+
 ### 0.2.0
 
 - `Confirm` takes a `reason` (`{ label, placeholder? }`): a required field, with Confirm disabled until it is non-blank

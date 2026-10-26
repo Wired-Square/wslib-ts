@@ -14,6 +14,7 @@ test("a hovered button's edge highlights, in its own fill's edge on primary and 
   expect(rule(css, ".app-btn:focus-visible")).not.toMatch(/border/);
   expect(rule(css, ".app-btn")).toMatch(/transition:[^;]*border-color 100ms/);
   expect(rule(css, `.app-btn--danger${hovered}`)).toMatch(/filter: /);
+  expect(rule(css, `.app-btn--danger${hovered}`)).toMatch(/background: var\(--app-alert\);/);
   expect(rule(css, ".app-btn")).toMatch(/transition:[^;]*filter 100ms/);
   expect(css).toMatch(/@media \(prefers-reduced-motion: reduce\) \{\n {2}\.app-btn \{\n {4}transition: none;/);
   expect(read("theme.css")).toMatch(/:root \{[^}]*--app-accent-edge: [^}]*--app-alert-edge: /);

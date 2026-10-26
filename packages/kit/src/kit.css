@@ -144,6 +144,7 @@
 }
 
 .app-btn--danger:hover:not(:disabled, [aria-disabled="true"]) {
+  background: var(--app-alert);
   filter: brightness(0.92);
   border-color: var(--app-alert-edge);
 }
