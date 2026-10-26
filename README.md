@@ -69,6 +69,10 @@ styles.
 
 `kit.css` puts every rule in the cascade layer `kit`, a public name that will not change. An app's own unlayered rules
 beat the kit's whatever their specificity, and a rule the app adds to `@layer kit` sits at the kit's precedence instead.
+That includes element rules: a global `input { padding: … }` or `button { … }` undoes the kit's sizing, such as the
+room `SearchInput` keeps for its Clear button. Put such resets in a layer declared before the kit's,
+`@layer reset, kit;`, so the kit wins over them. Drop any unlayered override written against the old order at the
+same time: a leftover `.app-btn:focus-visible { box-shadow: none }` then removes the kit's only focus ring.
 
 ### Browsers
 

@@ -8,7 +8,8 @@
   bold alone, and unselected tabs lose the underline forced colours gave every tab. A disabled field and an
   `aria-disabled` button or `MenuItem` read in `GrayText`, and `FeedStatus`'s dot stays drawn.
 - `CopyButton` announces "Copied" through a polite status region beside the button. The glyph is hidden from the
-  button's name, which no longer changes when it copies.
+  button's name, which no longer changes when it copies. While it shows, "Copied" appears twice in the text, so a
+  test should find it by the `status` role rather than by text.
 - A hovered danger button keeps its red background; the generic hover rule had replaced it.
 - `createFlash(ms = 2000)` returns `[on, flashAfter]`: `on` turns true for `ms` once the promise given to
   `flashAfter` resolves, and a second flash restarts the timer. `flashAfter` hands back the promise's value or
