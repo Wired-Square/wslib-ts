@@ -10,6 +10,9 @@
 - `CopyButton` announces "Copied" through a polite status region beside the button. The glyph is hidden from the
   button's name, which no longer changes when it copies.
 - A hovered danger button keeps its red background; the generic hover rule had replaced it.
+- `createFlash(ms = 2000)` returns `[on, flashAfter]`: `on` turns true for `ms` once the promise given to
+  `flashAfter` resolves, and a second flash restarts the timer. `flashAfter` hands back the promise's value or
+  rejection, and a rejection leaves `on` off. `CopyButton` is built on it.
 
 ### 0.2.0
 

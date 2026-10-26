@@ -24,6 +24,8 @@ export type { DialogActionsProps, DialogProps } from "./Dialog";
 export { Field } from "./Field";
 export type { FieldProps } from "./Field";
 
+export { createFlash } from "./flash";
+
 export { Form } from "./Form";
 export type { FormProps } from "./Form";
 
