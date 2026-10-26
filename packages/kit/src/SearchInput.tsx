@@ -40,7 +40,7 @@ export function SearchInput(props: SearchInputProps) {
         autocapitalize="off"
         spellcheck={false}
       />
-      <Show when={own.value}>
+      <Show when={own.value && !rest.disabled && !rest.readOnly && !rest.readonly}>
         <button type="button" class="app-search__clear" aria-label="Clear" title="Clear" onClick={clear}>
           {icons.clear()}
         </button>

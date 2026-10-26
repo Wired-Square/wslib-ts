@@ -71,3 +71,10 @@ test("the clear button sits inside the box, which leaves it room and hides WebKi
   expect(rule(css, ".app-search__clear:focus-visible")).toMatch(/outline: none;\s*box-shadow: var\(--app-focus\);/);
   expect(forcedColours(css)).toMatch(/:is\([^)]*\.app-search__clear\):focus-visible[^{]*\{\s*outline: 2px solid Highlight;/);
 });
+
+test("a disabled or read-only SearchInput offers no clear button", () => {
+  for (const locked of [{ disabled: true }, { readOnly: true }, { readonly: true }]) {
+    const root = mount(() => <SearchInput label="Search" value="acme" onValue={() => {}} {...locked} />);
+    expect(root.querySelector("button"), JSON.stringify(locked)).toBeNull();
+  }
+});
