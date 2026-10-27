@@ -103,8 +103,11 @@ and entry point.
 - `theme.css` is gone: its six tokens are tokens 0.2.0's, and `@wired-square/kit/theme.css` 0.3.1 defines them.
 - Wire types and limits come from `@wired-square/appliance-types`, and `.` does not re-export them.
 - `applianceVite` no longer adds Solid's plugin, `optimizeDeps.exclude` or `resolve.dedupe`; the app passes the
-  plugin: `applianceVite({ plugins: [solid()] })`, so it now depends on `vite-plugin-solid` itself. `./vite` is
-  compiled to `dist/`, with its own types.
+  plugin: `applianceVite({ plugins: [solid()] })`, so it now depends on `vite-plugin-solid` ^2.11.10 itself. `./vite`
+  is compiled to `dist/`, with its own types.
+- A lockfile from the git install still holds `@wired-square/appliance-ui@0.17.x`, and npm fails with
+  `ERESOLVE` against the kit 0.3.1 peer until it goes. Delete its `node_modules/@wired-square/appliance-ui` entry
+  from `package-lock.json` (or `npm uninstall @wired-square/appliance-ui` first), then install.
 - The components no longer import their own CSS. The app imports, in order, `@wired-square/kit/theme.css`, its own
   token overrides, `@wired-square/kit/kit.css`, `@wired-square/appliance-ui/shell.css` (if it mounts `Shell` or
   `Chrome`) and the new `@wired-square/appliance-ui/appliance.css`.
@@ -128,7 +131,9 @@ Moved names:
   `RelyingPartyEntity`, `RequestOptions`, `ResetReport`, `RestoreBundle`, `RestoreReport`, `RestoreUnclaimed`,
   `Role`, `RoleChange`, `Rollback`, `ScheduleUpdate`, `ScheduleView`, `SecondStep`, `SettledBy`, `SignInBody`,
   `SignInCode`, `SignInMethod`, `Subsystem`, `TakeBackup`, `ThemeTokens`, `TotpConfirm`, `TotpEnrolment`,
-  `TotpView`, `TrustedCa`, `TrustedCert`, `User`, `UserEntity`, `Warning` and `WarningScope`.
+  `TotpView`, `TrustedCa`, `TrustedCert`, `User`, `UserEntity`, `Warning` and `WarningScope`. The kit keeps its own
+  `Pending`, `Rollback`, `SettledBy`, `Warning` and `WarningScope`, of the same shape, for its components; an
+  appliance imports them from `@wired-square/appliance-types`.
 - From `@wired-square/appliance-ui` to `@wired-square/appliance-types`, the constants: `TOKEN_PREFIX`, `MAX_TOKENS`,
   `MAX_VALUE_LEN`, `ROLE_LADDER`, `MIN_PASSWORD_LEN`, `MAX_PASSWORD_BYTES`, `MAX_USERNAME_LEN`,
   `MAX_PASSKEY_NAME_LEN`, `STALE_PROOF`, `MAX_AUDIT_PAGE`, `MAX_PEM_LEN`, `MAX_BUNDLE_LEN`, `MIN_PASSPHRASE_LEN`,
