@@ -36,7 +36,9 @@ Off the network, and in CI, read the read-only mirror instead, with its own toke
 //mirror.wiredsquare.com/npm/:_authToken=${NPM_MIRROR_TOKEN}
 ```
 
-Its tarballs keep the `integrity` Forgejo gave them, so a lockfile's pins hold on either.
+Its tarballs keep the `integrity` Forgejo gave them, so a lockfile's pins hold on either. Prefer the mirror: it
+restores the `peerDependenciesMeta` Forgejo drops, without which a lockfile records optional peers as required. Each
+package's `publishConfig.registry` names Forgejo only because that is where a release publishes.
 
 npm 10's `npm install` can fail with "Cannot read properties of null (reading 'edgesOut')" over the optional `vitest`
 peer. `npm ci` and npm 11 are unaffected.
@@ -195,7 +197,7 @@ fails naming any that have drifted. Both need the network and cargo, so neither 
 The appliance's browser half, installed from the same registry: the shell, the Settings screens and their parts, and
 test helpers. Its peers are the kit ^0.3.1, appliance-types ^0.1.0, solid-js ^1.9.11 and, for `./vite` only, vite
 ^8.0.0. `uqr`, its QR encoder, comes with it. Like the kit, it ships TSX behind the `solid` condition, so the app
-installs `vite-plugin-solid` too.
+installs `vite-plugin-solid` ^2.11.10 too.
 
 ```sh
 npm install @wired-square/appliance-ui @wired-square/appliance-types @wired-square/kit solid-js
@@ -225,6 +227,7 @@ import "@wired-square/appliance-ui/appliance.css";
 ```
 
 Wire types and limits are imported from `@wired-square/appliance-types`; this package does not re-export them.
+That includes `Pending` and its parts, which the kit also declares, with the same shape, for its own components.
 `./testing` and `./testing/setup` are the kit's test helpers with a session around the screen.
 
 ## Development
