@@ -17,6 +17,7 @@ const sets = [
     tools: ["jsdom", "typescript", "@types/node"],
     entries: ["src", "test", "tsconfig.json", "tsconfig.build.json", "vitest.config.ts"],
     test: ["npx", ["vitest", "run"]],
+    fixture: { FIXTURE_KIT_ONLY: "1" },
   },
   {
     name: "appliance-ui",
@@ -64,7 +65,7 @@ for (const set of sets) {
     run("npx", ["tsc", "-p", "."]);
     run("npx", ["tsc", "-p", "test"]);
     run(...set.test);
-    run("node", [join(repo, "scripts/fixture.mjs")], { cwd: repo, env: { ...process.env, KIT_MODULES: join(work, "node_modules") } });
+    run("node", [join(repo, "scripts/fixture.mjs")], { cwd: repo, env: { ...process.env, ...set.fixture, KIT_MODULES: join(work, "node_modules") } });
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
