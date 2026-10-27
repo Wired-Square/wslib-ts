@@ -190,7 +190,8 @@ import { ROLE_LADDER, type Role } from "@wired-square/appliance-types";
 
 Every type is exported from the root, along with the crate's limits in `constants`. The files under `src/generated/`
 are never edited by hand: `node scripts/appliance-types-sync.mjs` rewrites them from the pinned tag, and `--check`
-fails naming any that have drifted. Both need the network and cargo, so neither runs in `scripts/ci.sh`.
+fails naming any that have drifted. Both need the network and cargo, so neither runs in `scripts/ci.sh`; GitHub Actions
+runs `--check` when the generated files or the script change.
 
 ## `@wired-square/appliance-ui`
 

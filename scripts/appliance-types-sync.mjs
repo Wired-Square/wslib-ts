@@ -1,6 +1,6 @@
 // Rewrites packages/appliance-types/src/generated from the pinned crate tag, or
-// with --check fails naming each file that has drifted from it. Run by hand: it
-// needs the network and cargo.
+// with --check fails naming each file that has drifted from it. It needs the
+// network and cargo, so CI runs --check in GitHub Actions, not in ci.sh.
 //
 //   node scripts/appliance-types-sync.mjs [--check]
 import { execFileSync } from "node:child_process";
