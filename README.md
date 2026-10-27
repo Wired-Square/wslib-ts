@@ -8,6 +8,7 @@ Wired Square's shared TypeScript packages, as npm workspaces.
 | [`@wired-square/tokens`](packages/tokens) | The `--app-*` tokens' names and defaults, as TypeScript and JSON |
 | [`@wired-square/mcp-bridge`](packages/mcp-bridge) | The page half of wslib-mcp's `dom` tools, and their bridge over Tauri events |
 | [`@wired-square/appliance-types`](packages/appliance-types) | The appliance's wire types and limits, generated from wslib-rs's `wslib-appliance-types` |
+| [`@wired-square/appliance-ui`](packages/appliance-ui) | The appliance's browser half: the shell, the Settings screens and their parts, and test helpers |
 
 ## `@wired-square/kit`
 
@@ -199,7 +200,7 @@ scripts/ci.sh
 ```
 
 `scripts/ci.sh` is the CI definition: the lockfile, the commit-message and dossier gates, no runtime dependencies in
-the packages, no peers in tokens or appliance-types and only the optional `@tauri-apps/api` in mcp-bridge, then `npm run check`. `--tag` adds `npm run floor`. Run it before every push,
+the packages but appliance-ui's `uqr`, no peers in tokens or appliance-types and only the optional `@tauri-apps/api` in mcp-bridge, then `npm run check`. `--tag` adds `npm run floor`. Run it before every push,
 once per clone:
 
 ```sh

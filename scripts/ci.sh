@@ -22,12 +22,13 @@ step "No other repository is named in a commit message"
 step "No reference to the project dossier"
 ! git grep -nIE --untracked '\[\[[A-Za-z][^]]*\]\]' -- ':!scripts/ci.sh' || die "the dossier is cited; state the constraint here"
 
-step "The packages have no runtime dependencies, tokens and appliance-types no peers, and mcp-bridge one optional peer"
-node -e 'const [kit, tokens, bridge, types] = ["kit", "tokens", "mcp-bridge", "appliance-types"].map((name) => require(`./packages/${name}/package.json`));
+step "The packages have no runtime dependencies but appliance-ui's uqr, tokens and appliance-types no peers, and mcp-bridge one optional peer"
+node -e 'const [kit, tokens, bridge, types, ui] = ["kit", "tokens", "mcp-bridge", "appliance-types", "appliance-ui"].map((name) => require(`./packages/${name}/package.json`));
 const declared = { ...kit.dependencies, ...tokens.dependencies, ...tokens.peerDependencies, ...bridge.dependencies, ...types.dependencies, ...types.peerDependencies };
 const tauriOnly = Object.keys(bridge.peerDependencies).join() === "@tauri-apps/api" && bridge.peerDependenciesMeta["@tauri-apps/api"].optional;
-process.exit(Object.keys(declared).length || !tauriOnly ? 1 : 0)' \
-  || die "a package declares dependencies, tokens or appliance-types declares peers, or mcp-bridge a peer beyond optional @tauri-apps/api"
+const uqrOnly = Object.keys(ui.dependencies).join() === "uqr";
+process.exit(Object.keys(declared).length || !tauriOnly || !uqrOnly ? 1 : 0)' \
+  || die "a package declares dependencies beyond appliance-ui's uqr, tokens or appliance-types declares peers, or mcp-bridge a peer beyond optional @tauri-apps/api"
 
 step "Build, gates, typecheck, tests and the consumer fixture"
 npm run check
