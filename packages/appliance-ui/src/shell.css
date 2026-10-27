@@ -82,6 +82,16 @@ body {
   margin-inline-end: auto;
 }
 
+/* The switcher, when there is one, takes the pushing-off from whatever it follows. */
+.app-masthead__brand:has(+ .app-switcher),
+.app-masthead__bar > .app-hostname:has(+ .app-switcher) {
+  margin-inline-end: 0;
+}
+
+.app-switcher {
+  margin-inline-end: auto;
+}
+
 .app-main {
   padding-block: 1rem;
 }
@@ -99,6 +109,17 @@ body {
   display: none;
 }
 
+/* A switcher widens the bar, so the account folds sooner. */
+@media (max-width: 56rem) {
+  .app-masthead__bar:has(.app-switcher) .app-masthead__account {
+    display: none;
+  }
+
+  .app-masthead__bar:has(.app-switcher) .app-masthead__account-menu {
+    display: block;
+  }
+}
+
 /* Narrow: the account in a menu, the tabs in one row that scrolls, its focus
    ring drawn inside where the scroller would clip it. */
 @media (max-width: 40rem) {
@@ -108,6 +129,11 @@ body {
 
   .app-masthead__account-menu {
     display: block;
+  }
+
+  /* Off the hostname's row, the switcher packs with the controls and account. */
+  .app-switcher {
+    margin-inline-end: 0;
   }
 
   .app-masthead__nav .app-tablist {

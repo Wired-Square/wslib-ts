@@ -195,7 +195,7 @@ fails naming any that have drifted. Both need the network and cargo, so neither 
 ## `@wired-square/appliance-ui`
 
 The appliance's browser half, installed from the same registry: the shell, the Settings screens and their parts, and
-test helpers. Its peers are the kit ^0.3.1, appliance-types ^0.1.0, solid-js ^1.9.11 and, for `./vite` only, vite
+test helpers. Its peers are the kit ^0.3.2, appliance-types ^0.1.0, solid-js ^1.9.11 and, for `./vite` only, vite
 ^8.0.0. `uqr`, its QR encoder, comes with it. Like the kit, it ships TSX behind the `solid` condition, so the app
 installs `vite-plugin-solid` ^2.11.10 too.
 
@@ -226,6 +226,10 @@ import "@wired-square/appliance-ui/shell.css"; // only if the app mounts `Shell`
 import "@wired-square/appliance-ui/appliance.css";
 ```
 
+`Chrome` reads `GET /api/switcher` at the origin root, whatever the app's base, and given two or more `AppLink`s
+shows a menu beside the hostname, named for the app whose `href` is the longest prefix of the page's path. Choosing
+another loads its `href`. Any failure, a 401 included, leaves the masthead without one and signs nobody out.
+
 Wire types and limits are imported from `@wired-square/appliance-types`; this package does not re-export them.
 That includes `Pending` and its parts, which the kit also declares, with the same shape, for its own components.
 `./testing` and `./testing/setup` are the kit's test helpers with a session around the screen.
@@ -250,7 +254,7 @@ git config core.hooksPath scripts/hooks
 `npm run floor` (needs the network) reruns the typecheck, the tests and the fixture in a temp install of the oldest
 versions the ranges claim, once per package: for the kit, solid-js 1.9.11, vitest 4.1.2, vite 6.4.1, and
 vite-plugin-solid 2.11.10 with babel-preset-solid 1.9.10; for appliance-ui, the same Solid floors, vite 8.0.0, uqr
-0.1.3, and the kit and appliance-types packed from this checkout, which must be at 0.3.1 and 0.1.0. The kit's run
+0.1.3, and the kit and appliance-types packed from this checkout, which must be at 0.3.2 and 0.1.0. The kit's run
 leaves appliance-ui out of the fixture.
 
 `check` builds `dist/` (the kit's compiled `./core`, the tokens, mcp-bridge, appliance-types and appliance-ui's

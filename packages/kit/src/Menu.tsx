@@ -129,6 +129,8 @@ export interface MenuItemProps {
   danger?: boolean;
   /** Greyed and inert; `MenuItemUnavailable` says why. */
   disabled?: boolean;
+  /** Where the caller already is: `aria-current="page"`, drawn as a selected option. */
+  current?: boolean;
   children: JSX.Element;
 }
 
@@ -140,6 +142,7 @@ export function MenuItem(props: MenuItemProps) {
       role="menuitem"
       class={cx("app-menu__item", props.danger && "app-menu__item--danger")}
       aria-disabled={props.disabled || undefined}
+      aria-current={props.current ? "page" : undefined}
       onClick={() => {
         if (props.disabled) return;
         // Closed first, so a dialog opened from an item is not fighting a popover for the top layer.
