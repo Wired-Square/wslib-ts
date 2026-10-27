@@ -2,6 +2,10 @@
 
 ## `@wired-square/kit`
 
+### 0.3.1
+
+- `theme.css` defines tokens 0.2.0's six appliance tokens, which `@wired-square/appliance-ui` draws with.
+
 ### 0.3.0
 
 - Under forced colours, a selected tab, filter or pill and a selected `PopoverOption` take `Highlight` rather than
@@ -54,6 +58,12 @@ The component kit from a prior appliance, as its own package.
 - `@wired-square/kit/core`: the modules with no JSX, compiled to JavaScript for plain node.
 
 ## `@wired-square/tokens`
+
+### 0.2.0
+
+Six tokens for `@wired-square/appliance-ui`, with light values only: `--app-hostname` and `--app-hostname-contrast`
+(the pill naming the box), `--app-qr-dark` and `--app-qr-light` (fixed, so a QR code is dark on light in either
+scheme), and `--app-logo-size` and `--app-logo-size-welcome`. 38 tokens in all.
 
 ### 0.1.0
 

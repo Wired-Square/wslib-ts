@@ -66,10 +66,6 @@ test("each data-app-scheme yields the light or the dark tokens, and the color-sc
   expect(yielded(css, "light dark", "light")).toEqual(light);
 });
 
-test("theme.css carries none of the tokens left to an app's shell", () => {
-  expect(read("theme.css")).not.toMatch(/--app-(hostname|logo-size|qr-)/);
-});
-
 const scheme = () => document.documentElement.getAttribute("data-app-scheme");
 
 beforeEach(() => {
