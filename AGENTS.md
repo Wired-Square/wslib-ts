@@ -13,7 +13,7 @@ covers using and publishing them.
 - `scripts/` holds the gates, the release and the mirror; repo tooling needs
   Node 22.18 or later.
 - The kit ships TSX source behind a `solid` export condition. `./core`,
-  tokens and mcp-bridge compile to `dist/`.
+  tokens, mcp-bridge and appliance-types compile to `dist/`.
 
 ## Gates
 

@@ -7,6 +7,7 @@ Wired Square's shared TypeScript packages, as npm workspaces.
 | [`@wired-square/kit`](packages/kit) | SolidJS components, the `--app-*` tokens they read, and test helpers |
 | [`@wired-square/tokens`](packages/tokens) | The `--app-*` tokens' names and defaults, as TypeScript and JSON |
 | [`@wired-square/mcp-bridge`](packages/mcp-bridge) | The page half of wslib-mcp's `dom` tools, and their bridge over Tauri events |
+| [`@wired-square/appliance-types`](packages/appliance-types) | The appliance's wire types and limits, generated from wslib-rs's `wslib-appliance-types` |
 
 ## `@wired-square/kit`
 
@@ -175,6 +176,19 @@ Importing `./dom-ops` wraps `console.error` and `console.warn` and listens for `
 The contract with the Rust half is data: `DOM_OPS` lists the ops, `DOM_OP_CLASS` marks each `read` or `drive`, and
 `REQUEST_EVENT` and `REPLY_EVENT` name the events.
 
+## `@wired-square/appliance-types`
+
+The TypeScript that ts-rs writes for wslib-rs's `wslib-appliance-types`, at the crate tag pinned in
+`scripts/appliance-types-sync.mjs`, installed from the same registry. It has no dependencies and no peers.
+
+```ts
+import { ROLE_LADDER, type Role } from "@wired-square/appliance-types";
+```
+
+Every type is exported from the root, along with the crate's limits in `constants`. The files under `src/generated/`
+are never edited by hand: `node scripts/appliance-types-sync.mjs` rewrites them from the pinned tag, and `--check`
+fails naming any that have drifted. Both need the network and cargo, so neither runs in `scripts/ci.sh`.
+
 ## Development
 
 The repo's tooling needs Node 22.18 or later, which runs TypeScript tests without a build.
@@ -185,7 +199,7 @@ scripts/ci.sh
 ```
 
 `scripts/ci.sh` is the CI definition: the lockfile, the commit-message and dossier gates, no runtime dependencies in
-the packages, no peers in tokens and only the optional `@tauri-apps/api` in mcp-bridge, then `npm run check`. `--tag` adds `npm run floor`. Run it before every push,
+the packages, no peers in tokens or appliance-types and only the optional `@tauri-apps/api` in mcp-bridge, then `npm run check`. `--tag` adds `npm run floor`. Run it before every push,
 once per clone:
 
 ```sh
@@ -196,9 +210,9 @@ git config core.hooksPath scripts/hooks
 versions the peer ranges claim: solid-js 1.9.11, vitest 4.1.2, vite 6.4.1, and vite-plugin-solid 2.11.10 with
 babel-preset-solid 1.9.10.
 
-`check` builds `dist/` (the kit's compiled `./core`, the tokens and mcp-bridge, which `npm pack` builds too), then runs the gates (no name of another
+`check` builds `dist/` (the kit's compiled `./core`, the tokens, mcp-bridge and appliance-types, which `npm pack` builds too), then runs the gates (no name of another
 repository, no colour literal outside `theme.css` and the token values, and `theme.css` as `scripts/theme-css.mjs`
-writes it from `packages/tokens`), the typecheck, the tests, and a build of `fixtures/consumer` against the packed kit, with the packed tokens and mcp-bridge imported in plain node.
+writes it from `packages/tokens`), the typecheck, the tests, and a build of `fixtures/consumer` against the packed kit, with the packed tokens, mcp-bridge and appliance-types imported in plain node and appliance-types typechecked under NodeNext.
 
 ## Releasing a package
 
