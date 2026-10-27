@@ -31,8 +31,9 @@ covers using and publishing them.
   runs it first.
 - The generated `wslib-appliance-types` TypeScript is exported here at each
   `wslib-appliance-types-v<version>` tag, with the output folder cleared
-  first. Its drift check against the pinned tag is run by hand (it needs
-  cargo); its no-`bigint` check is in the fast suite.
+  first. Its drift check against the pinned tag needs cargo, so it runs in
+  GitHub Actions, and only when its inputs change; its no-`bigint` check is
+  in the fast suite.
 
 ## Rules
 

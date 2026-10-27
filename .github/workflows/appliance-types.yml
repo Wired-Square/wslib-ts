@@ -1,0 +1,38 @@
+# The rest of CI runs locally in the pre-push hook; this is the one check that
+# needs cargo and the Rust source, so it runs only when its inputs change.
+name: appliance-types drift
+
+on:
+  pull_request:
+    paths: &inputs
+      - packages/appliance-types/src/generated/**
+      - scripts/appliance-types-sync.mjs
+      - scripts/files.mjs
+      - .github/workflows/appliance-types.yml
+  push:
+    branches: [main]
+    paths: *inputs
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: The source repository's deploy key
+        env:
+          KEY: ${{ secrets.WSLIB_RS_DEPLOY_KEY }}
+        run: |
+          install -m 600 /dev/null "$RUNNER_TEMP/wslib-rs"
+          printf '%s\n' "$KEY" > "$RUNNER_TEMP/wslib-rs"
+          echo 'github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl' > "$RUNNER_TEMP/known_hosts"
+          echo "GIT_SSH_COMMAND=ssh -i $RUNNER_TEMP/wslib-rs -o IdentitiesOnly=yes -o UserKnownHostsFile=$RUNNER_TEMP/known_hosts" >> "$GITHUB_ENV"
+      - run: node scripts/appliance-types-sync.mjs --check
