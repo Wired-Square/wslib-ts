@@ -1,0 +1,208 @@
+/*
+ * The shell's own styles: the page, the masthead, the main column, and the
+ * whole-page states. Its own file rather than a section of `appliance.css` because
+ * it styles `body`: a product imports it only if it mounts `Shell` or `Chrome`.
+ * Same rules as the kit's: every value is a token, no colour is named, and
+ * everything is in the `kit` layer so a product's own rule wins.
+ */
+
+@layer kit {
+
+body {
+  margin: 0;
+  background: var(--app-bg);
+  color: var(--app-text);
+  font-family: var(--app-font);
+}
+
+/* --- masthead ----------------------------------------------------------- */
+
+.app-masthead {
+  background: var(--app-surface);
+  border-block-end: 1px solid var(--app-border);
+}
+
+.app-masthead__bar,
+.app-masthead__nav,
+.app-main {
+  max-width: 72rem;
+  margin-inline: auto;
+  padding-inline: 1rem;
+}
+
+.app-masthead__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  padding-block: 0.5rem;
+}
+
+.app-masthead__brand {
+  margin-inline-end: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  line-height: 1.2;
+}
+
+.app-masthead__brand img {
+  height: var(--app-logo-size);
+}
+
+.app-masthead__brand h1,
+.app-masthead__brand p {
+  margin: 0;
+}
+
+.app-masthead__brand h1 {
+  font: inherit;
+  font-weight: 600;
+}
+
+.app-hostname {
+  display: inline-block;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  font-family: var(--app-font-mono);
+  font-size: 0.8125rem;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  background: var(--app-hostname);
+  color: var(--app-hostname-contrast);
+  border: 1px solid transparent;
+}
+
+/* Beside the name, with the account controls still pushed to the end. */
+.app-masthead__brand:has(+ .app-hostname) {
+  margin-inline-end: 0;
+}
+
+.app-masthead__bar > .app-hostname {
+  margin-inline-end: auto;
+}
+
+.app-main {
+  padding-block: 1rem;
+}
+
+/* The masthead's own border is the strip's, so a tab's underline overlaps it. */
+.app-masthead__nav .app-tablist {
+  border-block-end: 0;
+}
+
+.app-masthead__account {
+  display: contents;
+}
+
+.app-masthead__account-menu {
+  display: none;
+}
+
+/* Narrow: the account in a menu, the tabs in one row that scrolls, its focus
+   ring drawn inside where the scroller would clip it. */
+@media (max-width: 40rem) {
+  .app-masthead__account {
+    display: none;
+  }
+
+  .app-masthead__account-menu {
+    display: block;
+  }
+
+  .app-masthead__nav .app-tablist {
+    flex-wrap: nowrap;
+    overflow: auto hidden;
+    scrollbar-width: thin;
+  }
+
+  .app-masthead__nav .app-tab {
+    flex: none;
+    white-space: nowrap;
+  }
+
+  .app-masthead__nav .app-tab:focus-visible {
+    box-shadow: inset var(--app-focus);
+  }
+}
+
+/* The daemon is away and somebody is signed in: across the top, over a
+   product that stays put. */
+.app-away {
+  border-radius: 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem 1rem;
+}
+
+/* --- the whole-page states --------------------------------------------- */
+
+/* Starting, the daemon away with nobody signed in, an interface error, and
+   the two screens shown signed out. */
+.app-centred {
+  box-sizing: border-box;
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  text-align: center;
+}
+
+.app-trouble {
+  display: grid;
+  gap: 0.5rem;
+  justify-items: center;
+}
+
+.app-trouble__why {
+  color: var(--app-bad);
+}
+
+.app-trouble p {
+  margin: 0;
+}
+
+.app-welcome {
+  width: 100%;
+  max-width: 24rem;
+  text-align: start;
+}
+
+.app-welcome__brand {
+  text-align: center;
+  margin-block-end: 1rem;
+}
+
+.app-welcome__brand img:not([hidden]) {
+  display: block;
+  max-height: var(--app-logo-size-welcome);
+  margin: 0 auto 0.5rem;
+}
+
+.app-welcome__brand h1,
+.app-welcome__brand p {
+  margin: 0;
+}
+
+.app-welcome__brand h1 {
+  font-size: 1.125rem;
+}
+
+.app-welcome__controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+  margin-block-start: 0.25rem;
+}
+
+.app-welcome__controls:empty {
+  display: none;
+}
+
+}

@@ -1,6 +1,6 @@
 {
   "name": "@wired-square/tokens",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "The --app-* tokens with their light and dark defaults, as TypeScript and JSON.",
   "license": "MIT",
   "repository": {

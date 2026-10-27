@@ -6,6 +6,7 @@
     "build": "vite build"
   },
   "dependencies": {
+    "@wired-square/appliance-ui": "*",
     "@wired-square/kit": "*",
     "solid-js": "^1.9.17"
   },

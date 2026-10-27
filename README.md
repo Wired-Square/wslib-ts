@@ -8,6 +8,7 @@ Wired Square's shared TypeScript packages, as npm workspaces.
 | [`@wired-square/tokens`](packages/tokens) | The `--app-*` tokens' names and defaults, as TypeScript and JSON |
 | [`@wired-square/mcp-bridge`](packages/mcp-bridge) | The page half of wslib-mcp's `dom` tools, and their bridge over Tauri events |
 | [`@wired-square/appliance-types`](packages/appliance-types) | The appliance's wire types and limits, generated from wslib-rs's `wslib-appliance-types` |
+| [`@wired-square/appliance-ui`](packages/appliance-ui) | The appliance's browser half: the shell, the Settings screens and their parts, and test helpers |
 
 ## `@wired-square/kit`
 
@@ -189,6 +190,43 @@ Every type is exported from the root, along with the crate's limits in `constant
 are never edited by hand: `node scripts/appliance-types-sync.mjs` rewrites them from the pinned tag, and `--check`
 fails naming any that have drifted. Both need the network and cargo, so neither runs in `scripts/ci.sh`.
 
+## `@wired-square/appliance-ui`
+
+The appliance's browser half, installed from the same registry: the shell, the Settings screens and their parts, and
+test helpers. Its peers are the kit ^0.3.1, appliance-types ^0.1.0, solid-js ^1.9.11 and, for `./vite` only, vite
+^8.0.0. `uqr`, its QR encoder, comes with it. Like the kit, it ships TSX behind the `solid` condition, so the app
+installs `vite-plugin-solid` too.
+
+```sh
+npm install @wired-square/appliance-ui @wired-square/appliance-types @wired-square/kit solid-js
+npm install -D vite vite-plugin-solid
+```
+
+`applianceVite` sets `base: "./"` for the daemon's `<base href>` and writes a `.gz` beside each compressible file;
+the app passes Solid's plugin. `applianceProxy(target?)` proxies `/api` and `/healthz` to a development stand-in for
+the console, `http://127.0.0.1:8080` by default:
+
+```ts
+import { applianceProxy, applianceVite } from "@wired-square/appliance-ui/vite";
+import { defineConfig } from "vite";
+import solid from "vite-plugin-solid";
+
+export default defineConfig(applianceVite({ plugins: [solid()], server: { proxy: applianceProxy() } }));
+```
+
+The components import no CSS. Import, once and in this order:
+
+```ts
+import "@wired-square/kit/theme.css";
+// the app's own token overrides
+import "@wired-square/kit/kit.css";
+import "@wired-square/appliance-ui/shell.css"; // only if the app mounts `Shell` or `Chrome`
+import "@wired-square/appliance-ui/appliance.css";
+```
+
+Wire types and limits are imported from `@wired-square/appliance-types`; this package does not re-export them.
+`./testing` and `./testing/setup` are the kit's test helpers with a session around the screen.
+
 ## Development
 
 The repo's tooling needs Node 22.18 or later, which runs TypeScript tests without a build.
@@ -199,7 +237,7 @@ scripts/ci.sh
 ```
 
 `scripts/ci.sh` is the CI definition: the lockfile, the commit-message and dossier gates, no runtime dependencies in
-the packages, no peers in tokens or appliance-types and only the optional `@tauri-apps/api` in mcp-bridge, then `npm run check`. `--tag` adds `npm run floor`. Run it before every push,
+the packages but appliance-ui's `uqr`, no peers in tokens or appliance-types and only the optional `@tauri-apps/api` in mcp-bridge, then `npm run check`. `--tag` adds `npm run floor`. Run it before every push,
 once per clone:
 
 ```sh
@@ -207,12 +245,17 @@ git config core.hooksPath scripts/hooks
 ```
 
 `npm run floor` (needs the network) reruns the typecheck, the tests and the fixture in a temp install of the oldest
-versions the peer ranges claim: solid-js 1.9.11, vitest 4.1.2, vite 6.4.1, and vite-plugin-solid 2.11.10 with
-babel-preset-solid 1.9.10.
+versions the ranges claim, once per package: for the kit, solid-js 1.9.11, vitest 4.1.2, vite 6.4.1, and
+vite-plugin-solid 2.11.10 with babel-preset-solid 1.9.10; for appliance-ui, the same Solid floors, vite 8.0.0, uqr
+0.1.3, and the kit and appliance-types packed from this checkout, which must be at 0.3.1 and 0.1.0. The kit's run
+leaves appliance-ui out of the fixture.
 
-`check` builds `dist/` (the kit's compiled `./core`, the tokens, mcp-bridge and appliance-types, which `npm pack` builds too), then runs the gates (no name of another
-repository, no colour literal outside `theme.css` and the token values, and `theme.css` as `scripts/theme-css.mjs`
-writes it from `packages/tokens`), the typecheck, the tests, and a build of `fixtures/consumer` against the packed kit, with the packed tokens, mcp-bridge and appliance-types imported in plain node and appliance-types typechecked under NodeNext.
+`check` builds `dist/` (the kit's compiled `./core`, the tokens, mcp-bridge, appliance-types and appliance-ui's
+`./vite`, which `npm pack` builds too), then runs the gates (no name of another repository, no colour literal outside
+`theme.css` and the token values, and `theme.css` as `scripts/theme-css.mjs` writes it from `packages/tokens`), the
+typecheck, the tests, and a build of `fixtures/consumer` through `applianceVite` against the packed kit and
+appliance-ui, with the packed tokens, mcp-bridge, appliance-types and appliance-ui's `./vite` imported in plain node
+and appliance-types typechecked under NodeNext.
 
 ## Releasing a package
 

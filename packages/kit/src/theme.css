@@ -61,6 +61,19 @@
   --app-control-line-height: 1.2;
   --app-shadow: 0 1px 2px rgb(0 0 0 / 0.06), 0 1px 3px rgb(0 0 0 / 0.08);
   --app-focus: 0 0 0 3px color-mix(in srgb, var(--app-accent) 35%, transparent);
+
+  /* --- appliance -------------------------------------------------------- */
+  /* The pill naming the box. */
+  --app-hostname: var(--app-text);
+  --app-hostname-contrast: var(--app-text-inverted);
+
+  /* A QR code, dark on light in either scheme: not every scanner reads one inverted. */
+  --app-qr-dark: #000000;
+  --app-qr-light: #ffffff;
+
+  /* The logo's height in the masthead, and its cap on the signed-out card. */
+  --app-logo-size: 2.25rem;
+  --app-logo-size-welcome: 6rem;
 }
 
 /*

@@ -86,6 +86,28 @@ export const groups = [
       "--app-focus": { light: "0 0 0 3px color-mix(in srgb, var(--app-accent) 35%, transparent)" },
     },
   },
+  {
+    heading: "appliance",
+    note: "The pill naming the box.",
+    tokens: {
+      "--app-hostname": { light: "var(--app-text)" },
+      "--app-hostname-contrast": { light: "var(--app-text-inverted)" },
+    },
+  },
+  {
+    note: "A QR code, dark on light in either scheme: not every scanner reads one inverted.",
+    tokens: {
+      "--app-qr-dark": { light: "#000000" },
+      "--app-qr-light": { light: "#ffffff" },
+    },
+  },
+  {
+    note: "The logo's height in the masthead, and its cap on the signed-out card.",
+    tokens: {
+      "--app-logo-size": { light: "2.25rem" },
+      "--app-logo-size-welcome": { light: "6rem" },
+    },
+  },
 ] as const satisfies readonly Group[];
 
 type KeysOf<T> = T extends unknown ? keyof T : never;

@@ -12,8 +12,9 @@ covers using and publishing them.
   `CHANGELOG.md` holds a section per package.
 - `scripts/` holds the gates, the release and the mirror; repo tooling needs
   Node 22.18 or later.
-- The kit ships TSX source behind a `solid` export condition. `./core`,
-  tokens, mcp-bridge and appliance-types compile to `dist/`.
+- The kit and appliance-ui ship TSX source behind a `solid` export
+  condition. The kit's `./core`, appliance-ui's `./vite`, tokens, mcp-bridge
+  and appliance-types compile to `dist/`.
 
 ## Gates
 
@@ -48,7 +49,7 @@ covers using and publishing them.
 - A dependency earns its place: security-critical code, a spec we would
   otherwise track, a platform binding, the ecosystem's foundation, or more
   than an afternoon's work. Otherwise write it. The packages have no runtime
-  `dependencies`, only peers.
+  `dependencies`, only peers, except appliance-ui's `uqr`, a QR encoder.
 - No component names a colour; every value it draws is an `--app-*` token.
   A new token or export arrives only with the component that needs it.
 - When a name moves between packages, the old home re-exports it for one

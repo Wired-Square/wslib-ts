@@ -1,0 +1,71 @@
+{
+  "name": "@wired-square/appliance-ui",
+  "version": "0.1.0",
+  "description": "The appliance's browser half: the shell, the Settings screens and their parts, and test helpers.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "github:Wired-Square/wslib-ts",
+    "directory": "packages/appliance-ui"
+  },
+  "type": "module",
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "exports": {
+    ".": {
+      "solid": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./testing": {
+      "solid": "./src/testing/index.ts",
+      "default": "./src/testing/index.ts"
+    },
+    "./testing/setup": {
+      "solid": "./src/testing/setup.ts",
+      "default": "./src/testing/setup.ts"
+    },
+    "./vite": {
+      "types": "./dist/vite.d.ts",
+      "default": "./dist/vite.js"
+    },
+    "./shell.css": "./src/shell.css",
+    "./appliance.css": "./src/appliance.css"
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "publishConfig": {
+    "registry": "https://forge.wiredsquare.com/api/packages/wired-square/npm/"
+  },
+  "scripts": {
+    "build": "rm -rf dist && tsc -p tsconfig.build.json",
+    "prepack": "npm run build",
+    "test": "node --test test/*.test.ts"
+  },
+  "dependencies": {
+    "uqr": "^0.1.3"
+  },
+  "peerDependencies": {
+    "@wired-square/appliance-types": "^0.1.0",
+    "@wired-square/kit": "^0.3.1",
+    "solid-js": "^1.9.11",
+    "vite": "^8.0.0"
+  },
+  "peerDependenciesMeta": {
+    "vite": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "@wired-square/appliance-types": "^0.1.0",
+    "@wired-square/kit": "^0.3.1",
+    "solid-js": "^1.9.17",
+    "typescript": "^5.9.3",
+    "vite": "^8.3.5",
+    "vite-plugin-solid": "^2.11.14",
+    "vitest": "^5.0.5"
+  }
+}
