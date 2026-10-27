@@ -1,8 +1,9 @@
-// Builds fixtures/consumer against the kit as an installed package: packed, so
-// `files` is what ships, and copied into node_modules rather than linked, since
-// vite treats a linked workspace as the app's own source and would prove
-// nothing about the `solid` export condition. KIT_MODULES names another
-// node_modules to take solid-js, vite and vite-plugin-solid from.
+// Builds fixtures/consumer against the kit and appliance-ui as installed
+// packages: packed, so `files` is what ships, and copied into node_modules
+// rather than linked, since vite treats a linked workspace as the app's own
+// source and would prove nothing about the `solid` export condition.
+// KIT_MODULES names another node_modules to take solid-js, vite,
+// vite-plugin-solid and, if it has one, uqr from.
 import { execFileSync } from "node:child_process";
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -32,8 +33,9 @@ try {
   }
   mkdirSync(join(modules, "@tauri-apps"));
   symlinkSync(join(repo, "node_modules/@tauri-apps/api"), join(modules, "@tauri-apps/api"), "dir");
+  symlinkSync(join(existsSync(join(deps, "uqr")) ? deps : join(repo, "node_modules"), "uqr"), join(modules, "uqr"), "dir");
 
-  for (const name of ["@wired-square/kit", "@wired-square/tokens", "@wired-square/mcp-bridge", "@wired-square/appliance-types"]) {
+  for (const name of ["@wired-square/kit", "@wired-square/tokens", "@wired-square/mcp-bridge", "@wired-square/appliance-types", "@wired-square/appliance-ui"]) {
     const tarball = execFileSync("npm", ["pack", "--silent", "--pack-destination", work, "-w", name], {
       cwd: repo,
       encoding: "utf8",
@@ -93,14 +95,28 @@ try {
     problems.push(`the packed appliance-types does not typecheck under NodeNext:\n${error.stdout}`);
   }
 
+  const applianceVite = `
+    const { applianceProxy, applianceVite } = await import("@wired-square/appliance-ui/vite");
+    const config = applianceVite({ plugins: [{ name: "app" }] });
+    process.stdout.write(String(config.base === "./" && config.plugins.at(-1).name === "app" && "/healthz" in applianceProxy()));
+  `;
+  if (execFileSync("node", ["--input-type=module", "-e", applianceVite], { cwd: work, encoding: "utf8" }) !== "true") {
+    problems.push("plain node imported @wired-square/appliance-ui/vite, but it misbehaved");
+  }
+  if (!existsSync(join(modules, "@wired-square/appliance-ui/dist/vite.d.ts"))) problems.push("the packed appliance-ui's vite carries no types");
+
   // The dev server's pre-bundler is esbuild, which compiles JSX for React: the
-  // kit must be served as source and through vite-plugin-solid.
+  // kit and appliance-ui must be served as source and through vite-plugin-solid.
   const server = await createServer({ root: work, logLevel: "silent", server: { middlewareMode: true, ws: false } });
   try {
     const main = await server.transformRequest("/src/main.tsx");
     const kitImport = main?.code.match(/from\s+"([^"]*@wired-square[_/]kit[^"]*)"/)?.[1] ?? "";
     if (!/\/node_modules\/@wired-square\/kit\/src\/index\.ts/.test(kitImport)) {
       problems.push(`the dev server imports the kit from ${kitImport || "nowhere"}, not its source`);
+    }
+    const uiImport = main?.code.match(/from\s+"([^"]*@wired-square[_/]appliance-ui[^"]*)"/)?.[1] ?? "";
+    if (!/\/node_modules\/@wired-square\/appliance-ui\/src\/index\.ts/.test(uiImport)) {
+      problems.push(`the dev server imports appliance-ui from ${uiImport || "nowhere"}, not its source`);
     }
     const coreImports = await Promise.all(
       ["/src/main.tsx", "/node_modules/@wired-square/kit/src/ScreenBoundary.tsx"].map(
@@ -110,9 +126,19 @@ try {
     if (coreImports.some((url) => !/^\/node_modules\/@wired-square\/kit\/dist\/core\.js/.test(url ?? ""))) {
       problems.push(`the app and the kit's source import core from ${coreImports.join(" and ")}, not one dist/core.js`);
     }
-    const notice = await server.transformRequest("/node_modules/@wired-square/kit/src/Notice.tsx");
-    if (!/_\$template\(/.test(notice?.code ?? "") || /React|jsxDEV|jsx\(/.test(notice?.code ?? "")) {
-      problems.push("the dev server did not compile the kit's TSX with Solid's transform");
+    for (const [owner, url] of [
+      ["the kit", "/node_modules/@wired-square/kit/src/Notice.tsx"],
+      ["appliance-ui", "/node_modules/@wired-square/appliance-ui/src/screens/OutboundTrust.tsx"],
+    ]) {
+      const code = (await server.transformRequest(url))?.code ?? "";
+      if (!/_\$template\(/.test(code) || /React|jsxDEV|jsx\(/.test(code)) {
+        problems.push(`the dev server did not compile ${owner}'s TSX with Solid's transform`);
+      }
+    }
+    await server.waitForRequestsIdle();
+    const { optimized, discovered } = server.environments.client.depsOptimizer.metadata;
+    if ([...Object.keys(optimized), ...Object.keys(discovered)].some((id) => id.startsWith("@wired-square/appliance-ui"))) {
+      problems.push("the dev server pre-bundles appliance-ui, outside Solid's transform");
     }
   } finally {
     // Vite 6 never settles close() while the pre-transforms of main.tsx's imports are in flight.
@@ -128,9 +154,13 @@ try {
   const fonts = assets.filter((file) => /\.(woff2?|ttf|otf|eot)$/.test(file));
   if (fonts.length) problems.push(`fonts were bundled: ${fonts.join(", ")}`);
   const scripts = assets.filter((file) => file.endsWith(".js"));
+  if (!scripts.some((file) => assets.includes(`${file}.gz`))) problems.push("applianceVite wrote no .gz beside the built script");
   const css = assets.filter((file) => file.endsWith(".css")).map((file) => readFileSync(join(dist, "assets", file), "utf8"));
   if (!css.some((text) => text.includes(".app-notice") && text.includes("--app-accent"))) {
     problems.push("the built stylesheet is missing theme.css or kit.css");
+  }
+  if (!css.some((text) => text.includes(".app-masthead") && text.includes(".app-qr") && text.includes("--app-qr-dark:"))) {
+    problems.push("the built stylesheet is missing appliance-ui's shell.css or appliance.css, or kit's appliance tokens");
   }
   if (css.some((text) => /@font-face|url\(/.test(text))) problems.push("the built stylesheet loads a font or a URL");
   if (scripts.some((file) => /createElement\(["']style["']\)/.test(readFileSync(join(dist, "assets", file), "utf8")))) {
@@ -145,9 +175,13 @@ try {
     localStorage: dom.window.localStorage,
     Node: dom.window.Node,
     MutationObserver: dom.window.MutationObserver,
+    fetch: async () => Response.json([]),
   });
   for (const file of scripts) await import(pathToFileURL(join(dist, "assets", file)).href);
   const app = dom.window.document.getElementById("app");
+  for (let waited = 0; waited < 2000 && !app.textContent.includes("No authorities yet"); waited += 20) {
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
   const press = [...app.querySelectorAll("button")].find((b) => b.textContent === "Press");
   press?.click();
   press?.click();
@@ -159,9 +193,14 @@ try {
   if (!app.textContent.includes("Refused through core") || !app.textContent.includes("Recognised by core")) {
     problems.push("a Refusal from core and one from the root are not one class in the built app");
   }
+  if (!app.textContent.includes("Trusted authorities") || !app.textContent.includes("No authorities yet")) {
+    problems.push("the built app's appliance-ui Settings did not render its fetched section");
+  }
 } finally {
   rmSync(work, { recursive: true, force: true });
 }
 
 fail("consumer fixture", problems);
-console.log("consumer fixture: built against the packed kit; core, tokens, mcp-bridge and appliance-types imported in plain node");
+console.log(
+  "consumer fixture: built against the packed kit and appliance-ui; core, tokens, mcp-bridge, appliance-types and appliance-ui/vite imported in plain node",
+);
