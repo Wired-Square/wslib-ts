@@ -1,2 +1,262 @@
+/*
+ * The styles of this package's parts and screens, imported once after the kit's
+ * `kit.css`. In the kit's cascade layer, so a product's unlayered rule wins
+ * whatever the import order.
+ */
+
 @layer kit {
+
+.app-glyph {
+  display: inline-flex;
+  vertical-align: middle;
+  color: var(--app-text-muted);
+}
+
+.app-glyph--warn {
+  color: var(--app-warn);
+}
+
+.app-glyph svg {
+  inline-size: 1.2em;
+  block-size: 1.2em;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* --- reading one record ------------------------------------------------- */
+
+/* A short list of labelled facts about one thing — a certificate's subject,
+   names and dates. Two columns where there is room, stacked where there is
+   not, because the labels are short and the values are not. */
+.app-details {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.35rem 1rem;
+  margin: 0.75rem 0;
+}
+
+.app-details dt {
+  color: var(--app-text-muted);
+  font-size: 0.875rem;
+}
+
+.app-details dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 30rem) {
+  .app-details {
+    grid-template-columns: 1fr;
+    gap: 0 0;
+  }
+
+  .app-details dd {
+    margin-bottom: 0.5rem;
+  }
+}
+
+/* A fingerprint is compared character by character against what a browser's
+   certificate viewer shows, so it is monospace and allowed to wrap anywhere. */
+.app-fingerprint {
+  font-family: var(--app-font-mono);
+  font-size: 0.85em;
+  overflow-wrap: anywhere;
+}
+
+/* Warn, not bad: absent is a state the `Subsystem` wire type calls normal. */
+.app-about__absent {
+  color: var(--app-warn);
+}
+
+/* What an entry costs, or why it cannot be chosen, beside it. */
+.app-caveats {
+  list-style: none;
+  margin: 0 0 0.75rem;
+  padding: 0;
+  font-size: 0.8125rem;
+}
+
+.app-caveats > li {
+  border-inline-start: 3px solid;
+  padding-inline-start: 0.5rem;
+}
+
+.app-caveats__warn {
+  border-color: var(--app-warn);
+  color: var(--app-text);
+}
+
+.app-caveats__note {
+  border-color: var(--app-border);
+  color: var(--app-text-muted);
+}
+
+.app-caveats__blocked {
+  border-color: var(--app-border-strong);
+  color: var(--app-text-muted);
+}
+
+.app-socket {
+  margin-block-end: 1rem;
+}
+
+.app-controls {
+  margin: 0 0 0.75rem;
+  padding-inline-start: 1.25rem;
+  font-size: 0.8125rem;
+  color: var(--app-text-muted);
+}
+
+.app-pins,
+.app-clicks {
+  margin: 0.25rem 0 0.75rem;
+  padding-inline-start: 1.25rem;
+}
+
+/* --- the reason a control is not here ----------------------------------- */
+
+.app-unsupported {
+  color: var(--app-text-muted);
+  font-size: 0.9375rem;
+  background: var(--app-surface-sunken);
+  border: 1px dashed var(--app-border-strong);
+  border-radius: var(--app-radius);
+  padding: 0.7rem 0.85rem;
+}
+
+/* --- tables ------------------------------------------------------------- */
+
+.app-table__note {
+  color: var(--app-text-muted);
+  font-size: 0.8125rem;
+}
+
+/* The emitted key/value pairs under an audit message. */
+.app-table__fields {
+  display: block;
+  margin-block-start: 0.2rem;
+  color: var(--app-text-muted);
+  font-family: var(--app-font-mono);
+  font-size: 0.75rem;
+}
+
+.app-table__field + .app-table__field::before {
+  content: " · ";
+}
+
+/* --- the log ------------------------------------------------------------ */
+
+/* The one vertical scroll region: a log is unbounded by nature, and grown
+ * into the page it pushes the filters off the top within a minute. */
+.app-log {
+  max-height: 60vh;
+  overflow-y: auto;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius);
+  font-family: var(--app-font-mono);
+  font-size: 0.8125rem;
+  line-height: 1.35;
+}
+
+.app-log__controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 1rem;
+  align-items: flex-end;
+}
+
+.app-log__controls .app-field {
+  flex: 1 1 12rem;
+}
+
+.app-log__controls .app-actions {
+  margin-block-end: 1rem;
+}
+
+/* Its own margin, not a `<p>`'s, which a consumer's reset takes away. */
+.app-log__status {
+  margin: 0 0 0.75rem;
+}
+
+.app-log__line {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  gap: 0 0.75rem;
+  padding: 0.2rem 0.6rem;
+  border-block-end: 1px solid var(--app-border);
+}
+
+.app-log__line:last-child {
+  border-block-end: 0;
+}
+
+.app-log__when {
+  color: var(--app-text-muted);
+  white-space: nowrap;
+}
+
+.app-log__level {
+  width: 3.2em;
+  font-weight: 600;
+  color: var(--app-text-muted);
+}
+
+.app-log__level--warn {
+  color: var(--app-warn);
+}
+
+.app-log__level--error {
+  color: var(--app-bad);
+}
+
+.app-log__text {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.app-log__field {
+  color: var(--app-text-muted);
+}
+
+.app-log__empty {
+  margin: 0;
+  padding: 1rem;
+  color: var(--app-text-muted);
+  font-family: var(--app-font);
+  font-size: 0.9375rem;
+}
+
+/* --- second factors ----------------------------------------------------- */
+
+.app-totp-key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: flex-start;
+  margin: 0 0 1rem;
+}
+
+.app-qr {
+  width: 12rem;
+  max-width: 100%;
+  height: auto;
+  background: var(--app-qr-light);
+  fill: var(--app-qr-dark);
+}
+
+.app-secret,
+.app-recovery-codes {
+  font-family: var(--app-font-mono);
+  overflow-wrap: anywhere;
+}
+
+.app-recovery-codes {
+  columns: 2 12rem;
+  padding-left: 1.5rem;
+}
+
 }

@@ -97,4 +97,40 @@ and `constants` are exported from the root. No dependencies and no peers.
 
 ### 0.1.0
 
-The appliance's browser half, moved from a prior appliance.
+The appliance's browser half, which until 0.17.x was installed from git. Every name not listed below keeps its name
+and entry point.
+
+- `theme.css` is gone: its six tokens are tokens 0.2.0's, and `@wired-square/kit/theme.css` 0.3.1 defines them.
+- Wire types and limits come from `@wired-square/appliance-types`, and `.` does not re-export them.
+- `applianceVite` no longer adds Solid's plugin, `optimizeDeps.exclude` or `resolve.dedupe`; the app passes the
+  plugin: `applianceVite({ plugins: [solid()] })`, so it now depends on `vite-plugin-solid` itself. `./vite` is
+  compiled to `dist/`, with its own types.
+- The components no longer import their own CSS. The app imports, in order, `@wired-square/kit/theme.css`, its own
+  token overrides, `@wired-square/kit/kit.css`, `@wired-square/appliance-ui/shell.css` (if it mounts `Shell` or
+  `Chrome`) and the new `@wired-square/appliance-ui/appliance.css`.
+- Ships TSX behind the `solid` condition. Peers, which the app installs each itself: `@wired-square/kit` ^0.3.1,
+  `@wired-square/appliance-types` ^0.1.0, `solid-js` ^1.9.11, and `vite` ^8.0.0, optional, for `./vite`. `uqr`
+  ^0.1.3 is its one dependency.
+
+Moved names:
+
+- From `@wired-square/appliance-ui` to `@wired-square/appliance-types`, the wire types: `AboutView`,
+  `AddressConfig`, `ApiErrorBody`, `AppArch`, `AppCapability`, `AppHealth`, `AppImage`, `AppListener`,
+  `AppManifest`, `AppNetwork`, `AppRole`, `AppSockets`, `AppVolume`, `AssertionCredential`, `AssertionResponse`,
+  `AttestationResponse`, `AuditRecord`, `AuthenticatorSelection`, `Availability`, `BackupFile`, `BackupSchedule`,
+  `BackupState`, `Branding`, `BrandingView`, `BundleHeader`, `CaCertificate`, `Caller`, `CertificateReport`,
+  `CertificateView`, `Chosen`, `ClockSkew`, `ClockView`, `Contains`, `CreationOptions`, `CredentialDescriptor`,
+  `CredentialParameters`, `EnabledChange`, `Enrolled`, `EnrolmentConfirm`, `Fact`, `FactorProof`,
+  `FirstAccountBody`, `Inspection`, `InspectPeer`, `JsonValue`, `ListedUser`, `ListenerProtocol`, `LocalIdentity`,
+  `LogLevel`, `LogRecord`, `LogSnapshot`, `NewUser`, `Ntp`, `Onboarding`, `OpenBundle`, `Page`, `PasskeyHost`,
+  `PasskeyRegistration`, `PasskeyRename`, `PasskeyView`, `PasswordChange`, `PasswordReset`, `Peer`, `Pending`,
+  `PendingEnrolment`, `PendingState`, `PinPeer`, `Reauthentication`, `RecoveryCodes`, `RegistrationCredential`,
+  `RelyingPartyEntity`, `RequestOptions`, `ResetReport`, `RestoreBundle`, `RestoreReport`, `RestoreUnclaimed`,
+  `Role`, `RoleChange`, `Rollback`, `ScheduleUpdate`, `ScheduleView`, `SecondStep`, `SettledBy`, `SignInBody`,
+  `SignInCode`, `SignInMethod`, `Subsystem`, `TakeBackup`, `ThemeTokens`, `TotpConfirm`, `TotpEnrolment`,
+  `TotpView`, `TrustedCa`, `TrustedCert`, `User`, `UserEntity`, `Warning` and `WarningScope`.
+- From `@wired-square/appliance-ui` to `@wired-square/appliance-types`, the constants: `TOKEN_PREFIX`, `MAX_TOKENS`,
+  `MAX_VALUE_LEN`, `ROLE_LADDER`, `MIN_PASSWORD_LEN`, `MAX_PASSWORD_BYTES`, `MAX_USERNAME_LEN`,
+  `MAX_PASSKEY_NAME_LEN`, `STALE_PROOF`, `MAX_AUDIT_PAGE`, `MAX_PEM_LEN`, `MAX_BUNDLE_LEN`, `MIN_PASSPHRASE_LEN`,
+  `MIN_EVERY_HOURS`, `MAX_EVERY_HOURS`, `MIN_KEEP`, `MAX_KEEP`, `LOG_RING`, `LOG_LEVELS` and `FEED_HEARTBEAT_S`.
+- From `@wired-square/appliance-ui` to `@wired-square/kit` (or `/core`): `Refusal` and `refusalMessage`.
