@@ -1,6 +1,6 @@
 import { expect, test, vi } from "vitest";
 
-import { FeedStatus, IconSet, Menu, MenuItemUnavailable, NothingYet, Notice, TabButton, Tabs, Tick, Toggle, Views, viewOf } from "../src/index";
+import { FeedStatus, IconSet, Menu, MenuItem, MenuItemUnavailable, NothingYet, Notice, TabButton, Tabs, Tick, Toggle, Views, viewOf } from "../src/index";
 import { mount } from "../src/testing";
 import { forcedColours, read, rule, sourceFiles } from "./css";
 
@@ -56,7 +56,11 @@ test("under forced colours, disabled, selected and live states keep a system col
   expect(rule(forced, `.app-tab:not([aria-selected="true"], [aria-pressed="true"], [aria-current="page"])`)).toMatch(
     /border-block-end-style: none;/,
   );
-  for (const onHighlight of [`.app-tablist--pill .app-tab${selected})`, '.app-popover__option[aria-selected="true"]']) {
+  for (const onHighlight of [
+    `.app-tablist--pill .app-tab${selected})`,
+    '.app-popover__option[aria-selected="true"]',
+    '.app-menu__item[aria-current="page"]',
+  ]) {
     expect(rule(forced, onHighlight), onHighlight).toMatch(/forced-color-adjust: none;\s*background: Highlight;\s*color: HighlightText;/);
   }
   expect(rule(forced, ".app-pulse")).toMatch(/background: CanvasText;/);
@@ -136,6 +140,17 @@ test("NothingYet shows its label under a picture a screen reader skips, and a no
 
   const noted = mount(() => <NothingYet label="No widgets yet" note="Commission one to watch it." />);
   expect(noted.innerHTML).toContain('No widgets yet</p><p class="app-nothing-yet__note">Commission one to watch it.</p>');
+});
+
+test("a current MenuItem says so on the menu item itself, drawn bold as a selected option is, and another does not", () => {
+  const html = mount(() => (
+    <>
+      <MenuItem current onSelect={() => {}}>Here</MenuItem>
+      <MenuItem onSelect={() => {}}>There</MenuItem>
+    </>
+  )).innerHTML;
+  expect(html).toMatch(/^<button [^>]*role="menuitem"[^>]*aria-current="page"[^>]*>Here<\/button><button (?![^>]*aria-current)[^>]*>There<\/button>$/);
+  expect(rule(read("kit.css"), '.app-menu__item[aria-current="page"]')).toMatch(/font-weight: 600;/);
 });
 
 test("MenuItemUnavailable is a focusable menu item that says why it is unavailable", () => {

@@ -127,6 +127,15 @@ test("Chrome renders the account twice, as controls and as a menu under the user
   assert.match(narrow, /\.app-masthead__nav \.app-tablist \{\n {4}flex-wrap: nowrap;\n {4}overflow: auto hidden;/);
 });
 
+test("shell.css folds the account at 56rem in a bar with a switcher, and lets a narrow switcher pack with the controls", () => {
+  const css = readFileSync(new URL("../src/shell.css", import.meta.url), "utf8");
+  const switched = css.slice(css.indexOf("@media (max-width: 56rem)"), css.indexOf("@media (max-width: 40rem)"));
+  assert.match(switched, /\.app-masthead__bar:has\(\.app-switcher\) \.app-masthead__account \{\n {4}display: none;/);
+  assert.match(switched, /\.app-masthead__bar:has\(\.app-switcher\) \.app-masthead__account-menu \{\n {4}display: block;/);
+  const narrow = css.slice(css.indexOf("@media (max-width: 40rem)"));
+  assert.match(narrow, /\.app-switcher \{\n {4}margin-inline-end: 0;/);
+});
+
 test("overhang is how far a tab sticks out of its strip, and nothing when it is in view", async () => {
   const { overhang } = await load<typeof import("../src/shell/Chrome.tsx")>("/src/shell/Chrome.tsx");
   const strip = { left: 100, right: 400 };

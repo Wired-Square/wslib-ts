@@ -446,9 +446,8 @@ async function switcherItems(root: Element, choosing?: number) {
     toggle({ newState: "open" });
     await settled();
     const items = [...within(panel)].filter((n) => n.props.role === "menuitem");
-    const current = (n: Element) => find(n, (m) => m.tag === "span").props["aria-current"] === "page";
     if (choosing !== undefined) (items[choosing]?.props.onClick as () => void)();
-    return items.map((n) => `${textOf(n)}${current(n) ? " (current)" : ""}`);
+    return items.map((n) => `${textOf(n)}${n.props["aria-current"] === "page" ? " (current)" : ""}`);
   } finally {
     toggle({ newState: "closed" });
     await settled();

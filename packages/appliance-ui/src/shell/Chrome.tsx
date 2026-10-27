@@ -74,8 +74,8 @@ function Switcher() {
         <Menu aria-label={`${name()}, switch app`} trigger={name()}>
           <For each={links()}>
             {(link) => (
-              <MenuItem onSelect={() => link !== current() && location.assign(link.href)}>
-                <span aria-current={link === current() ? "page" : undefined}>{link.name}</span>
+              <MenuItem current={link === current()} onSelect={() => link !== current() && location.assign(link.href)}>
+                {link.name}
               </MenuItem>
             )}
           </For>
