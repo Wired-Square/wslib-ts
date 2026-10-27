@@ -4,7 +4,7 @@
 // nothing about the `solid` export condition. KIT_MODULES names another
 // node_modules to take solid-js, vite and vite-plugin-solid from.
 import { execFileSync } from "node:child_process";
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, symlinkSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -33,7 +33,7 @@ try {
   mkdirSync(join(modules, "@tauri-apps"));
   symlinkSync(join(repo, "node_modules/@tauri-apps/api"), join(modules, "@tauri-apps/api"), "dir");
 
-  for (const name of ["@wired-square/kit", "@wired-square/tokens", "@wired-square/mcp-bridge"]) {
+  for (const name of ["@wired-square/kit", "@wired-square/tokens", "@wired-square/mcp-bridge", "@wired-square/appliance-types"]) {
     const tarball = execFileSync("npm", ["pack", "--silent", "--pack-destination", work, "-w", name], {
       cwd: repo,
       encoding: "utf8",
@@ -72,6 +72,25 @@ try {
   }
   for (const entry of ["dom-ops", "tauri-bridge"]) {
     if (!existsSync(join(modules, `@wired-square/mcp-bridge/dist/${entry}.d.ts`))) problems.push(`the packed mcp-bridge's ${entry} carries no types`);
+  }
+
+  const constants = `
+    const { ROLE_LADDER, TOKEN_PREFIX } = await import("@wired-square/appliance-types");
+    process.stdout.write(String(ROLE_LADDER.includes("admin") && TOKEN_PREFIX === "--app-"));
+  `;
+  if (execFileSync("node", ["--input-type=module", "-e", constants], { cwd: work, encoding: "utf8" }) !== "true") {
+    problems.push("plain node imported @wired-square/appliance-types, but its constants are wrong");
+  }
+  // NodeNext, the strictest resolution a consumer can use: the .d.ts files must import each other with an extension.
+  writeFileSync(
+    join(work, "appliance-types.ts"),
+    `import { ROLE_LADDER, type AppLink, type Role } from "@wired-square/appliance-types";
+    export const typed: [Role, AppLink] = [ROLE_LADDER[0], { name: "console", href: "/" }];\n`,
+  );
+  try {
+    execFileSync(join(repo, "node_modules/.bin/tsc"), ["--noEmit", "--strict", "--module", "nodenext", "appliance-types.ts"], { cwd: work, encoding: "utf8" });
+  } catch (error) {
+    problems.push(`the packed appliance-types does not typecheck under NodeNext:\n${error.stdout}`);
   }
 
   // The dev server's pre-bundler is esbuild, which compiles JSX for React: the
@@ -145,4 +164,4 @@ try {
 }
 
 fail("consumer fixture", problems);
-console.log("consumer fixture: built against the packed kit; core, tokens and mcp-bridge imported in plain node");
+console.log("consumer fixture: built against the packed kit; core, tokens, mcp-bridge and appliance-types imported in plain node");
