@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { mock, test } from "node:test";
+import type { TestContext } from "node:test";
 import { STALE_PROOF } from "@wired-square/appliance-types";
 import type { ListedUser, LocalIdentity, LogSnapshot } from "@wired-square/appliance-types";
 import type { JSX } from "solid-js";
@@ -399,6 +400,108 @@ test("Chrome scrolls a strip to its selected tab on mount and again whenever the
   } finally {
     Element.prototype.querySelector = querySelector;
     globalThis.MutationObserver = observer;
+  }
+});
+
+const SWITCHER = "https://box.local/api/switcher";
+const apps = [
+  { name: "Console", href: "/" },
+  { name: "Hello", href: "/apps/hello/" },
+  { name: "Hello there", href: "/apps/hello-there/" },
+];
+
+/** `Chrome` at `pathname` behind the console's proxy, with `/api/switcher` answered by `answer`. */
+const unswitched = { document: globalThis.document, location: globalThis.location };
+
+async function switching(t: TestContext, pathname: string, answer: () => Response) {
+  const assigned: string[] = [];
+  t.after(() => Object.assign(globalThis, unswitched));
+  Object.assign(globalThis, {
+    document: { baseURI: "https://box.local/apps/hello/" },
+    location: { origin: "https://box.local", pathname, assign: (href: string) => assigned.push(href) },
+  });
+  const { createComponent } = await load<typeof import("solid-js")>("solid-js");
+  const { Chrome } = await load<typeof import("../src/shell/Chrome.tsx")>("/src/shell/Chrome.tsx");
+  const { root, asked } = await mount(
+    () => createComponent(Chrome, { children: "the product" }),
+    (path) => (path === SWITCHER ? answer() : undefined),
+  );
+  return { root, asked, assigned };
+}
+
+const switcherOf = (root: Element) => [...within(root)].find((n) => n.props.class === "app-switcher");
+
+/** The switcher's items, read with its menu opened and shut as the platform's popover would, after choosing the `choosing`th. */
+async function switcherItems(root: Element, choosing?: number) {
+  const menu = (n: Element) => String(n.props["aria-label"]).endsWith(", switch app");
+  const panel = find(root, (n) => n.props.role === "menu" && menu(n));
+  const toggle = panel.props.onToggle as (e: { newState: string }) => void;
+  Object.assign(panel, { style: {} });
+  Object.assign(find(root, (n) => n.tag === "button" && menu(n)), {
+    getBoundingClientRect: () => ({ top: 0, bottom: 0, right: 0 }),
+  });
+  const window = globalThis.window;
+  globalThis.window = { innerHeight: 800, addEventListener() {}, removeEventListener() {} } as unknown as typeof globalThis.window;
+  try {
+    toggle({ newState: "open" });
+    await settled();
+    const items = [...within(panel)].filter((n) => n.props.role === "menuitem");
+    const current = (n: Element) => find(n, (m) => m.tag === "span").props["aria-current"] === "page";
+    if (choosing !== undefined) (items[choosing]?.props.onClick as () => void)();
+    return items.map((n) => `${textOf(n)}${current(n) ? " (current)" : ""}`);
+  } finally {
+    toggle({ newState: "closed" });
+    await settled();
+    globalThis.window = window;
+  }
+}
+
+test("Chrome asks for the switcher at the origin root, not the app's base, once", async (t) => {
+  const { asked } = await switching(t, "/apps/hello/x", () => Response.json(apps));
+  assert.deepEqual(
+    asked.filter((a) => a.path.endsWith("/api/switcher")),
+    [{ path: SWITCHER, method: "GET", body: undefined }],
+  );
+});
+
+test("Chrome's switcher names every app it is answered, the console first, and marks the longest href the path is under", async (t) => {
+  const atConsole = await switching(t, "/", () => Response.json(apps));
+  assert.equal(textOf(find(atConsole.root, (n) => n.props["aria-label"] === "Console, switch app")), "Console");
+  assert.deepEqual(await switcherItems(atConsole.root), ["Console (current)", "Hello", "Hello there"]);
+
+  const inApp = await switching(t, "/apps/hello/x", () => Response.json(apps));
+  assert.equal(textOf(find(inApp.root, (n) => n.props["aria-label"] === "Hello, switch app")), "Hello");
+  assert.deepEqual(await switcherItems(inApp.root), ["Console", "Hello (current)", "Hello there"]);
+});
+
+test("Choosing an app from the switcher loads its href, and choosing the current one does nothing", async (t) => {
+  const { root, assigned } = await switching(t, "/apps/hello/x", () => Response.json(apps));
+  for (const item of [2, 1, 0]) await switcherItems(root, item);
+  assert.deepEqual(assigned, ["/apps/hello-there/", "/"]);
+});
+
+test("Chrome shows no switcher, and nothing else changed, for a refusal, no answer, a body that is not a list, or one app", async (t) => {
+  const { onUnauthenticated } = await load<typeof import("../src/api.ts")>("/src/api.ts");
+  let signedOut = 0;
+  const stop = onUnauthenticated(() => signedOut++);
+  try {
+    const masthead = textOf((await switching(t, "/", () => Response.json([]))).root);
+    for (const [why, answer] of [
+      ["401", () => Response.json({ error: "sign in" }, { status: 401 })],
+      ["no answer", () => Response.error()],
+      ["not JSON", () => new Response("<html>")],
+      ["not a list", () => Response.json({ name: "Console", href: "/" })],
+      ["one app", () => Response.json(apps.slice(0, 1))],
+    ] as const) {
+      const { root } = await switching(t, "/", answer);
+      assert.equal(switcherOf(root), undefined, why);
+      assert.equal(textOf(root), masthead, why);
+      assert.doesNotMatch(textOf(root), new RegExp(BOUNDARY), why);
+    }
+    assert.match(masthead, /admin.*Sign out.*the product/);
+    assert.equal(signedOut, 0);
+  } finally {
+    stop();
   }
 });
 

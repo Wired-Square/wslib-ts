@@ -82,6 +82,20 @@ body {
   margin-inline-end: auto;
 }
 
+/* The switcher, when there is one, takes the pushing-off from whatever it follows. */
+.app-masthead__brand:has(+ .app-switcher),
+.app-masthead__bar > .app-hostname:has(+ .app-switcher) {
+  margin-inline-end: 0;
+}
+
+.app-switcher {
+  margin-inline-end: auto;
+}
+
+.app-switcher [aria-current] {
+  font-weight: 600;
+}
+
 .app-main {
   padding-block: 1rem;
 }

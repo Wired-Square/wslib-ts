@@ -9,10 +9,12 @@
  * account's sign-out and password. On a narrow screen those fold into a menu
  * under the username; the product's `controls` show for every caller and stay
  * in the bar. A tab strip in `nav` scrolls in one row with its selection kept
- * in view.
+ * in view. Where the origin lists two or more apps the caller may open, a menu
+ * beside the hostname switches between them.
  */
 import { Button, Dialog, IconButton, Menu, MenuItem, Notice, createAction } from "@wired-square/kit";
-import { Show, createSignal, onCleanup, onMount } from "solid-js";
+import type { AppLink } from "@wired-square/appliance-types";
+import { For, Show, createSignal, onCleanup, onMount } from "solid-js";
 import type { JSX } from "solid-js";
 
 import { api } from "../api";
@@ -46,6 +48,43 @@ type Span = Pick<DOMRect, "left" | "right">;
 export const overhang = (inner: Span, outer: Span): number =>
   inner.left < outer.left ? inner.left - outer.left : Math.max(0, inner.right - outer.right);
 
+// At the origin root, not the app's base, and not through `api`: a 401 here
+// only hides the switcher, and must not sign the caller out.
+async function switcherLinks(): Promise<AppLink[]> {
+  try {
+    const response = await fetch(new URL("/api/switcher", location.origin), { credentials: "same-origin" });
+    const links: unknown = response.ok ? await response.json() : [];
+    return Array.isArray(links) ? links : [];
+  } catch {
+    return [];
+  }
+}
+
+const longestPrefixOf = (path: string, links: AppLink[]): AppLink | undefined =>
+  links.filter((link) => path.startsWith(link.href)).sort((a, b) => b.href.length - a.href.length)[0];
+
+function Switcher() {
+  const [links, setLinks] = createSignal<AppLink[]>([]);
+  onMount(() => void switcherLinks().then(setLinks));
+  const current = () => longestPrefixOf(location.pathname, links());
+  const name = () => current()?.name ?? "Apps";
+  return (
+    <Show when={links().length > 1}>
+      <div class="app-switcher">
+        <Menu aria-label={`${name()}, switch app`} trigger={name()}>
+          <For each={links()}>
+            {(link) => (
+              <MenuItem onSelect={() => link !== current() && location.assign(link.href)}>
+                <span aria-current={link === current() ? "page" : undefined}>{link.name}</span>
+              </MenuItem>
+            )}
+          </For>
+        </Menu>
+      </div>
+    </Show>
+  );
+}
+
 export function Chrome(props: ChromeProps) {
   const { me, refresh } = useSession();
   const [changingPassword, setChangingPassword] = createSignal(false);
@@ -72,6 +111,7 @@ export function Chrome(props: ChromeProps) {
         <div class="app-masthead__bar">
           <Brand class="app-masthead__brand" />
           <Hostname />
+          <Switcher />
           {props.controls}
           <Show when={me()}>
             {(who) => {

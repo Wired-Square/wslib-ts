@@ -226,6 +226,10 @@ import "@wired-square/appliance-ui/shell.css"; // only if the app mounts `Shell`
 import "@wired-square/appliance-ui/appliance.css";
 ```
 
+`Chrome` reads `GET /api/switcher` at the origin root, whatever the app's base, and given two or more `AppLink`s
+shows a menu beside the hostname, named for the app whose `href` is the longest prefix of the page's path. Choosing
+another loads its `href`. Any failure, a 401 included, leaves the masthead without one and signs nobody out.
+
 Wire types and limits are imported from `@wired-square/appliance-types`; this package does not re-export them.
 That includes `Pending` and its parts, which the kit also declares, with the same shape, for its own components.
 `./testing` and `./testing/setup` are the kit's test helpers with a session around the screen.

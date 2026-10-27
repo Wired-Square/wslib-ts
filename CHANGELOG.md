@@ -95,6 +95,15 @@ and `constants` are exported from the root. No dependencies and no peers.
 
 ## `@wired-square/appliance-ui`
 
+### 0.2.0
+
+- `Chrome` has an app switcher: it reads `GET /api/switcher` (`AppLink[]`) once on mount, from the origin root rather
+  than `document.baseURI`, so an app served under `/apps/<name>/` asks the console. Given two or more links it shows
+  a `Menu` beside the hostname, named for the current app, the one whose `href` is the longest prefix of
+  `location.pathname`, marked `aria-current` in the list. Choosing another is a full-page load of its `href`.
+- The request is a plain `fetch`, not `api`: any failure, a 401 or a body that is not a list included, shows no
+  switcher and leaves the masthead as it was, with no notice and no `onUnauthenticated` call.
+
 ### 0.1.0
 
 The appliance's browser half, which until 0.17.x was installed from git. Every name not listed below keeps its name
