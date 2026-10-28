@@ -100,6 +100,18 @@ and `constants` are exported from the root. No dependencies and no peers.
 
 ## `@wired-square/appliance-ui`
 
+### 0.3.0
+
+- The masthead's brand, logo, name and maker, is the app switcher's button wherever `GET /api/switcher` gives at
+  least one link, so an app installed later is offered without a reload. It keeps the brand's look, with a chevron,
+  and is named `"<app name>, <maker>, switch app"`. The separate menu beside the hostname is gone. With no links the
+  brand is the plain block it was, and the app name is no longer an `h1` while it is the button.
+- Each item shows its app's logo, `<href>api/branding/logo`, beside the name, with the space kept where it does not
+  load.
+- `/api/switcher` is asked again each time the menu opens. Links that have not changed keep their items, so the focus
+  the menu puts on the first stays there.
+- The account folds into its menu below 40rem with or without a switcher; the 56rem rule is gone.
+
 ### 0.2.0
 
 - `Chrome` has an app switcher: it reads `GET /api/switcher` (`AppLink[]`) once on mount, from the origin root rather

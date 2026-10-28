@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { mock, test } from "node:test";
 import type { TestContext } from "node:test";
 import { STALE_PROOF } from "@wired-square/appliance-types";
-import type { ListedUser, LocalIdentity, LogSnapshot } from "@wired-square/appliance-types";
+import type { BrandingView, ListedUser, LocalIdentity, LogSnapshot } from "@wired-square/appliance-types";
 import type { JSX } from "solid-js";
 
 import type { FeedTransport } from "../src/follow.ts";
@@ -410,7 +410,7 @@ const apps = [
   { name: "Hello there", href: "/apps/hello-there/" },
 ];
 
-/** `Chrome` at `pathname` behind the console's proxy, with `/api/switcher` answered by `answer`. */
+/** `Chrome` at `pathname` behind the console's proxy, branded Hello by Acme, with `/api/switcher` answered by `answer`. */
 const unswitched = { document: globalThis.document, location: globalThis.location };
 
 async function switching(t: TestContext, pathname: string, answer: () => Response) {
@@ -422,32 +422,43 @@ async function switching(t: TestContext, pathname: string, answer: () => Respons
   });
   const { createComponent } = await load<typeof import("solid-js")>("solid-js");
   const { Chrome } = await load<typeof import("../src/shell/Chrome.tsx")>("/src/shell/Chrome.tsx");
+  const { SessionProvider } = await load<typeof import("../src/shell/session.ts")>("/src/shell/session.ts");
+  const branding = { app_name: "Hello", manufacturer: "Acme" } as BrandingView;
   const { root, asked } = await mount(
-    () => createComponent(Chrome, { children: "the product" }),
+    () =>
+      createComponent(SessionProvider, {
+        value: { branding: () => branding, me: () => admin, local: () => undefined, refresh: () => {} },
+        get children() {
+          return createComponent(Chrome, { children: "the product" });
+        },
+      }),
     (path) => (path === SWITCHER ? answer() : undefined),
   );
   return { root, asked, assigned };
 }
 
-const switcherOf = (root: Element) => [...within(root)].find((n) => n.props.class === "app-switcher");
+const switchAsks = (asked: Asked) => asked.filter((a) => a.path === SWITCHER).length;
 
-/** The switcher's items, read with its menu opened and shut as the platform's popover would, after choosing the `choosing`th. */
-async function switcherItems(root: Element, choosing?: number) {
-  const menu = (n: Element) => String(n.props["aria-label"]).endsWith(", switch app");
-  const panel = find(root, (n) => n.props.role === "menu" && menu(n));
+const brandOf = (root: Element) => find(root, (n) => String(n.props.class).startsWith("app-masthead__brand"));
+
+const isSwitcher = (n: Element) => n.props["aria-label"] === "Hello, Acme, switch app";
+
+/** The switcher's items as rendered when its menu opens, and once they have settled, opened and shut as the platform's popover would. */
+async function openSwitcher(root: Element) {
+  const panel = find(root, (n) => n.props.role === "menu" && isSwitcher(n));
   const toggle = panel.props.onToggle as (e: { newState: string }) => void;
   Object.assign(panel, { style: {} });
-  Object.assign(find(root, (n) => n.tag === "button" && menu(n)), {
+  Object.assign(find(root, (n) => n.tag === "button" && isSwitcher(n)), {
     getBoundingClientRect: () => ({ top: 0, bottom: 0, right: 0 }),
   });
+  const items = () => [...within(panel)].filter((n) => n.props.role === "menuitem");
   const window = globalThis.window;
   globalThis.window = { innerHeight: 800, addEventListener() {}, removeEventListener() {} } as unknown as typeof globalThis.window;
   try {
     toggle({ newState: "open" });
+    const opened = items();
     await settled();
-    const items = [...within(panel)].filter((n) => n.props.role === "menuitem");
-    if (choosing !== undefined) (items[choosing]?.props.onClick as () => void)();
-    return items.map((n) => `${textOf(n)}${n.props["aria-current"] === "page" ? " (current)" : ""}`);
+    return { opened, settled: items() };
   } finally {
     toggle({ newState: "closed" });
     await settled();
@@ -455,22 +466,63 @@ async function switcherItems(root: Element, choosing?: number) {
   }
 }
 
-test("Chrome asks for the switcher at the origin root, not the app's base, once", async (t) => {
-  const { asked } = await switching(t, "/apps/hello/x", () => Response.json(apps));
+const described = (item: Element) =>
+  `${find(item, (n) => n.tag === "img").props.src} ${textOf(item)}${item.props["aria-current"] === "page" ? " (current)" : ""}`;
+
+/** The switcher's items, after choosing the `choosing`th. */
+async function switcherItems(root: Element, choosing?: number) {
+  const { settled: items } = await openSwitcher(root);
+  if (choosing !== undefined) (items[choosing]?.props.onClick as () => void)();
+  return items.map(described);
+}
+
+test("Chrome asks for the switcher at the origin root, not the app's base, on mount and on each open", async (t) => {
+  const { root, asked } = await switching(t, "/apps/hello/x", () => Response.json(apps));
   assert.deepEqual(
     asked.filter((a) => a.path.endsWith("/api/switcher")),
     [{ path: SWITCHER, method: "GET", body: undefined }],
   );
+  await openSwitcher(root);
+  await openSwitcher(root);
+  assert.equal(switchAsks(asked), 3);
 });
 
-test("Chrome's switcher names every app it is answered, the console first, and marks the longest href the path is under", async (t) => {
+test("Given links, the brand is the switcher's button, named for its words", async (t) => {
+  const { root } = await switching(t, "/apps/hello/x", () => Response.json(apps.slice(0, 1)));
+  const brand = brandOf(root);
+  assert.equal(brand.props.class, "app-masthead__brand app-switcher");
+  const trigger = find(brand, (n) => n.tag === "button" && isSwitcher(n));
+  assert.equal(trigger.props["aria-haspopup"], "menu");
+  assert.equal(textOf(trigger), "HelloAcme");
+  assert.equal(find(trigger, (n) => n.tag === "img").props.src, "https://box.local/apps/hello/api/branding/logo");
+  assert.equal([...within(brand)].find((n) => n.tag === "h1"), undefined);
+});
+
+test("Chrome's switcher lists every app it is answered with its icon, the console first, and marks the longest href the path is under", async (t) => {
   const atConsole = await switching(t, "/", () => Response.json(apps));
-  assert.equal(textOf(find(atConsole.root, (n) => n.props["aria-label"] === "Console, switch app")), "Console");
-  assert.deepEqual(await switcherItems(atConsole.root), ["Console (current)", "Hello", "Hello there"]);
+  assert.deepEqual(await switcherItems(atConsole.root), [
+    "/api/branding/logo Console (current)",
+    "/apps/hello/api/branding/logo Hello",
+    "/apps/hello-there/api/branding/logo Hello there",
+  ]);
 
   const inApp = await switching(t, "/apps/hello/x", () => Response.json(apps));
-  assert.equal(textOf(find(inApp.root, (n) => n.props["aria-label"] === "Hello, switch app")), "Hello");
-  assert.deepEqual(await switcherItems(inApp.root), ["Console", "Hello (current)", "Hello there"]);
+  assert.deepEqual((await switcherItems(inApp.root)).map((item) => item.split(" ").slice(1).join(" ")), [
+    "Console",
+    "Hello (current)",
+    "Hello there",
+  ]);
+});
+
+test("Reopening the switcher lists an app installed since, keeping the items that were already there", async (t) => {
+  let answered = apps.slice(0, 2);
+  const { root } = await switching(t, "/", () => Response.json(answered));
+  answered = apps;
+  const { opened, settled: after } = await openSwitcher(root);
+  assert.deepEqual(opened.map(textOf), ["Console", "Hello"]);
+  assert.deepEqual(after.map(textOf), ["Console", "Hello", "Hello there"]);
+  assert.equal(after[0], opened[0]);
+  assert.equal(after[1], opened[1]);
 });
 
 test("Choosing an app from the switcher loads its href, and choosing the current one does nothing", async (t) => {
@@ -479,25 +531,28 @@ test("Choosing an app from the switcher loads its href, and choosing the current
   assert.deepEqual(assigned, ["/apps/hello-there/", "/"]);
 });
 
-test("Chrome shows no switcher, and nothing else changed, for a refusal, no answer, a body that is not a list, or one app", async (t) => {
+test("With no links the brand is the plain block, and nothing else changed, for a refusal, no answer, or a body that is not a list", async (t) => {
   const { onUnauthenticated } = await load<typeof import("../src/api.ts")>("/src/api.ts");
   let signedOut = 0;
   const stop = onUnauthenticated(() => signedOut++);
   try {
     const masthead = textOf((await switching(t, "/", () => Response.json([]))).root);
     for (const [why, answer] of [
+      ["none", () => Response.json([])],
       ["401", () => Response.json({ error: "sign in" }, { status: 401 })],
       ["no answer", () => Response.error()],
       ["not JSON", () => new Response("<html>")],
       ["not a list", () => Response.json({ name: "Console", href: "/" })],
-      ["one app", () => Response.json(apps.slice(0, 1))],
     ] as const) {
       const { root } = await switching(t, "/", answer);
-      assert.equal(switcherOf(root), undefined, why);
+      const brand = brandOf(root);
+      assert.equal(brand.props.class, "app-masthead__brand", why);
+      assert.equal(textOf(find(brand, (n) => n.tag === "h1")), "Hello", why);
+      assert.equal([...within(brand)].find((n) => n.tag === "button"), undefined, why);
       assert.equal(textOf(root), masthead, why);
       assert.doesNotMatch(textOf(root), new RegExp(BOUNDARY), why);
     }
-    assert.match(masthead, /admin.*Sign out.*the product/);
+    assert.match(masthead, /^HelloAcme.*admin.*Sign out.*the product/);
     assert.equal(signedOut, 0);
   } finally {
     stop();
