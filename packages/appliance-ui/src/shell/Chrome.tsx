@@ -9,15 +9,15 @@
  * account's sign-out and password. On a narrow screen those fold into a menu
  * under the username; the product's `controls` show for every caller and stay
  * in the bar. A tab strip in `nav` scrolls in one row with its selection kept
- * in view. Where the origin lists two or more apps the caller may open, a menu
- * beside the hostname switches between them.
+ * in view. Where the origin lists apps the caller may open, the brand is a menu
+ * of them, asked again on each open.
  */
 import { Button, Dialog, IconButton, Menu, MenuItem, Notice, createAction } from "@wired-square/kit";
 import type { AppLink } from "@wired-square/appliance-types";
 import { For, Show, createSignal, onCleanup, onMount } from "solid-js";
 import type { JSX } from "solid-js";
 
-import { api } from "../api";
+import { api, fromBase } from "../api";
 import { ROLE_LABELS, RoleBadge } from "../parts/RoleBadge";
 import { Brand, Hostname } from "./Shell";
 import { isStoreAccount, useSession } from "./session";
@@ -63,22 +63,55 @@ async function switcherLinks(): Promise<AppLink[]> {
 const longestPrefixOf = (path: string, links: AppLink[]): AppLink | undefined =>
   links.filter((link) => path.startsWith(link.href)).sort((a, b) => b.href.length - a.href.length)[0];
 
-function Switcher() {
+// The same objects for unchanged links, so a refetch while the menu is open
+// keeps its items, and the focus the menu put on the first.
+const keepingUnchanged = (was: AppLink[], now: AppLink[]) =>
+  now.map((link) => was.find((old) => old.href === link.href && old.name === link.name) ?? link);
+
+function BrandSwitcher() {
+  const { branding } = useSession();
   const [links, setLinks] = createSignal<AppLink[]>([]);
-  onMount(() => void switcherLinks().then(setLinks));
+  const refresh = () => void switcherLinks().then((now) => setLinks((was) => keepingUnchanged(was, now)));
+  onMount(refresh);
   const current = () => longestPrefixOf(location.pathname, links());
-  const name = () => current()?.name ?? "Apps";
+  // The menu builds its items on each open, so this asks again then.
+  const Items = () => {
+    onMount(refresh);
+    return (
+      <For each={links()}>
+        {(link) => (
+          <MenuItem current={link === current()} onSelect={() => link !== current() && location.assign(link.href)}>
+            <img
+              class="app-switcher__icon"
+              src={`${link.href}api/branding/logo`}
+              alt=""
+              onError={(e) => (e.currentTarget.style.visibility = "hidden")}
+            />
+            {link.name}
+          </MenuItem>
+        )}
+      </For>
+    );
+  };
   return (
-    <Show when={links().length > 1}>
-      <div class="app-switcher">
-        <Menu aria-label={`${name()}, switch app`} trigger={name()}>
-          <For each={links()}>
-            {(link) => (
-              <MenuItem current={link === current()} onSelect={() => link !== current() && location.assign(link.href)}>
-                {link.name}
-              </MenuItem>
-            )}
-          </For>
+    <Show when={links().length > 0} fallback={<Brand class="app-masthead__brand" />}>
+      <div class="app-masthead__brand app-switcher">
+        <Menu
+          aria-label={[branding()?.app_name, branding()?.manufacturer, "switch app"].filter(Boolean).join(", ")}
+          trigger={
+            <>
+              <img src={fromBase("/api/branding/logo")} alt="" onError={(e) => (e.currentTarget.hidden = true)} />
+              <span class="app-switcher__words">
+                <span class="app-switcher__name">{branding()?.app_name}</span>
+                <Show when={branding()?.manufacturer}>{(who) => <span class="app-muted">{who()}</span>}</Show>
+              </span>
+              <svg class="app-switcher__chevron" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="m6 9 6 6 6-6" />
+              </svg>
+            </>
+          }
+        >
+          <Items />
         </Menu>
       </div>
     </Show>
@@ -109,9 +142,8 @@ export function Chrome(props: ChromeProps) {
     <>
       <header class="app-masthead">
         <div class="app-masthead__bar">
-          <Brand class="app-masthead__brand" />
+          <BrandSwitcher />
           <Hostname />
-          <Switcher />
           {props.controls}
           <Show when={me()}>
             {(who) => {
