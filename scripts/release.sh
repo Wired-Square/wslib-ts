@@ -35,8 +35,9 @@ tarball=$(ls "$stage"/*.tgz)
 [ "${2:-}" = --execute ] || { printf 'release: dry run; would publish %s as %s\n' "$(basename "$tarball")" "$tag"; exit 0; }
 
 umask 077
-printf '%s:_authToken=%s\n' "${registry#https:}" \
-  "$(op read "${WSLIB_REGISTRY_TOKEN_REF:?set to the op:// reference of your publish token}")" >"$stage/npmrc"
+token=$(op read --account "${WSLIB_OP_ACCOUNT:?set to the 1Password account that holds the publish token}" \
+  "${WSLIB_REGISTRY_TOKEN_REF:?set to the op:// reference of your publish token}") || die "could not read the publish token"
+printf '%s:_authToken=%s\n' "${registry#https:}" "$token" >"$stage/npmrc"
 git tag -s -m "$name $version" "$tag"
 NODE_OPTIONS=--use-system-ca npm publish "$tarball" --registry "$registry" --userconfig "$stage/npmrc" \
   || { git tag -d "$tag" >/dev/null; die "publish failed; $tag removed"; }

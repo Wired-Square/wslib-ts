@@ -277,8 +277,8 @@ scripts/mirror.sh
 ```
 
 `scripts/release.sh` runs `scripts/ci.sh --tag`, packs the package, reads the `write:package` token from 1Password at
-`WSLIB_REGISTRY_TOKEN_REF` (so it never sits on disk, and no build script sees it), publishes, and tags
-`<package>-v<version>`. Without `--execute` it stops before publishing. The tag records what was published; consumers
-pin the registry version, not the tag. `scripts/mirror.sh` copies every package on the registry to the mirror, with
-each `dist.tarball` rewritten onto the mirror's host and each tarball checked against its `integrity`; `--dry-run`
-shows what would change.
+`WSLIB_REGISTRY_TOKEN_REF` in the account `WSLIB_OP_ACCOUNT` (so it never sits on disk, and no build script sees it),
+publishes, and tags `<package>-v<version>`. Without `--execute` it stops before publishing. The tag records what was
+published; consumers pin the registry version, not the tag. `scripts/mirror.sh` copies every package on the registry to
+the mirror, with each `dist.tarball` rewritten onto the mirror's host and each tarball checked against its `integrity`;
+`--dry-run` shows what would change.
