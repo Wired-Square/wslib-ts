@@ -62,7 +62,7 @@ body {
 .app-hostname {
   display: inline-block;
   max-width: 100%;
-  overflow-wrap: anywhere;
+  white-space: nowrap;
   font-family: var(--app-font-mono);
   font-size: 0.8125rem;
   padding: 0.15rem 0.6rem;
@@ -72,18 +72,50 @@ body {
   border: 1px solid transparent;
 }
 
-/* One unit, so the account wraps with the hostname rather than onto a row of its own. */
-.app-masthead__end {
-  flex: auto;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 0.5rem 1rem;
+/* A dotted name in two lines: the label whole, the domain giving way to an ellipsis. */
+.app-hostname--stacked {
+  display: inline-grid;
+  border-radius: var(--app-radius);
+  line-height: 1.15;
 }
 
-.app-masthead__end > .app-hostname {
-  margin-inline-end: auto;
+/* Clamped rather than `nowrap`, so it can break anywhere and the chip's
+   narrowest is its label's width. */
+.app-hostname__domain {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+  overflow: hidden;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  font-size: 0.6875rem;
+  opacity: 0.8;
+}
+
+/* Wraps at its label's width, then grows to show the whole name. */
+.app-masthead__bar .app-hostname {
+  flex: 1 1 0;
+  max-width: max-content;
+}
+
+/* The account keeps to the controls' row, whole; on a row too short for
+   them, the folded username gives way. */
+.app-masthead__tools {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-inline-start: auto;
+  min-width: 0;
+}
+
+.app-masthead__account-menu .app-menu__trigger {
+  max-width: 100%;
+}
+
+.app-masthead__username {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 /* Given apps to switch between, the brand is the switcher's button, drawn as the brand. */
@@ -135,24 +167,12 @@ body {
 
 .app-masthead__account-menu {
   display: none;
+  min-width: 4rem;
 }
 
-.app-masthead__who {
-  display: none;
-}
-
-/* Narrow: the account in a menu, the tabs in one row that scrolls, its focus
-   ring drawn inside where the scroller would clip it. */
-@media (max-width: 40rem) {
-  .app-masthead__bar,
-  .app-masthead__end {
-    column-gap: 0.5rem;
-  }
-
-  .app-masthead__account-menu .app-badge {
-    display: none;
-  }
-
+/* Folded well before the bar runs short: unfolding where the inline account
+   no longer fits one row would add a row as the window widens. */
+@media (max-width: 63rem) {
   .app-masthead__account {
     display: none;
   }
@@ -160,7 +180,11 @@ body {
   .app-masthead__account-menu {
     display: block;
   }
+}
 
+/* Narrow: the tabs in one row that scrolls, its focus ring drawn inside where
+   the scroller would clip it. */
+@media (max-width: 40rem) {
   .app-masthead__nav .app-tablist {
     flex-wrap: nowrap;
     overflow: auto hidden;
@@ -174,21 +198,6 @@ body {
 
   .app-masthead__nav .app-tab:focus-visible {
     box-shadow: inset var(--app-focus);
-  }
-}
-
-/* Narrower still: the account's face is a glyph, its name and role kept in its label. */
-@media (width < 22.5rem) {
-  .app-masthead__end {
-    column-gap: 0.25rem;
-  }
-
-  .app-masthead__username {
-    display: none;
-  }
-
-  .app-masthead__who {
-    display: block;
   }
 }
 

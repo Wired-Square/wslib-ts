@@ -116,9 +116,15 @@ and `constants` are exported from the root. No dependencies and no peers.
 
 - The switcher's button and the folded account menu draw `Menu`'s `chevron` in place of the switcher's own, so the
   kit peer is now ^0.3.3.
-- The hostname, the product's `controls` and the account wrap as one, in `.app-masthead__end`, so the account never
-  takes a row of its own. Below 40rem the folded account's face drops the role badge and the bar's gaps narrow; below
-  22.5rem its face is a glyph. Its name still says the username and the role.
+- The product's `controls` and the account sit in `.app-masthead__tools`, which never wraps, so the account keeps to
+  the controls' row and the inline account is never split. With no `controls`, the hostname joins the tools instead.
+  As the window widens, the bar never gains a row.
+- `Hostname` draws a dotted name as its first label over the rest of the domain, smaller and lighter, in a chip with
+  a smaller radius, in the masthead and on the signed-out screens alike. Only the domain line shortens, to an
+  ellipsis. A name with no dot, or an IP literal, stays one line. Screen readers hear "This box:" and the whole name
+  as one string, and the chip carries it as a `title`.
+- The account folds into its menu below 63rem rather than 40rem, and the menu's face is the username alone, cut short
+  with an ellipsis on a row too narrow for it. Its name still says the username and the role.
 
 ### 0.3.0
 

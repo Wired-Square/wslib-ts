@@ -14,7 +14,7 @@
  */
 import { Button, Dialog, IconButton, Menu, MenuItem, Notice, createAction } from "@wired-square/kit";
 import type { AppLink } from "@wired-square/appliance-types";
-import { For, Show, createSignal, onCleanup, onMount } from "solid-js";
+import { For, Show, children, createSignal, onCleanup, onMount } from "solid-js";
 import type { JSX } from "solid-js";
 
 import { api, fromBase } from "../api";
@@ -121,6 +121,9 @@ export function Chrome(props: ChromeProps) {
   const [changingPassword, setChangingPassword] = createSignal(false);
   const signingOut = createAction();
   const close = () => setChangingPassword(false);
+  const controls = children(() => props.controls);
+  // With no controls the hostname joins the tools, so the account never has a row to itself.
+  const bare = () => controls.toArray().length === 0;
   const signOut = () => void signingOut.run(() => api<null>("/api/session", { method: "DELETE" }), refresh);
 
   let nav!: HTMLDivElement;
@@ -141,9 +144,14 @@ export function Chrome(props: ChromeProps) {
       <header class="app-masthead">
         <div class="app-masthead__bar">
           <BrandSwitcher />
-          <div class="app-masthead__end">
+          <Show when={!bare()}>
             <Hostname />
-            {props.controls}
+          </Show>
+          <div class="app-masthead__tools">
+            <Show when={bare()}>
+              <Hostname />
+            </Show>
+            {controls()}
             <Show when={me()}>
               {(who) => {
                 const named = () => (
@@ -176,25 +184,7 @@ export function Chrome(props: ChromeProps) {
                         aria-label={`${who().username}, ${ROLE_LABELS[who().role]}, account`}
                         pending={signingOut.pending()}
                         chevron
-                        trigger={
-                          <>
-                            <svg
-                              class="app-masthead__who"
-                              viewBox="0 0 24 24"
-                              width="1.2em"
-                              height="1.2em"
-                              fill="none"
-                              stroke="currentColor"
-                              stroke-width="2"
-                              stroke-linecap="round"
-                              aria-hidden="true"
-                            >
-                              <circle cx="12" cy="8" r="4" />
-                              <path d="M4 21a8 8 0 0 1 16 0" />
-                            </svg>
-                            <span class="app-masthead__username">{who().username}</span> <RoleBadge role={who().role} />
-                          </>
-                        }
+                        trigger={<span class="app-masthead__username">{who().username}</span>}
                       >
                         <Show when={props.changePassword}>
                           <MenuItem onSelect={() => setChangingPassword(true)}>Change password…</MenuItem>
