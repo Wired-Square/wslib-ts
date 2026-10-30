@@ -70,7 +70,7 @@ covers using and publishing them.
 - The version bump and its `CHANGELOG.md` heading move in the PR. The heading
   is the version itself, with no "unreleased" marker. A new package starts at
   0.1.0.
-- A release runs from `main` after the merge. `scripts/release.sh <package>
-  --execute` runs `ci.sh --tag`, publishes and signs the tag
-  `<package>-v<version>`. Then run `git push origin <package>-v<version>` and
-  `scripts/mirror.sh`.
+- A release runs from `main` after the merge. `scripts/release.sh --execute`
+  releases every package whose version the registry lacks: it runs
+  `ci.sh --tag`, publishes, signs and pushes the tag `<package>-v<version>`,
+  and mirrors.

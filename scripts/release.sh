@@ -1,44 +1,96 @@
 #!/bin/sh
-# Publishes a package from main with the publish token from 1Password and tags
-# it <package>-v<version>; reads elsewhere use the read token in ~/.npmrc.
-# Without --execute it stops before publishing.
+# Publishes packages from main with the publish token from 1Password, tags each
+# <package>-v<version>, pushes the tags and mirrors the registry; reads elsewhere
+# use the read token in ~/.npmrc. With no package named it releases every one
+# whose version the registry lacks. Without --execute it stops before
+# publishing, and with --no-mirror after pushing the tags.
 #
-#   scripts/release.sh kit|tokens|mcp-bridge|appliance-types|appliance-ui [--execute]
+#   scripts/release.sh [kit|tokens|mcp-bridge|appliance-types|appliance-ui ...] [--execute] [--no-mirror]
 set -eu
 cd "$(dirname "$0")/.."
 die() { printf 'release: %s\n' "$*" >&2; exit 1; }
+say() { printf 'release: %s\n' "$*"; }
 # shellcheck source=/dev/null
 [ -f .env ] && . ./.env
 
-name=${1:?usage: scripts/release.sh <package> [--execute]}
-dir=packages/$name
-[ -f "$dir/package.json" ] || die "no package at $dir"
+execute=false mirror=true names=
+for arg; do
+  case $arg in
+    --execute) execute=true ;;
+    --no-mirror) mirror=false ;;
+    -*) die "unknown option $arg" ;;
+    *) [ -f "packages/$arg/package.json" ] || die "no package at packages/$arg"; names="$names $arg" ;;
+  esac
+done
+
 [ "$(git branch --show-current)" = main ] || die "release from main, after the PR is merged"
 [ -z "$(git status --porcelain)" ] || die "commit or stash first"
 git fetch -q origin main
 [ "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" ] || die "main is not origin/main"
 
-version=$(node -p "require('./$dir/package.json').version")
-registry=$(node -p "require('./$dir/package.json').publishConfig.registry")
-tag=$name-v$version
-! git rev-parse -q --verify "refs/tags/$tag" >/dev/null || die "$tag already exists"
-awk -v pkg="## \`@wired-square/$name\`" -v ver="### $version" '/^## /{here = $0 == pkg} here && $0 == ver{found = 1} END{exit !found}' CHANGELOG.md \
-  || die "CHANGELOG.md has no heading for $version under @wired-square/$name"
+field() { node -p "require('./packages/$1/package.json').$2"; }
+on_registry() {
+  [ -n "$(NODE_OPTIONS=--use-system-ca npm view "@wired-square/$1@$(field "$1" version)" version \
+    --@wired-square:registry="$(field "$1" publishConfig.registry)" 2>/dev/null)" ]
+}
 
-scripts/ci.sh --tag
+if [ -z "$names" ]; then
+  for dir in packages/*/; do
+    name=$(basename "$dir")
+    on_registry "$name" || names="$names $name"
+  done
+  [ -n "$names" ] || { say "every package's version is on the registry"; exit 0; }
+fi
+
+for name in $names; do
+  version=$(field "$name" version)
+  ! on_registry "$name" || die "@wired-square/$name $version is already on the registry"
+  ! git rev-parse -q --verify "refs/tags/$name-v$version" >/dev/null || die "$name-v$version already exists"
+  awk -v pkg="## \`@wired-square/$name\`" -v ver="### $version" '/^## /{here = $0 == pkg} here && $0 == ver{found = 1} END{exit !found}' CHANGELOG.md \
+    || die "CHANGELOG.md has no heading for $version under @wired-square/$name"
+done
+
+# Read before the CI run so a wrong setting fails at once. Never exported, so
+# nothing the run starts sees it.
+if $execute; then
+  token=$(op read --account "${WSLIB_OP_ACCOUNT:?set to the 1Password account that holds the publish token}" \
+    "${WSLIB_REGISTRY_TOKEN_REF:?set to the op:// reference of your publish token}") || die "could not read the publish token"
+fi
 
 stage=$(mktemp -d)
 trap 'rm -rf "$stage"' EXIT
-# Packed first, so no build script runs with the token about.
-(cd "$dir" && npm pack -q --pack-destination "$stage" >/dev/null)
-tarball=$(ls "$stage"/*.tgz)
-[ "${2:-}" = --execute ] || { printf 'release: dry run; would publish %s as %s\n' "$(basename "$tarball")" "$tag"; exit 0; }
+log=$(mktemp "${TMPDIR:-/tmp}/release-ci.XXXXXX")
+say "releasing$names; ci.sh --tag logs to $log"
+scripts/ci.sh --tag >"$log" 2>&1 || { tail -n 40 "$log" >&2; die "ci.sh --tag failed; the full log is $log"; }
+
+for name in $names; do
+  (cd "packages/$name" && npm pack -q --pack-destination "$stage" >/dev/null)
+done
+$execute || { say "dry run; would publish $(cd "$stage" && echo *.tgz)"; rm "$log"; exit 0; }
 
 umask 077
-token=$(op read --account "${WSLIB_OP_ACCOUNT:?set to the 1Password account that holds the publish token}" \
-  "${WSLIB_REGISTRY_TOKEN_REF:?set to the op:// reference of your publish token}") || die "could not read the publish token"
-printf '%s:_authToken=%s\n' "${registry#https:}" "$token" >"$stage/npmrc"
-git tag -s -m "$name $version" "$tag"
-NODE_OPTIONS=--use-system-ca npm publish "$tarball" --registry "$registry" --userconfig "$stage/npmrc" \
-  || { git tag -d "$tag" >/dev/null; die "publish failed; $tag removed"; }
-printf 'release: published; push the tag: git push origin %s\n' "$tag"
+tags=
+finish() {
+  [ -n "$tags" ] || return 0
+  # shellcheck disable=SC2086
+  git push -q origin $tags >>"$log" 2>&1 || die "pushing$tags failed; see $log"
+  say "pushed$tags"
+  ! $mirror || scripts/mirror.sh
+}
+for name in $names; do
+  version=$(field "$name" version)
+  registry=$(field "$name" publishConfig.registry)
+  printf '%s:_authToken=%s\n' "${registry#https:}" "$token" >"$stage/npmrc"
+  git tag -s -m "$name $version" "$name-v$version"
+  if NODE_OPTIONS=--use-system-ca npm publish "$stage/wired-square-$name-$version.tgz" --registry "$registry" \
+    --userconfig "$stage/npmrc" >>"$log" 2>&1; then
+    say "published @wired-square/$name $version"
+    tags="$tags $name-v$version"
+  else
+    git tag -d "$name-v$version" >/dev/null
+    finish
+    die "publishing $name failed, so $name-v$version is removed; see $log"
+  fi
+done
+finish
+rm "$log"
