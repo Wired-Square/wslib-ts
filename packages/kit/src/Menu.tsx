@@ -18,6 +18,8 @@ export interface MenuProps {
   pending?: boolean;
   /** The button's face; `aria-label` must still contain its words. */
   trigger?: JSX.Element;
+  /** Draws `IconSet`'s chevron after the face, out of the accessible name. */
+  chevron?: boolean;
   children: JSX.Element;
 }
 
@@ -45,7 +47,8 @@ export function Menu(props: MenuProps) {
   const place = () => {
     pinTo(trigger, panel, { align: "end", matchWidth: false });
     panel.style.visibility = "";
-    panel.querySelector<HTMLElement>("[role=menuitem]")?.focus({ preventScroll: true });
+    const current = panel.querySelector<HTMLElement>('[role=menuitem][aria-current="page"]');
+    (current ?? panel.querySelector<HTMLElement>("[role=menuitem]"))?.focus({ preventScroll: true });
   };
 
   // A fixed panel does not follow the row it was read from.
@@ -93,6 +96,11 @@ export function Menu(props: MenuProps) {
         aria-disabled={props.pending || undefined}
       >
         {props.trigger ?? icons.more()}
+        <Show when={props.chevron}>
+          <span class="app-menu__chevron" aria-hidden="true">
+            {icons.chevron()}
+          </span>
+        </Show>
       </button>
       <div
         ref={panel}

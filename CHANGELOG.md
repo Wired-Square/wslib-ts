@@ -2,6 +2,13 @@
 
 ## `@wired-square/kit`
 
+### 0.3.3
+
+- An opened `Menu` focuses its `current` item, and its first item when none is current.
+- `Menu` takes `chevron`: `IconSet`'s `chevron` after the trigger's face, out of its name, and turned while the menu
+  is open. `KitIcons.chevron` is optional, so a full set written before it still type-checks; without one the kit's
+  downward chevron is drawn.
+
 ### 0.3.2
 
 - `MenuItem` takes `current`: `aria-current="page"` on the item, drawn bold as a selected `PopoverOption` is, and
