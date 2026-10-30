@@ -6,6 +6,8 @@
 
 - `theme.css` defines tokens 0.3.0's nine serial console tokens, which `@wired-square/appliance-ui`'s
   `SerialConsole` draws with.
+- A table's scroller is positioned, so a `Th unseen` label stays inside it rather than widening
+  the page.
 
 ### 0.3.4
 

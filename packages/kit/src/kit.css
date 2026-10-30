@@ -873,6 +873,7 @@ select.app-field__input {
 /* --- tables ------------------------------------------------------------- */
 
 .app-table-scroll {
+  position: relative;
   overflow-x: auto;
 }
 
