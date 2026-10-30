@@ -1,11 +1,13 @@
 #!/bin/sh
-# Publishes packages from main with the publish token from 1Password, tags each
-# <package>-v<version>, pushes the tags and mirrors the registry; reads elsewhere
-# use the read token in ~/.npmrc. With no package named it releases every one
-# whose version the registry lacks. Without --execute it stops before
-# publishing, and with --no-mirror after pushing the tags.
+# Tags packages on main as <package>-v<version> and pushes the tags, then
+# publishes them with the publish token from 1Password and mirrors the registry;
+# reads elsewhere use the read token in ~/.npmrc. Only the packages named are
+# released; with none it lists those whose version the registry lacks. Without
+# --execute it stops before tagging, and with --no-mirror after publishing.
 #
-#   scripts/release.sh [kit|tokens|mcp-bridge|appliance-types|appliance-ui ...] [--execute] [--no-mirror]
+#   scripts/release.sh kit|tokens|mcp-bridge|appliance-types|appliance-ui ... [--execute] [--no-mirror]
+# Lists of names and tags are split on purpose.
+# shellcheck disable=SC2086
 set -eu
 cd "$(dirname "$0")/.."
 die() { printf 'release: %s\n' "$*" >&2; exit 1; }
@@ -37,9 +39,9 @@ on_registry() {
 if [ -z "$names" ]; then
   for dir in packages/*/; do
     name=$(basename "$dir")
-    on_registry "$name" || names="$names $name"
+    on_registry "$name" || say "not on the registry: $name $(field "$name" version)"
   done
-  [ -n "$names" ] || { say "every package's version is on the registry"; exit 0; }
+  die "name the packages to release"
 fi
 
 for name in $names; do
@@ -70,27 +72,30 @@ $execute || { say "dry run; would publish $(cd "$stage" && echo *.tgz)"; rm "$lo
 
 umask 077
 tags=
-finish() {
-  [ -n "$tags" ] || return 0
-  # shellcheck disable=SC2086
-  git push -q origin $tags >>"$log" 2>&1 || die "pushing$tags failed; see $log"
-  say "pushed$tags"
-  ! $mirror || scripts/mirror.sh
-}
+for name in $names; do
+  version=$(field "$name" version)
+  git tag -s -m "$name $version" "$name-v$version"
+  tags="$tags $name-v$version"
+done
+# Pushed before publishing, so nothing is ever published without its tag on
+# main. The pre-push hook runs ci.sh again.
+git push -q origin $tags >>"$log" 2>&1 || { git tag -d $tags >/dev/null; die "pushing$tags failed, so nothing is published; see $log"; }
+say "pushed$tags"
+
+pending=$tags
 for name in $names; do
   version=$(field "$name" version)
   registry=$(field "$name" publishConfig.registry)
   printf '%s:_authToken=%s\n' "${registry#https:}" "$token" >"$stage/npmrc"
-  git tag -s -m "$name $version" "$name-v$version"
-  if NODE_OPTIONS=--use-system-ca npm publish "$stage/wired-square-$name-$version.tgz" --registry "$registry" \
+  if ! NODE_OPTIONS=--use-system-ca npm publish "$stage/wired-square-$name-$version.tgz" --registry "$registry" \
     --userconfig "$stage/npmrc" >>"$log" 2>&1; then
-    say "published @wired-square/$name $version"
-    tags="$tags $name-v$version"
-  else
-    git tag -d "$name-v$version" >/dev/null
-    finish
-    die "publishing $name failed, so $name-v$version is removed; see $log"
+    git tag -d $pending >/dev/null
+    git push -q origin --delete $pending >>"$log" 2>&1 || say "withdrawing$pending from origin failed; delete them there"
+    [ "$pending" = "$tags" ] || ! $mirror || scripts/mirror.sh
+    die "publishing $name failed, so$pending are withdrawn; see $log"
   fi
+  say "published @wired-square/$name $version"
+  pending=${pending#" $name-v$version"}
 done
-finish
+! $mirror || scripts/mirror.sh
 rm "$log"

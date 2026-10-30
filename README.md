@@ -271,14 +271,16 @@ Bump the package's `version` and give `CHANGELOG.md` a heading for it in the PR.
 `.env` filled in from `.env.example`:
 
 ```sh
-scripts/release.sh --execute
+scripts/release.sh kit --execute
 ```
 
-With no package named, `scripts/release.sh` releases every package whose version is not on the registry yet; name
-packages (`scripts/release.sh kit tokens --execute`) to release only those. It reads the `write:package` token from
-1Password at `WSLIB_REGISTRY_TOKEN_REF` in the account `WSLIB_OP_ACCOUNT` (so it never sits on disk, and no build script
-sees it), runs `scripts/ci.sh --tag` into a log it names, publishes each package, tags it `<package>-v<version>`, pushes
-the tags and runs `scripts/mirror.sh`. Without `--execute` it stops before publishing; with `--no-mirror` it stops after
-pushing the tags. The tag records what was published; consumers pin the registry version, not the tag.
-`scripts/mirror.sh` copies every package on the registry to the mirror, with each `dist.tarball` rewritten onto the
-mirror's host and each tarball checked against its `integrity`; `--dry-run` shows what would change.
+`scripts/release.sh` releases only the packages named (`scripts/release.sh kit tokens --execute`); with none it lists
+those whose version is not on the registry yet and stops. It reads the `write:package` token from 1Password at
+`WSLIB_REGISTRY_TOKEN_REF` in the account `WSLIB_OP_ACCOUNT` (so it never sits on disk, and no build script sees it),
+runs `scripts/ci.sh --tag` into a log it names, signs a tag `<package>-v<version>` for each package and pushes the tags,
+then publishes each package and runs `scripts/mirror.sh`. Pushing the tags first means every published version has its
+tag on `main`; when a publish fails, the tags of the packages not yet published are withdrawn. Without `--execute` it
+stops before tagging; with `--no-mirror` it stops after publishing. The tag records what was published; consumers pin
+the registry version, not the tag. `scripts/mirror.sh` copies every package on the registry to the mirror, with each
+`dist.tarball` rewritten onto the mirror's host and each tarball checked against its `integrity`; `--dry-run` shows what
+would change.
