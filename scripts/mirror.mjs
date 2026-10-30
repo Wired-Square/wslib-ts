@@ -43,6 +43,8 @@ for (let page = 1; ; page++) {
 }
 if (names.size === 0) die("the registry lists no packages");
 
+// rsync gives new files their staged mode, and the mirror serves only world-readable files.
+process.umask(0o022);
 const stage = mkdtempSync(join(tmpdir(), "mirror-"));
 try {
   for (const name of names) {
