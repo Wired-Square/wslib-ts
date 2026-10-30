@@ -115,12 +115,17 @@ test("Input is sent only while the console is open", async () => {
   assert.deepEqual(socket.sent, [Uint8Array.of(0x03)]);
 });
 
-test("Keys are what a terminal sends, and a Cmd shortcut, a bare modifier or Tab sends nothing", async () => {
+test("Keys are what a terminal sends, Tab and Escape too, and a Cmd shortcut, a bare modifier or Shift+Tab nothing", async () => {
   const { keyBytes } = await link();
-  const press = (key: string, mods: Partial<Pick<KeyboardEvent, "ctrlKey" | "altKey" | "metaKey">> = {}) =>
-    keyBytes({ key, ctrlKey: false, altKey: false, metaKey: false, ...mods });
-  assert.deepEqual([press("a"), press("Enter"), press("Backspace"), press("ArrowUp")], ["a", "\r", "\x7f", "\x1b[A"]);
+  type Mods = Partial<Pick<KeyboardEvent, "ctrlKey" | "altKey" | "metaKey" | "shiftKey">>;
+  const press = (key: string, mods: Mods = {}) =>
+    keyBytes({ key, ctrlKey: false, altKey: false, metaKey: false, shiftKey: false, ...mods });
+  assert.deepEqual(
+    [press("a"), press("Enter"), press("Backspace"), press("ArrowUp"), press("Tab"), press("Escape")],
+    ["a", "\r", "\x7f", "\x1b[A", "\t", "\x1b"],
+  );
   assert.equal(press("c", { ctrlKey: true }), "\x03");
-  assert.deepEqual([press("v", { metaKey: true }), press("Shift"), press("Tab")], [undefined, undefined, undefined]);
   assert.equal(press("i", { ctrlKey: true }), "\t");
+  const shiftTab = press("Tab", { shiftKey: true });
+  assert.deepEqual([press("v", { metaKey: true }), press("Shift"), shiftTab], [undefined, undefined, undefined]);
 });

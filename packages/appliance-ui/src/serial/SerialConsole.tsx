@@ -148,6 +148,18 @@ function Pane(props: { url: string; heading: string; label: string; readOnly: bo
             <Match when={link().is === "unreachable"}>Not connected</Match>
           </Switch>
         </span>
+        <Show when={mayType()}>
+          <Button
+            tone="plain"
+            disabled={paused()}
+            onClick={() => {
+              setTypingOn(!typingOn());
+              if (typingOn()) pane?.focus();
+            }}
+          >
+            {typingOn() ? "Stop typing" : "Type"}
+          </Button>
+        </Show>
       </div>
       <Show when={link().is === "unreachable"}>
         <Notice tone="bad">
@@ -171,35 +183,21 @@ function Pane(props: { url: string; heading: string; label: string; readOnly: bo
           </For>
         </ul>
       </Show>
-      <div class="app-console__input">
-        <p class="app-muted">
-          <Switch
-            fallback={
-              "Keys and pastes in the console go to the port, Escape included; Tab leaves it. Everyone attached sees what you send."
-            }
-          >
-            <Match when={link().is !== "open"}>Input is off until the console connects.</Match>
-            <Match when={props.readOnly}>Read-only.</Match>
-            <Match when={!me()?.writes}>Read-only: this session can watch but not type.</Match>
-            <Match when={paused()}>
-              Input is off while the port is paused, as for a flash. It comes back when the pause ends.
-            </Match>
-            <Match when={!typingOn()}>Input is off. Choose Type to send keys and pastes to the port.</Match>
-          </Switch>
-        </p>
-        <Show when={mayType()}>
-          <Button
-            tone="plain"
-            onClick={() => {
-              setTypingOn(!typingOn());
-              if (typingOn()) pane?.focus();
-            }}
-          >
-            {typingOn() ? "Stop typing" : "Type"}
-          </Button>
-        </Show>
-      </div>
-      <Show when={refused()}>{(message) => <Notice tone="warn">{refusal(message())}</Notice>}</Show>
+      <p class="app-console__hint app-muted">
+        <Switch
+          fallback={
+            "Keys and pastes go to the port, Tab and Escape included; Shift+Tab leaves. Everyone attached sees what you send."
+          }
+        >
+          <Match when={link().is !== "open"}>Input is off until the console connects.</Match>
+          <Match when={props.readOnly}>Read-only.</Match>
+          <Match when={!me()?.writes}>Read-only: this session can watch but not type.</Match>
+          <Match when={paused()}>
+            Input is off while the port is paused, as for a flash. It comes back when the pause ends.
+          </Match>
+          <Match when={!typingOn()}>Input is off. Choose Type to send keys and pastes to the port.</Match>
+        </Switch>
+      </p>
       <pre
         class="app-console__screen"
         ref={pane}
@@ -231,6 +229,13 @@ function Pane(props: { url: string; heading: string; label: string; readOnly: bo
           )}
         </For>
       </pre>
+      <Show when={refused()}>
+        {(message) => (
+          <p class="app-console__refusal" role="status">
+            {refusal(message())}
+          </p>
+        )}
+      </Show>
     </div>
   );
 }

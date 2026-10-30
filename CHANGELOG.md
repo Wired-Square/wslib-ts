@@ -139,15 +139,16 @@ and `constants` are exported from the root. No dependencies and no peers.
   74880 for an ESP32's boot ROM, and a new baud reopens it; the first to open a port sets its baud, so the heading
   names the baud as requested. `readOnly` keeps it from typing, and `warning` is a short caution shown above it.
 - Input is off until the viewer chooses Type, in each console and for that page only, and only while the session may
-  write; Stop typing turns it off again. Keys are sent as a terminal sends them, Escape included, and a paste whole.
-  Tab leaves the console, and Ctrl+I sends a tab. Everyone attached sees each write, drawn in its writer's colour
+  write; Stop typing turns it off again, and is held while the port is paused. Keys are sent as a terminal sends
+  them, Tab and Escape included, and a paste whole; Shift+Tab is never sent, and leaves the console. With input off,
+  no key is taken from the page. Everyone attached sees each write, drawn in its writer's colour
   where the device echoes it, and as a marker naming the writer, never the bytes, where it does not; the device's
   output after a marker starts a new line. The attached are listed.
 - The link and the port's state show inline. A console that drops reconnects, waiting up to 15 seconds, and marks
   where it did in the scrollback; one that never opened offers to try again. While the port is paused, as for a
   flash, the console stays attached and refuses input rather than queueing it.
-- A refusal is said in plain words where it is known, otherwise as "Not sent." with the back end's message beside
-  it, and clears when the viewer next sends or the console reconnects.
+- A refusal is said in one line under the scrollback, in plain words where it is known, otherwise as "Not sent."
+  with the back end's message beside it, and clears when the viewer next sends or the console reconnects.
 - The scrollback's height follows the viewport's, between 8rem and 22rem, so the console fits in a dialog.
 - ANSI blue, magenta and cyan are drawn in their own colours, not the accent.
 - `applianceProxy` proxies `/ws` too, with its sockets.

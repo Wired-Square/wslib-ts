@@ -123,6 +123,7 @@ function parse(text: string): ConsoleEvent | undefined {
 
 const KEYS: Record<string, string> = {
   Enter: "\r",
+  Tab: "\t",
   Backspace: "\x7f",
   Escape: "\x1b",
   ArrowUp: "\x1b[A",
@@ -135,11 +136,13 @@ const KEYS: Record<string, string> = {
 };
 
 /**
- * What a terminal sends for a key, or nothing for one it doesn't (Cmd shortcuts, bare modifiers). Tab is left to
- * the page, so focus can leave the console; Ctrl+I sends a tab.
+ * What a terminal sends for a key, or nothing for one it doesn't (Cmd shortcuts, bare modifiers). Shift+Tab is
+ * never sent, so a keyboard can always leave the console.
  */
-export function keyBytes(key: Pick<KeyboardEvent, "key" | "ctrlKey" | "altKey" | "metaKey">): string | undefined {
-  if (key.metaKey) return undefined;
+export function keyBytes(
+  key: Pick<KeyboardEvent, "key" | "ctrlKey" | "altKey" | "metaKey" | "shiftKey">,
+): string | undefined {
+  if (key.metaKey || (key.shiftKey && key.key === "Tab")) return undefined;
   if (key.ctrlKey) {
     const code = key.key.length === 1 ? key.key.toUpperCase().charCodeAt(0) : 0;
     return code >= 0x40 && code <= 0x5f ? String.fromCharCode(code - 0x40) : undefined;

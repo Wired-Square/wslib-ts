@@ -34,13 +34,14 @@ async function opened(props: SerialConsoleProps) {
     socket().text(event);
     await settled();
   };
-  const press = (key: string) => {
+  const press = (key: string, shiftKey = false) => {
     let prevented = false;
     (screen().props.onKeyDown as (e: unknown) => void)({
       key,
       ctrlKey: false,
       altKey: false,
       metaKey: false,
+      shiftKey,
       preventDefault: () => (prevented = true),
     });
     return prevented;
@@ -76,15 +77,19 @@ test("Input is off until the session may write and the viewer turns it on, then 
   await c.say({ type: "attached", name: "olive", writes: true });
   assert.match(c.shown(), /Input is off\. Choose Type/);
   assert.equal(c.press("a"), false);
+  assert.equal(c.press("Tab"), false, "with input off, Tab moves focus");
+  assert.equal(c.press("Escape"), false, "with input off, Escape is left to a surrounding dialog");
   assert.equal(c.paste("reboot\r"), false);
   assert.deepEqual(c.sent(), []);
 
   await click(c.root, "Type");
-  assert.match(c.shown(), /Escape included; Tab leaves it/);
+  assert.match(c.shown(), /Tab and Escape included; Shift\+Tab leaves/);
   assert.equal(c.press("a"), true);
   assert.equal(c.press("Enter"), true);
-  assert.equal(c.press("Tab"), false, "Tab moves focus out rather than going to the port");
-  assert.deepEqual(c.sent(), ["a", "\r"]);
+  assert.equal(c.press("Tab"), true);
+  assert.equal(c.press("Escape"), true);
+  assert.equal(c.press("Tab", true), false, "Shift+Tab moves focus out rather than going to the port");
+  assert.deepEqual(c.sent(), ["a", "\r", "\t", "\x1b"]);
 
   await click(c.root, "Stop typing");
   assert.equal(c.press("b"), false);
@@ -115,11 +120,15 @@ test("A pause keeps the console attached, shows its progress, and refuses input 
   assert.match(c.shown(), /Paused: flashing \(Writing 40%\)/);
   assert.match(c.shown(), /Input is off while the port is paused/);
   assert.equal(c.press("a"), false);
+  const toggle = () => find(c.root, (n) => n.tag === "button" && textOf(n).trim() === "Stop typing");
+  assert.equal(toggle().props.disabled, true, "the viewer's choice holds, unchangeable, through the pause");
+  await click(c.root, "Stop typing");
   await c.say({ type: "refused", message: "paused" });
   assert.match(c.shown(), /Not sent while the port is paused\./);
 
   await c.say({ type: "state", state: "reading", label: "Reading" });
   assert.doesNotMatch(c.shown(), /Not sent/);
+  assert.equal(toggle().props.disabled, false);
   assert.equal(c.press("b"), true);
   assert.deepEqual(c.sent(), ["b"], "nothing typed during the pause was held back");
   assert.equal(Dialled.all.length, 1);
