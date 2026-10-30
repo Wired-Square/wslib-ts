@@ -23,7 +23,7 @@ export type SerialConsoleProps = ({ url: string } | { port: ConsolePort; baud?: 
 export function SerialConsole(props: SerialConsoleProps) {
   const [baud, setBaud] = createSignal(("port" in props && props.baud) || DEFAULT_BAUD);
   const url = () => ("url" in props ? props.url : serialUrl(props.port, baud()));
-  const heading = () => ("url" in props ? props.label : `${props.label} at ${baud()} baud`);
+  const heading = () => ("url" in props ? props.label : `${props.label} (requested ${baud()} baud)`);
 
   return (
     <div class="app-serial">
@@ -58,11 +58,14 @@ function Pane(props: { url: string; heading: string; label: string; readOnly: bo
   const [me, setMe] = createSignal<{ name: string; writes: boolean }>();
   const [people, setPeople] = createSignal<readonly ConsoleUser[]>([]);
   const [refused, setRefused] = createSignal<string>();
+  const [typingOn, setTypingOn] = createSignal(false);
   let pane: HTMLPreElement | undefined;
   let current: Link | undefined;
+  let everOpened = false;
 
   const paused = () => monitor()?.state === "paused";
-  const typing = () => link().is === "open" && Boolean(me()?.writes) && !props.readOnly && !paused();
+  const mayType = () => link().is === "open" && Boolean(me()?.writes) && !props.readOnly;
+  const typing = () => mayType() && typingOn() && !paused();
 
   const show = (paint: () => void) => {
     const following = pane ? pane.scrollHeight - pane.scrollTop - pane.clientHeight < 24 : true;
@@ -91,7 +94,14 @@ function Pane(props: { url: string; heading: string; label: string; readOnly: bo
 
   const connect = () => {
     current = openLink(props.url, {
-      state: setLink,
+      state: (state) => {
+        if (state.is === "open") {
+          setRefused(undefined);
+          if (everOpened) show(() => screen.mark("— reconnected —"));
+          everOpened = true;
+        }
+        setLink(state);
+      },
       output: (bytes, spans) => show(() => screen.output(bytes, spans)),
       event: heard,
     });
@@ -99,7 +109,11 @@ function Pane(props: { url: string; heading: string; label: string; readOnly: bo
   connect();
   onCleanup(() => current?.close());
 
-  const send = (text: string) => typing() && current?.send(encoder.encode(text));
+  const send = (text: string) => {
+    if (!typing() || !current?.send(encoder.encode(text))) return false;
+    setRefused(undefined);
+    return true;
+  };
   const key = (event: KeyboardEvent) => {
     const bytes = keyBytes(event);
     if (bytes !== undefined && send(bytes)) event.preventDefault();
@@ -157,17 +171,35 @@ function Pane(props: { url: string; heading: string; label: string; readOnly: bo
           </For>
         </ul>
       </Show>
-      <p class="app-console__input app-muted">
-        <Switch fallback="Click the console and type, or paste. Everyone attached sees what you send.">
-          <Match when={link().is !== "open"}>Input is off until the console connects.</Match>
-          <Match when={props.readOnly}>Read-only.</Match>
-          <Match when={!me()?.writes}>Read-only: this session can watch but not type.</Match>
-          <Match when={paused()}>
-            Input is off while the port is paused, as for a flash. It comes back when the pause ends.
-          </Match>
-        </Switch>
-      </p>
-      <Show when={refused()}>{(why) => <Notice tone="warn">Not sent: {why()}</Notice>}</Show>
+      <div class="app-console__input">
+        <p class="app-muted">
+          <Switch
+            fallback={
+              "Keys and pastes in the console go to the port, Escape included; Tab leaves it. Everyone attached sees what you send."
+            }
+          >
+            <Match when={link().is !== "open"}>Input is off until the console connects.</Match>
+            <Match when={props.readOnly}>Read-only.</Match>
+            <Match when={!me()?.writes}>Read-only: this session can watch but not type.</Match>
+            <Match when={paused()}>
+              Input is off while the port is paused, as for a flash. It comes back when the pause ends.
+            </Match>
+            <Match when={!typingOn()}>Input is off. Choose Type to send keys and pastes to the port.</Match>
+          </Switch>
+        </p>
+        <Show when={mayType()}>
+          <Button
+            tone="plain"
+            onClick={() => {
+              setTypingOn(!typingOn());
+              if (typingOn()) pane?.focus();
+            }}
+          >
+            {typingOn() ? "Stop typing" : "Type"}
+          </Button>
+        </Show>
+      </div>
+      <Show when={refused()}>{(message) => <Notice tone="warn">{refusal(message())}</Notice>}</Show>
       <pre
         class="app-console__screen"
         ref={pane}
@@ -200,5 +232,21 @@ function Pane(props: { url: string; heading: string; label: string; readOnly: bo
         </For>
       </pre>
     </div>
+  );
+}
+
+const REFUSALS: [RegExp, string][] = [
+  [/paused/i, "Not sent while the port is paused."],
+  [/no active reader/i, "Not sent: nothing is reading this port, so input can't be sent."],
+];
+
+function refusal(message: string): JSX.Element {
+  const known = REFUSALS.find(([pattern]) => pattern.test(message));
+  return known ? (
+    known[1]
+  ) : (
+    <>
+      Not sent. <small class="app-muted">{message}</small>
+    </>
   );
 }

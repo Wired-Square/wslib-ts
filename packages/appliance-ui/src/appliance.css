@@ -317,17 +317,26 @@
 }
 
 .app-console__input {
-  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.25rem 1rem;
   padding: 0.25rem 0.75rem 0.5rem;
   font-size: 0.8125rem;
+}
+
+.app-console__input p {
+  margin: 0;
 }
 
 .app-console > .app-notice {
   margin: 0.75rem;
 }
 
+/* What is left of the viewport once the rest of the console and a dialog's own chrome take theirs. */
 .app-console__screen {
-  height: 22rem;
+  height: clamp(8rem, 100vh - 36rem, 22rem);
   margin: 0;
   padding: 0.75rem;
   overflow: auto;
@@ -357,8 +366,16 @@
   color: var(--app-warn);
 }
 
-.app-console__ink--accent {
-  color: var(--app-console-accent);
+.app-console__ink--blue {
+  color: var(--app-console-ansi-4);
+}
+
+.app-console__ink--magenta {
+  color: var(--app-console-ansi-5);
+}
+
+.app-console__ink--cyan {
+  color: var(--app-console-ansi-6);
 }
 
 .app-console__ink--muted {
@@ -395,12 +412,6 @@
 
 .app-console__who--5 {
   color: var(--app-console-writer-5);
-}
-
-@media (max-width: 40rem) {
-  .app-console__screen {
-    height: 16rem;
-  }
 }
 
 }

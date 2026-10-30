@@ -4,7 +4,7 @@
 
 ### 0.3.5
 
-- `theme.css` defines tokens 0.3.0's seven serial console tokens, which `@wired-square/appliance-ui`'s
+- `theme.css` defines tokens 0.3.0's nine serial console tokens, which `@wired-square/appliance-ui`'s
   `SerialConsole` draws with.
 
 ### 0.3.4
@@ -85,9 +85,9 @@ The component kit from a prior appliance, as its own package.
 
 ### 0.3.0
 
-Seven tokens for `@wired-square/appliance-ui`'s serial console: `--app-console-accent` (ANSI blue, magenta and cyan,
-`var(--app-accent)` by default) and `--app-console-writer-0` to `-5`, the colour each writer's input is drawn in,
-with light and dark values. 45 tokens in all.
+Nine tokens for `@wired-square/appliance-ui`'s serial console, with light and dark values: `--app-console-ansi-4`,
+`-5` and `-6`, ANSI blue, magenta and cyan, which no status token stands for, and `--app-console-writer-0` to `-5`,
+the colour each writer's input is drawn in. 47 tokens in all.
 
 ### 0.2.0
 
@@ -134,14 +134,21 @@ and `constants` are exported from the root. No dependencies and no peers.
 
 - `SerialConsole`: a shared console on the app's `/ws/serial`, given its `url`, or a `port` (`ConsolePort`: `path`
   and `serialNumber`) and an optional `baud`, with a `label`. Given a port it offers the bauds, 115200 by default and
-  74880 for an ESP32's boot ROM, and a new baud reopens it; the first to open a port sets its baud. `readOnly` keeps
-  it from typing, and `warning` is a short caution shown above it.
-- Input goes to the port only once the console is clicked, and only while the session may write. Keys are sent as a
-  terminal sends them, and a paste whole. Everyone attached sees each write, drawn in its writer's colour where the
-  device echoes it, and as a marker naming the writer, never the bytes, where it does not. The attached are listed.
-- The link and the port's state show inline. A console that drops reconnects, waiting up to 15 seconds; one that
-  never opened offers to try again. While the port is paused, as for a flash, the console stays attached and refuses
-  input rather than queueing it.
+  74880 for an ESP32's boot ROM, and a new baud reopens it; the first to open a port sets its baud, so the heading
+  names the baud as requested. `readOnly` keeps it from typing, and `warning` is a short caution shown above it.
+- Input is off until the viewer chooses Type, in each console and for that page only, and only while the session may
+  write; Stop typing turns it off again. Keys are sent as a terminal sends them, Escape included, and a paste whole.
+  Tab leaves the console, and Ctrl+I sends a tab. Everyone attached sees each write, drawn in its writer's colour
+  where the device echoes it, and as a marker naming the writer, never the bytes, where it does not; the device's
+  output after a marker starts a new line. The attached are listed.
+- The link and the port's state show inline. A console that drops reconnects, waiting up to 15 seconds, and marks
+  where it did in the scrollback; one that never opened offers to try again. While the port is paused, as for a
+  flash, the console stays attached and refuses input rather than queueing it.
+- A refusal is said in plain words where it is known, otherwise as "Not sent." with the back end's message beside
+  it, and clears when the viewer next sends or the console reconnects.
+- The scrollback's height follows the viewport's, between 8rem and 22rem, so the console fits in a dialog.
+- ANSI blue, magenta and cyan are drawn in their own colours, not the accent.
+- `applianceProxy` proxies `/ws` too, with its sockets.
 - The kit peer is now ^0.3.5, for the console's tokens.
 
 ### 0.3.1

@@ -1,6 +1,6 @@
 import type { EchoSpan, Who } from "./wire";
 
-export type Ink = "bad" | "good" | "warn" | "accent" | "muted";
+export type Ink = "bad" | "good" | "warn" | "blue" | "magenta" | "cyan" | "muted";
 
 export interface Run {
   text: string;
@@ -18,16 +18,16 @@ const INK: Record<number, Ink> = {
   31: "bad",
   32: "good",
   33: "warn",
-  34: "accent",
-  35: "accent",
-  36: "accent",
+  34: "blue",
+  35: "magenta",
+  36: "cyan",
   90: "muted",
   91: "bad",
   92: "good",
   93: "warn",
-  94: "accent",
-  95: "accent",
-  96: "accent",
+  94: "blue",
+  95: "magenta",
+  96: "cyan",
 };
 
 // CSI (ESC [ … final), OSC (ESC ] … BEL or ESC \), or a two-byte escape.
@@ -48,6 +48,7 @@ export class Scrollback {
   private ink: Ink | undefined;
   private bold = false;
   private returned = false;
+  private noted = false;
 
   constructor(keep = 2000) {
     this.keep = keep;
@@ -64,9 +65,17 @@ export class Scrollback {
     if (at < bytes.length) this.write(bytes.subarray(at));
   }
 
-  /** Inline text of the console's own, marked as `who`'s. */
+  /** Inline text of the console's own, marked as `who`'s; device output after it starts a new line. */
   note(text: string, who: Who): void {
     this.put(text, who, true);
+    this.noted = true;
+  }
+
+  /** A line of the console's own between device output, such as where it reconnected. */
+  mark(text: string): void {
+    if (this.lines.at(-1)!.length) this.newLine();
+    this.lines[this.lines.length - 1] = [{ text, ink: "muted", mark: true }];
+    this.newLine();
   }
 
   write(chunk: Uint8Array | string, who?: Who): void {
@@ -106,6 +115,7 @@ export class Scrollback {
 
   private put(text: string, who?: Who, mark = false): void {
     if (!text) return;
+    if (this.noted && !mark) this.newLine();
     if (this.returned) {
       this.lines[this.lines.length - 1] = [];
       this.returned = false;
@@ -134,6 +144,7 @@ export class Scrollback {
 
   private newLine(): void {
     this.returned = false;
+    this.noted = false;
     this.lines.push([]);
     if (this.lines.length > this.keep) this.lines.splice(0, this.lines.length - this.keep);
   }

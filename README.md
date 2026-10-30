@@ -217,8 +217,8 @@ npm install -D vite vite-plugin-solid
 ```
 
 `applianceVite` sets `base: "./"` for the daemon's `<base href>` and writes a `.gz` beside each compressible file;
-the app passes Solid's plugin. `applianceProxy(target?)` proxies `/api` and `/healthz` to a development stand-in for
-the console, `http://127.0.0.1:8080` by default:
+the app passes Solid's plugin. `applianceProxy(target?)` proxies `/api`, `/healthz` and `/ws`, its sockets included,
+to a development stand-in for the console, `http://127.0.0.1:8080` by default:
 
 ```ts
 import { applianceProxy, applianceVite } from "@wired-square/appliance-ui/vite";

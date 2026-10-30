@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { afterEach, beforeEach, test } from "node:test";
 
 import type { SerialConsoleProps } from "../src/serial/SerialConsole.tsx";
-import { find, load, mount, settled, textOf, within } from "./mount.ts";
+import { click, find, load, mount, settled, textOf, within } from "./mount.ts";
 import { FakeSocket } from "./socket.ts";
 
 class Dialled extends FakeSocket {
@@ -45,24 +45,50 @@ async function opened(props: SerialConsoleProps) {
     });
     return prevented;
   };
+  const paste = (text: string) => {
+    let prevented = false;
+    (screen().props.onPaste as (e: unknown) => void)({
+      clipboardData: { getData: () => text },
+      preventDefault: () => (prevented = true),
+    });
+    return prevented;
+  };
   const sent = () => socket().sent.map((bytes) => new TextDecoder().decode(bytes));
-  return { root, socket, screen, say, press, sent, shown: () => textOf(root) };
+  const buttons = () => [...within(root)].filter((n) => n.tag === "button").map((n) => textOf(n));
+  const writer = async () => {
+    socket().open();
+    await say({ type: "attached", name: "olive", writes: true });
+    await click(root, "Type");
+  };
+  return { root, socket, screen, say, press, paste, sent, buttons, writer, shown: () => textOf(root) };
 }
 
-test("Input is off until the session may write, then a key goes to the port", async () => {
+test("Input is off until the session may write and the viewer turns it on, then a key goes to the port", async () => {
   const c = await opened(URL_PROPS);
   assert.equal(c.socket().url, URL_PROPS.url);
   assert.match(c.shown(), /Input is off until the console connects/);
   c.socket().open();
   await c.say({ type: "attached", name: "olive", writes: false });
   assert.match(c.shown(), /Read-only: this session can watch but not type/);
+  assert.deepEqual(c.buttons(), []);
   assert.equal(c.press("a"), false);
 
   await c.say({ type: "attached", name: "olive", writes: true });
-  assert.match(c.shown(), /Click the console and type, or paste/);
+  assert.match(c.shown(), /Input is off\. Choose Type/);
+  assert.equal(c.press("a"), false);
+  assert.equal(c.paste("reboot\r"), false);
+  assert.deepEqual(c.sent(), []);
+
+  await click(c.root, "Type");
+  assert.match(c.shown(), /Escape included; Tab leaves it/);
   assert.equal(c.press("a"), true);
   assert.equal(c.press("Enter"), true);
+  assert.equal(c.press("Tab"), false, "Tab moves focus out rather than going to the port");
   assert.deepEqual(c.sent(), ["a", "\r"]);
+
+  await click(c.root, "Stop typing");
+  assert.equal(c.press("b"), false);
+  assert.deepEqual(c.buttons(), ["Type"]);
 });
 
 test("The read-only flag keeps a writer from typing", async () => {
@@ -71,38 +97,64 @@ test("The read-only flag keeps a writer from typing", async () => {
   await c.say({ type: "attached", name: "olive", writes: true });
   assert.equal(c.press("a"), false);
   assert.match(c.shown(), /Read-only\./);
+  assert.deepEqual(c.buttons(), []);
   assert.deepEqual(c.sent(), []);
 });
 
-test("A paste is sent whole while the session may write", async () => {
+test("A paste is sent whole while input is on", async () => {
   const c = await opened(URL_PROPS);
-  c.socket().open();
-  await c.say({ type: "attached", name: "olive", writes: true });
-  let prevented = false;
-  (c.screen().props.onPaste as (e: unknown) => void)({
-    clipboardData: { getData: () => "reboot\r" },
-    preventDefault: () => (prevented = true),
-  });
-  assert.equal(prevented, true);
+  await c.writer();
+  assert.equal(c.paste("reboot\r"), true);
   assert.deepEqual(c.sent(), ["reboot\r"]);
 });
 
 test("A pause keeps the console attached, shows its progress, and refuses input rather than queueing it", async () => {
   const c = await opened(URL_PROPS);
-  c.socket().open();
-  await c.say({ type: "attached", name: "olive", writes: true });
+  await c.writer();
   await c.say({ type: "state", state: "paused", label: "Paused: flashing", message: "Writing 40%" });
   assert.match(c.shown(), /Paused: flashing \(Writing 40%\)/);
   assert.match(c.shown(), /Input is off while the port is paused/);
   assert.equal(c.press("a"), false);
-  await c.say({ type: "refused", message: "the port is paused" });
-  assert.match(c.shown(), /Not sent: the port is paused/);
+  await c.say({ type: "refused", message: "paused" });
+  assert.match(c.shown(), /Not sent while the port is paused\./);
 
   await c.say({ type: "state", state: "reading", label: "Reading" });
   assert.doesNotMatch(c.shown(), /Not sent/);
   assert.equal(c.press("b"), true);
   assert.deepEqual(c.sent(), ["b"], "nothing typed during the pause was held back");
   assert.equal(Dialled.all.length, 1);
+});
+
+test("A refusal is said in plain words where it is known, and clears when the viewer next sends", async () => {
+  const c = await opened(URL_PROPS);
+  await c.writer();
+  await c.say({ type: "refused", message: 'no active reader for "/dev/ttyACM0"' });
+  assert.match(c.shown(), /Not sent: nothing is reading this port, so input can't be sent\./);
+  assert.doesNotMatch(c.shown(), /no active reader/);
+
+  assert.equal(c.press("a"), true);
+  await settled();
+  assert.doesNotMatch(c.shown(), /Not sent/);
+
+  await c.say({ type: "refused", message: "unknown peripheral" });
+  assert.match(c.shown(), /Not sent\. unknown peripheral/);
+  const raw = find(c.root, (n) => n.tag === "small");
+  assert.equal(textOf(raw), "unknown peripheral");
+});
+
+test("A reconnect clears a refusal and leaves a marker line in the scrollback", async (t) => {
+  const c = await opened(URL_PROPS);
+  await c.writer();
+  c.socket().binary("boot");
+  await c.say({ type: "refused", message: "paused" });
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  c.socket().drop();
+  t.mock.timers.tick(1000);
+  c.socket().open();
+  await settled();
+  assert.doesNotMatch(c.shown(), /Not sent/);
+  const lines = c.screen().children.map((line) => textOf(line));
+  assert.deepEqual(lines, ["boot\n", "— reconnected —\n", "\n"]);
 });
 
 test("Echoes and markers are drawn as their writer's, and the roster names who is attached", async () => {
@@ -155,7 +207,7 @@ test("Given a port, it offers the bauds, and a new baud reopens the console at i
     warning: "Opening may reset the board.",
   });
   assert.match(c.shown(), /Opening may reset the board\./);
-  assert.match(c.shown(), /Board at 115200 baud/);
+  assert.match(c.shown(), /Board \(requested 115200 baud\)/);
   const first = c.socket();
   assert.equal(first.url, "wss://box.local/apps/hello/ws/serial?address=%2Fdev%2FttyUSB0");
 
@@ -164,5 +216,5 @@ test("Given a port, it offers the bauds, and a new baud reopens the console at i
   await settled();
   assert.equal(first.closed, true);
   assert.equal(new URL(c.socket().url).searchParams.get("baud"), "74880");
-  assert.match(c.shown(), /Board at 74880 baud/);
+  assert.match(c.shown(), /Board \(requested 74880 baud\)/);
 });

@@ -124,7 +124,6 @@ function parse(text: string): ConsoleEvent | undefined {
 const KEYS: Record<string, string> = {
   Enter: "\r",
   Backspace: "\x7f",
-  Tab: "\t",
   Escape: "\x1b",
   ArrowUp: "\x1b[A",
   ArrowDown: "\x1b[B",
@@ -135,7 +134,10 @@ const KEYS: Record<string, string> = {
   Delete: "\x1b[3~",
 };
 
-/** What a terminal sends for a key, or nothing for one it doesn't (Cmd shortcuts, bare modifiers). */
+/**
+ * What a terminal sends for a key, or nothing for one it doesn't (Cmd shortcuts, bare modifiers). Tab is left to
+ * the page, so focus can leave the console; Ctrl+I sends a tab.
+ */
 export function keyBytes(key: Pick<KeyboardEvent, "key" | "ctrlKey" | "altKey" | "metaKey">): string | undefined {
   if (key.metaKey) return undefined;
   if (key.ctrlKey) {

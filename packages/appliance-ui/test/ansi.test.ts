@@ -53,7 +53,7 @@ test("Echoed spans are marked as the writer's, the rest stays the device's", () 
   assert.deepEqual(screen.lines, [[{ text: "$ " }, { text: "ls", who: { by: "alex", colour: 3 } }], [{ text: "ok" }]]);
 });
 
-test("A marker sits inline where the input went and doesn't change the device's colour", () => {
+test("A marker sits inline where the input went, the device's output after it starts a new line in its colour", () => {
   const screen = new Scrollback();
   screen.write("\x1b[33mPassword: ");
   screen.note("⌨alex·8", { by: "alex", colour: 3 });
@@ -62,7 +62,34 @@ test("A marker sits inline where the input went and doesn't change the device's 
     [
       { text: "Password: ", ink: "warn" },
       { text: "⌨alex·8", ink: "warn", who: { by: "alex", colour: 3 }, mark: true },
-      { text: "ok", ink: "warn" },
     ],
+    [{ text: "ok", ink: "warn" }],
   ]);
+});
+
+test("Output that breaks the line after a marker breaks it once, and a carriage return keeps the marker", () => {
+  const screen = new Scrollback();
+  screen.note("⌨alex·1", { by: "alex", colour: 1 });
+  screen.write("\r\n-- stub");
+  screen.note("⌨alex·2", { by: "alex", colour: 1 });
+  screen.write("\rboot");
+  assert.deepEqual(text(screen), ["⌨alex·1", "-- stub⌨alex·2", "boot"]);
+});
+
+test("A console's own line stands apart from the device's output on either side", () => {
+  const screen = new Scrollback();
+  screen.write("boot");
+  screen.mark("— reconnected —");
+  screen.write("ok");
+  assert.deepEqual(screen.lines, [
+    [{ text: "boot" }],
+    [{ text: "— reconnected —", ink: "muted", mark: true }],
+    [{ text: "ok" }],
+  ]);
+});
+
+test("ANSI blue, magenta and cyan each keep their own ink", () => {
+  const screen = new Scrollback();
+  screen.write("\x1b[34mb\x1b[95mm\x1b[36mc");
+  assert.deepEqual(screen.lines[0]!.map((run) => run.ink), ["blue", "magenta", "cyan"]);
 });
