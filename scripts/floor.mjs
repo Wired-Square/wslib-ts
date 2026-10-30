@@ -24,7 +24,7 @@ const sets = [
     name: "appliance-ui",
     floor: { ...solid, vite: "8.0.0", uqr: "0.1.3" },
     tools: ["typescript", "@types/node", "vitest"],
-    siblings: { "@wired-square/kit": "0.3.2", "@wired-square/appliance-types": "0.1.0" },
+    siblings: { "@wired-square/kit": "0.3.3", "@wired-square/appliance-types": "0.1.0" },
     entries: ["src", "test", "tsconfig.json", "tsconfig.build.json"],
     test: ["node", ["--test", "test/*.test.ts"]],
   },

@@ -498,6 +498,18 @@ test("Given links, the brand is the switcher's button, named for its words", asy
   assert.equal([...within(brand)].find((n) => n.tag === "h1"), undefined);
 });
 
+test("The switcher's and the account's triggers carry the kit's chevron, kept out of their names", async (t) => {
+  const { root } = await switching(t, "/apps/hello/x", () => Response.json(apps));
+  const triggers = [...within(root)].filter((n) => n.tag === "button" && n.props["aria-haspopup"] === "menu");
+  assert.deepEqual(
+    triggers.map((n) => [n.props["aria-label"], find(n, (c) => c.props.class === "app-menu__chevron").props["aria-hidden"]]),
+    [
+      ["Hello, Acme, switch app", "true"],
+      ["admin, Admin, account", "true"],
+    ],
+  );
+});
+
 test("Chrome's switcher lists every app it is answered with its icon, the console first, and marks the longest href the path is under", async (t) => {
   const atConsole = await switching(t, "/", () => Response.json(apps));
   assert.deepEqual(await switcherItems(atConsole.root), [

@@ -522,6 +522,14 @@ select.app-field__input {
   color: var(--app-text);
 }
 
+.app-menu__chevron {
+  display: inline-flex;
+}
+
+.app-menu__trigger[aria-expanded="true"] .app-menu__chevron {
+  rotate: 180deg;
+}
+
 /* `inset: auto` undoes the platform's `inset: 0`, which would size the panel
    against the far edge rather than its contents. */
 .app-menu,

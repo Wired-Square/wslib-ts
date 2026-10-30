@@ -153,6 +153,21 @@ test("a current MenuItem says so on the menu item itself, drawn bold as a select
   expect(rule(read("kit.css"), '.app-menu__item[aria-current="page"]')).toMatch(/font-weight: 600;/);
 });
 
+test("an opened Menu focuses its current item, and its first when none is current", () => {
+  const cases: [current: number | undefined, focused: string][] = [[1, "Two"], [undefined, "One"]];
+  for (const [current, focused] of cases) {
+    const root = mount(() => (
+      <Menu aria-label="Apps">
+        <MenuItem current={current === 0} onSelect={() => {}}>One</MenuItem>
+        <MenuItem current={current === 1} onSelect={() => {}}>Two</MenuItem>
+        <MenuItem onSelect={() => {}}>Three</MenuItem>
+      </Menu>
+    ));
+    root.querySelector<HTMLElement>(".app-menu__trigger")!.click();
+    expect(document.activeElement!.textContent).toBe(focused);
+  }
+});
+
 test("MenuItemUnavailable is a focusable menu item that says why it is unavailable", () => {
   const html = mount(() => <MenuItemUnavailable why="scan the card first">Set network…</MenuItemUnavailable>).innerHTML;
   expect(html).toMatch(/^<button [^>]*role="menuitem"/);
@@ -197,4 +212,21 @@ test("an IconSet replaces the glyphs it names below it, keeping the outer set's 
 
   const plain = mount(() => <Menu aria-label="Actions">{null}</Menu>);
   expect(plain.querySelector(".app-menu__trigger")!.textContent).toBe("⋮");
+});
+
+test("a Menu given chevron draws IconSet's chevron after its face, out of its name, and one without draws none", () => {
+  const trigger = (root: HTMLElement) => root.querySelector<HTMLElement>(".app-menu__trigger")!;
+  const plain = trigger(mount(() => <Menu aria-label="admin, Admin, account" trigger="admin">{null}</Menu>));
+  const marked = trigger(mount(() => <Menu aria-label="admin, Admin, account" trigger="admin" chevron>{null}</Menu>));
+  expect(plain.querySelector(".app-menu__chevron")).toBeNull();
+  expect(marked.getAttribute("aria-label")).toBe(plain.getAttribute("aria-label"));
+  expect(marked.innerHTML).toMatch(/^admin<span class="app-menu__chevron" aria-hidden="true"><svg [^>]*viewBox="0 0 24 24"/);
+  expect(rule(read("kit.css"), '.app-menu__trigger[aria-expanded="true"] .app-menu__chevron')).toMatch(/rotate: 180deg;/);
+
+  const own = trigger(mount(() => (
+    <IconSet icons={{ chevron: () => "▾" }}>
+      <Menu aria-label="Actions" chevron>{null}</Menu>
+    </IconSet>
+  )));
+  expect(own.querySelector(".app-menu__chevron")!.textContent).toBe("▾");
 });

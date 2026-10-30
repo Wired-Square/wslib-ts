@@ -13,9 +13,11 @@ export interface KitIcons {
   copy: () => JSX.Element;
   /** `SearchInput`'s clear button. */
   clear: () => JSX.Element;
+  /** `Menu`'s, after a trigger given `chevron`. Optional, so a set written before it still type-checks. */
+  chevron?: () => JSX.Element;
 }
 
-const defaults: KitIcons = {
+const defaults: Required<KitIcons> = {
   schemeSystem: () => (
     <svg viewBox="0 0 24 24" aria-hidden="true">
       <rect x="2" y="3" width="20" height="14" rx="2" />
@@ -80,9 +82,24 @@ const defaults: KitIcons = {
       <path d="m4 4 8 8m0-8-8 8" />
     </svg>
   ),
+  chevron: () => (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      width="1em"
+      height="1em"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    >
+      <path d="m6 9 6 6 6-6" />
+    </svg>
+  ),
 };
 
-const Icons = createContext(defaults);
+const Icons = createContext<Required<KitIcons>>(defaults);
 
 export const useIcons = () => useContext(Icons);
 

@@ -372,17 +372,43 @@ export function Brand(props: { class: string; children?: JSX.Element }) {
   );
 }
 
-/** The box's hostname as a pill, where the daemon sends one. */
+const IPV4 = /^\d{1,3}(\.\d{1,3}){3}$/;
+
+/** `[label, domain]` for a dotted name, or `[name]` for one with no dot or an IP literal. */
+export function hostnameLines(name: string): [string] | [string, string] {
+  const dot = name.indexOf(".");
+  return dot < 0 || IPV4.test(name) || name.includes(":") ? [name] : [name.slice(0, dot), name.slice(dot + 1)];
+}
+
+/** The box's hostname as a chip, where the daemon sends one: its first label over the rest of its domain. */
 export function Hostname() {
   const { branding } = useSession();
   return (
     <Show when={branding()?.hostname}>
-      {(name) => (
-        <span class="app-hostname">
-          <span class="app-visually-hidden">This box: </span>
-          {name()}
-        </span>
-      )}
+      {(name) => {
+        const lines = () => hostnameLines(name());
+        return (
+          <Show
+            when={lines()[1]}
+            fallback={
+              <span class="app-hostname" title={name()}>
+                <span class="app-visually-hidden">This box: </span>
+                {name()}
+              </span>
+            }
+          >
+            {(domain) => (
+              <span class="app-hostname app-hostname--stacked" title={name()}>
+                <span class="app-visually-hidden">This box: {name()}</span>
+                <span aria-hidden="true">{lines()[0]}</span>
+                <span class="app-hostname__domain" aria-hidden="true">
+                  {domain()}
+                </span>
+              </span>
+            )}
+          </Show>
+        );
+      }}
     </Show>
   );
 }
