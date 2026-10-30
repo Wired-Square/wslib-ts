@@ -1,8 +1,8 @@
 # @wired-square/appliance-ui
 
 The appliance's browser half, built on `@wired-square/kit`: the shell and its masthead with the app switcher, the
-Settings screens and their parts, the request and live-feed helpers, a vite config for the appliance, and test
-helpers. Wire types and limits are imported from `@wired-square/appliance-types`, and not re-exported here.
+Settings screens and their parts, a shared serial console, the request and live-feed helpers, a vite config for the
+appliance, and test helpers. Wire types and limits are imported from `@wired-square/appliance-types`, and not re-exported here.
 
 ## Install
 
@@ -22,7 +22,7 @@ npm install -D vite vite-plugin-solid
 
 | Subpath | What |
 |---|---|
-| `.` | The shell, the screens, their parts, and the request, feed and access helpers, as TSX |
+| `.` | The shell, the screens, their parts, `SerialConsole`, and the request, feed and access helpers, as TSX |
 | `./testing` | The kit's `mount` inside a session (`admin` by default), and the sessions `admin`, `behindConsole`, `signedIn` and `viewerSignedIn`, as TSX |
 | `./testing/setup` | The kit's vitest `setupFiles` entry, and an `EventSource` that never connects, as TSX |
 | `./vite` | `applianceVite` and `applianceProxy`, compiled JavaScript with types |
@@ -36,7 +36,7 @@ import, once and in this order, `@wired-square/kit/theme.css`, the app's own tok
 
 ## Peers
 
-- `@wired-square/kit` ^0.3.3
+- `@wired-square/kit` ^0.3.5
 - `@wired-square/appliance-types` ^0.1.0
 - `solid-js` ^1.9.11
 - `vite` ^8.0.0, optional, for `./vite` only

@@ -14,6 +14,9 @@ export { sharedFeed, useFeed } from "./feed";
 export type { FeedHandlers } from "./feed";
 export type { FeedListener, FeedTransport } from "./follow";
 export { debounced, useRefresh } from "./live";
+export { SerialConsole } from "./serial/SerialConsole";
+export type { SerialConsoleProps } from "./serial/SerialConsole";
+export type { ConsolePort } from "./serial/link";
 
 export * from "./parts";
 export * from "./screens";
