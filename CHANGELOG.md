@@ -112,6 +112,14 @@ and `constants` are exported from the root. No dependencies and no peers.
 
 ## `@wired-square/appliance-ui`
 
+### 0.3.1
+
+- The switcher's button and the folded account menu draw `Menu`'s `chevron` in place of the switcher's own, so the
+  kit peer is now ^0.3.3.
+- The hostname, the product's `controls` and the account wrap as one, in `.app-masthead__end`, so the account never
+  takes a row of its own. Below 40rem the folded account's face drops the role badge and the bar's gaps narrow; below
+  22.5rem its face is a glyph. Its name still says the username and the role.
+
 ### 0.3.0
 
 - The masthead's brand, logo, name and maker, is the app switcher's button wherever `GET /api/switcher` gives at

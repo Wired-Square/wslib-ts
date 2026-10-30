@@ -98,6 +98,7 @@ function BrandSwitcher() {
       <div class="app-masthead__brand app-switcher">
         <Menu
           aria-label={[branding()?.app_name, branding()?.manufacturer, "switch app"].filter(Boolean).join(", ")}
+          chevron
           trigger={
             <>
               <img src={fromBase("/api/branding/logo")} alt="" onError={(e) => (e.currentTarget.hidden = true)} />
@@ -105,9 +106,6 @@ function BrandSwitcher() {
                 <span class="app-switcher__name">{branding()?.app_name}</span>
                 <Show when={branding()?.manufacturer}>{(who) => <span class="app-muted">{who()}</span>}</Show>
               </span>
-              <svg class="app-switcher__chevron" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="m6 9 6 6 6-6" />
-              </svg>
             </>
           }
         >
@@ -143,51 +141,72 @@ export function Chrome(props: ChromeProps) {
       <header class="app-masthead">
         <div class="app-masthead__bar">
           <BrandSwitcher />
-          <Hostname />
-          {props.controls}
-          <Show when={me()}>
-            {(who) => {
-              const named = () => (
-                <>
-                  {who().username} <RoleBadge role={who().role} />
-                </>
-              );
-              return (
-                <Show when={isStoreAccount(who())} fallback={<span class="app-muted">{named()}</span>}>
-                  <div class="app-masthead__account">
-                    <span class="app-muted">{named()}</span>
-                    <Show when={props.changePassword}>
-                      <IconButton
-                        label="Change password…"
-                        aria-haspopup="dialog"
-                        onClick={() => setChangingPassword(true)}
-                      >
-                        <svg viewBox="0 0 24 24" aria-hidden="true">
-                          <circle cx="8" cy="15" r="4" />
-                          <path d="m10.8 12.2 9.2-9.2m-3 3 3 3m-6 0 2 2" />
-                        </svg>
-                      </IconButton>
-                    </Show>
-                    <Button pending={signingOut.pending()} onClick={signOut}>
-                      Sign out
-                    </Button>
-                  </div>
-                  <div class="app-masthead__account-menu">
-                    <Menu
-                      aria-label={`${who().username}, ${ROLE_LABELS[who().role]}, account`}
-                      pending={signingOut.pending()}
-                      trigger={named()}
-                    >
+          <div class="app-masthead__end">
+            <Hostname />
+            {props.controls}
+            <Show when={me()}>
+              {(who) => {
+                const named = () => (
+                  <>
+                    {who().username} <RoleBadge role={who().role} />
+                  </>
+                );
+                return (
+                  <Show when={isStoreAccount(who())} fallback={<span class="app-muted">{named()}</span>}>
+                    <div class="app-masthead__account">
+                      <span class="app-muted">{named()}</span>
                       <Show when={props.changePassword}>
-                        <MenuItem onSelect={() => setChangingPassword(true)}>Change password…</MenuItem>
+                        <IconButton
+                          label="Change password…"
+                          aria-haspopup="dialog"
+                          onClick={() => setChangingPassword(true)}
+                        >
+                          <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <circle cx="8" cy="15" r="4" />
+                            <path d="m10.8 12.2 9.2-9.2m-3 3 3 3m-6 0 2 2" />
+                          </svg>
+                        </IconButton>
                       </Show>
-                      <MenuItem onSelect={signOut}>Sign out</MenuItem>
-                    </Menu>
-                  </div>
-                </Show>
-              );
-            }}
-          </Show>
+                      <Button pending={signingOut.pending()} onClick={signOut}>
+                        Sign out
+                      </Button>
+                    </div>
+                    <div class="app-masthead__account-menu">
+                      <Menu
+                        aria-label={`${who().username}, ${ROLE_LABELS[who().role]}, account`}
+                        pending={signingOut.pending()}
+                        chevron
+                        trigger={
+                          <>
+                            <svg
+                              class="app-masthead__who"
+                              viewBox="0 0 24 24"
+                              width="1.2em"
+                              height="1.2em"
+                              fill="none"
+                              stroke="currentColor"
+                              stroke-width="2"
+                              stroke-linecap="round"
+                              aria-hidden="true"
+                            >
+                              <circle cx="12" cy="8" r="4" />
+                              <path d="M4 21a8 8 0 0 1 16 0" />
+                            </svg>
+                            <span class="app-masthead__username">{who().username}</span> <RoleBadge role={who().role} />
+                          </>
+                        }
+                      >
+                        <Show when={props.changePassword}>
+                          <MenuItem onSelect={() => setChangingPassword(true)}>Change password…</MenuItem>
+                        </Show>
+                        <MenuItem onSelect={signOut}>Sign out</MenuItem>
+                      </Menu>
+                    </div>
+                  </Show>
+                );
+              }}
+            </Show>
+          </div>
         </div>
         <div ref={nav} class="app-masthead__nav">{props.nav}</div>
       </header>

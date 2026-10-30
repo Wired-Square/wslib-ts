@@ -93,7 +93,7 @@ test("Chrome names the box in a pill beside the brand, not in it, and shows none
   const named = await chrome(branded("widget-1234"));
   assert.match(
     named.html,
-    /<div class="app-masthead__brand">.*?<\/div><\/div><span class="app-hostname"><span class="app-visually-hidden">This box: <\/span>widget-1234<\/span>/,
+    /<div class="app-masthead__brand">.*?<\/div><\/div><div class="app-masthead__end"><span class="app-hostname"><span class="app-visually-hidden">This box: <\/span>widget-1234<\/span>/,
   );
 
   const unnamed = await chrome(branded(null));
@@ -117,7 +117,7 @@ test("Chrome renders the account twice, as controls and as a menu under the user
   assert.match(html, /<div class="app-masthead__account">.*Sign out.*<\/div>/);
   assert.match(
     html,
-    /<div class="app-masthead__account-menu"><button[^>]*aria-label="admin, Admin, account"[^>]*aria-haspopup="menu"[^>]*>admin.*?Admin<\/span><\/button>/,
+    /<div class="app-masthead__account-menu"><button[^>]*aria-label="admin, Admin, account"[^>]*aria-haspopup="menu"[^>]*><svg class="app-masthead__who"[^>]*aria-hidden="true">.*?<\/svg><span class="app-masthead__username">admin<\/span>.*?Admin<\/span><span class="app-menu__chevron" aria-hidden="true">/,
   );
 
   const css = readFileSync(new URL("../src/shell.css", import.meta.url), "utf8");
@@ -127,11 +127,22 @@ test("Chrome renders the account twice, as controls and as a menu under the user
   assert.match(narrow, /\.app-masthead__nav \.app-tablist \{\n {4}flex-wrap: nowrap;\n {4}overflow: auto hidden;/);
 });
 
+test("shell.css narrows the folded account's face to the username, then to a glyph, and wraps the hostname, controls and account as one", () => {
+  const css = readFileSync(new URL("../src/shell.css", import.meta.url), "utf8");
+  const narrow = css.slice(css.indexOf("@media (max-width: 40rem)"));
+  const narrower = css.slice(css.indexOf("@media (width < 22.5rem)"));
+  assert.match(css, /\.app-masthead__end \{\n {2}flex: auto;\n {2}display: flex;\n {2}flex-wrap: wrap;/);
+  assert.match(css, /\.app-masthead__who \{\n {2}display: none;/);
+  assert.match(narrow, /\.app-masthead__account-menu \.app-badge \{\n {4}display: none;/);
+  assert.match(narrower, /\.app-masthead__username \{\n {4}display: none;.*\.app-masthead__who \{\n {4}display: block;/s);
+});
+
 test("shell.css draws the switcher's button as the brand, with icons sized whether or not they load", () => {
   const css = readFileSync(new URL("../src/shell.css", import.meta.url), "utf8");
   assert.match(css, /\.app-switcher \.app-menu__trigger \{[^}]*font-weight: inherit;[^}]*color: var\(--app-text\);/);
   assert.match(css, /\.app-switcher \.app-switcher__icon \{\n {2}inline-size: 1\.25rem;\n {2}block-size: 1\.25rem;/);
   assert.doesNotMatch(css, /56rem/);
+  assert.doesNotMatch(css, /app-switcher__chevron/);
 });
 
 test("overhang is how far a tab sticks out of its strip, and nothing when it is in view", async () => {

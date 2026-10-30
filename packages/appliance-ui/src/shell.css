@@ -39,7 +39,6 @@ body {
 }
 
 .app-masthead__brand {
-  margin-inline-end: auto;
   display: flex;
   align-items: center;
   gap: 0.75rem;
@@ -73,12 +72,17 @@ body {
   border: 1px solid transparent;
 }
 
-/* Beside the name, with the account controls still pushed to the end. */
-.app-masthead__brand:has(+ .app-hostname) {
-  margin-inline-end: 0;
+/* One unit, so the account wraps with the hostname rather than onto a row of its own. */
+.app-masthead__end {
+  flex: auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem 1rem;
 }
 
-.app-masthead__bar > .app-hostname {
+.app-masthead__end > .app-hostname {
   margin-inline-end: auto;
 }
 
@@ -100,16 +104,6 @@ body {
 
 .app-switcher__name {
   font-weight: 600;
-}
-
-.app-switcher__chevron {
-  inline-size: 1em;
-  block-size: 1em;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
 }
 
 .app-switcher .app-menu__item {
@@ -143,9 +137,22 @@ body {
   display: none;
 }
 
+.app-masthead__who {
+  display: none;
+}
+
 /* Narrow: the account in a menu, the tabs in one row that scrolls, its focus
    ring drawn inside where the scroller would clip it. */
 @media (max-width: 40rem) {
+  .app-masthead__bar,
+  .app-masthead__end {
+    column-gap: 0.5rem;
+  }
+
+  .app-masthead__account-menu .app-badge {
+    display: none;
+  }
+
   .app-masthead__account {
     display: none;
   }
@@ -167,6 +174,21 @@ body {
 
   .app-masthead__nav .app-tab:focus-visible {
     box-shadow: inset var(--app-focus);
+  }
+}
+
+/* Narrower still: the account's face is a glyph, its name and role kept in its label. */
+@media (width < 22.5rem) {
+  .app-masthead__end {
+    column-gap: 0.25rem;
+  }
+
+  .app-masthead__username {
+    display: none;
+  }
+
+  .app-masthead__who {
+    display: block;
   }
 }
 

@@ -196,7 +196,7 @@ runs `--check` when the generated files or the script change.
 ## `@wired-square/appliance-ui`
 
 The appliance's browser half, installed from the same registry: the shell, the Settings screens and their parts, and
-test helpers. Its peers are the kit ^0.3.2, appliance-types ^0.1.0, solid-js ^1.9.11 and, for `./vite` only, vite
+test helpers. Its peers are the kit ^0.3.3, appliance-types ^0.1.0, solid-js ^1.9.11 and, for `./vite` only, vite
 ^8.0.0. `uqr`, its QR encoder, comes with it. Like the kit, it ships TSX behind the `solid` condition, so the app
 installs `vite-plugin-solid` ^2.11.10 too.
 
@@ -255,7 +255,7 @@ git config core.hooksPath scripts/hooks
 `npm run floor` (needs the network) reruns the typecheck, the tests and the fixture in a temp install of the oldest
 versions the ranges claim, once per package: for the kit, solid-js 1.9.11, vitest 4.1.2, vite 6.4.1, and
 vite-plugin-solid 2.11.10 with babel-preset-solid 1.9.10; for appliance-ui, the same Solid floors, vite 8.0.0, uqr
-0.1.3, and the kit and appliance-types packed from this checkout, which must be at 0.3.2 and 0.1.0. The kit's run
+0.1.3, and the kit and appliance-types packed from this checkout, which must be at 0.3.3 and 0.1.0. The kit's run
 leaves appliance-ui out of the fixture.
 
 `check` builds `dist/` (the kit's compiled `./core`, the tokens, mcp-bridge, appliance-types and appliance-ui's
