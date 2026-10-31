@@ -2,6 +2,13 @@
 
 ## `@wired-square/kit`
 
+### 0.3.4
+
+- `count` takes an irregular plural: `count(2, "person", "people")`.
+- `size` dashes a missing size, as `num` does, and shows GiB from 1024 MiB.
+- `day` shows a date-only `YYYY-MM-DD` as written, where it had read as UTC midnight and shown the day before west
+  of UTC.
+
 ### 0.3.3
 
 - An opened `Menu` focuses its `current` item, and its first item when none is current.
