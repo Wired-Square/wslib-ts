@@ -60,8 +60,9 @@ async function switcherLinks(): Promise<AppLink[]> {
   }
 }
 
+// A router may render an app's root without the trailing slash its href has.
 const longestPrefixOf = (path: string, links: AppLink[]): AppLink | undefined =>
-  links.filter((link) => path.startsWith(link.href)).sort((a, b) => b.href.length - a.href.length)[0];
+  links.filter((link) => `${path.replace(/\/$/, "")}/`.startsWith(link.href)).sort((a, b) => b.href.length - a.href.length)[0];
 
 // The same objects for unchanged links, so a refetch while the menu is open
 // keeps its items, and the focus the menu put on the first.

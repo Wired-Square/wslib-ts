@@ -143,6 +143,11 @@ and `constants` are exported from the root. No dependencies and no peers.
 
 ## `@wired-square/appliance-ui`
 
+### 0.4.2
+
+- At an app's root rendered without its trailing slash, `Chrome`'s switcher marks that app as current, not the
+  console, so choosing the console loads it.
+
 ### 0.4.1
 
 - `SerialConsole` is open once the back end attaches it, not when the socket opens. A console it refuses before
