@@ -303,6 +303,99 @@ describe("createChart", () => {
     expect(readout().hidden).toBe(true);
   });
 
+  test("draws each band full height behind the grid, clipped to the window, and nothing of one outside it", () => {
+    createChart(
+      container,
+      options({
+        bands: [
+          { from: from - HOUR, to: from + HOUR, colour: "--app-bad" },
+          { from: from + 3 * HOUR, to: from + 4 * HOUR, colour: "--app-warn", opacity: 0.4 },
+          { from: to, to: to + HOUR, colour: "--app-good" },
+        ],
+      }),
+    );
+    const left = plotLeft();
+    const right = Number(container.querySelector(".app-chart-time line")!.getAttribute("x2"));
+    const hour = (right - left) / 6;
+    const rects = [...container.querySelectorAll<SVGElement>(".app-chart-bands rect")];
+    expect(rects).toHaveLength(2);
+    expect(Number(rects[0]!.getAttribute("x"))).toBe(left);
+    expect(Number(rects[0]!.getAttribute("width"))).toBeCloseTo(hour);
+    expect(Number(rects[1]!.getAttribute("x"))).toBeCloseTo(left + 3 * hour);
+    expect(rects[0]!.style.getPropertyValue("fill")).toBe("var(--app-bad)");
+    expect(rects[0]!.style.getPropertyValue("fill-opacity")).toBe("0.2");
+    expect(rects[1]!.style.getPropertyValue("fill-opacity")).toBe("0.4");
+    const grid = container.querySelector(".app-chart-grid line")!;
+    expect(Number(rects[0]!.getAttribute("y"))).toBe(8);
+    expect(Number(rects[0]!.getAttribute("height"))).toBe(200 - 34 - 8);
+    const order = [...svg().children].map((node) => node.getAttribute("class"));
+    expect(order.indexOf("app-chart-bands")).toBeLessThan(order.indexOf("app-chart-grid"));
+    expect(grid.compareDocumentPosition(series("a")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  test("draws the zero line only when zero is strictly inside the y range", () => {
+    const signed = { id: "s", label: "Signed", kind: "line" as const, colour: "--app-good" as const, points: [[from, -2], [to, 6]] as [number, number][] };
+    const chart = createChart(container, options({ series: [signed] }));
+    const zero = container.querySelector<SVGElement>(".app-chart-zero")!;
+    expect(zero.style.getPropertyValue("stroke")).toBe("var(--app-border-strong)");
+    const ticks = [...container.querySelectorAll(".app-chart-grid text")].map((t) => t.textContent);
+    expect(Number(zero.getAttribute("y1"))).toBe(Number(container.querySelectorAll(".app-chart-grid line")[ticks.indexOf("0")]!.getAttribute("y1")));
+    chart.update(options());
+    expect(container.querySelector(".app-chart-zero")).toBeNull();
+    chart.update(options({ series: [{ ...signed, points: [[from, -6], [to, -1]] }] }));
+    expect(container.querySelector(".app-chart-zero")).toBeNull();
+  });
+
+  const spiky = {
+    id: "p",
+    label: "Price",
+    kind: "step" as const,
+    colour: "--app-warn" as const,
+    points: [[from, 10], [from + HOUR, 1500], [from + 2 * HOUR, 20], [from + 5 * HOUR, 900], [to, 950]] as [number, number][],
+  };
+
+  test("a cap tops the axis out at or below it, clips higher values and marks each run's peak inside the plot", () => {
+    createChart(container, options({ series: [spiky], yCap: 25 }));
+    const ticks = [...container.querySelectorAll(".app-chart-grid text")].map((t) => Number(t.textContent));
+    expect(Math.max(...ticks)).toBeLessThanOrEqual(25);
+    const peaks = [...series("p").querySelectorAll<SVGElement>(".app-chart-peak")];
+    expect(peaks.map((peak) => peak.textContent)).toEqual(["↑ 1500", "↑ 950"]);
+    expect(peaks[0]!.style.getPropertyValue("fill")).toBe("var(--app-warn)");
+    const left = plotLeft();
+    const right = Number(container.querySelector(".app-chart-time line")!.getAttribute("x2"));
+    expect(Number(peaks[0]!.getAttribute("x"))).toBeCloseTo(left + (right - left) * 1.5 / 6);
+    const half = ("↑ 950".length * 6.5) / 2;
+    expect(Number(peaks[1]!.getAttribute("x"))).toBeCloseTo(right - half);
+    expect(series("p").closest("svg")!.style.getPropertyValue("overflow")).toBe("hidden");
+    hover(left + (right - left) * 1.5 / 6);
+    expect(readout().querySelector('[data-series="p"]')!.textContent).toBe("Price 1500 kW");
+  });
+
+  test("peaks that would overlap stack downwards, and apart ones share the top row", () => {
+    const echo = { ...spiky, id: "q", label: "Echo", colour: "--app-good" as const, points: spiky.points.map(([t, v]): [number, number] => [t, v - 300]) };
+    createChart(container, options({ series: [spiky, echo], yCap: 25 }));
+    const at = (id: string) => [...series(id).querySelectorAll(".app-chart-peak")].map((peak) => Number(peak.getAttribute("y")));
+    expect(at("p")).toEqual([19, 19]);
+    expect(at("q")).toEqual([32, 32]);
+  });
+
+  test("without a cap, or with one above every value, no peak is marked", () => {
+    const chart = createChart(container, options({ series: [spiky] }));
+    expect(container.querySelector(".app-chart-peak")).toBeNull();
+    chart.update(options({ series: [spiky], yCap: 2000 }));
+    expect(container.querySelector(".app-chart-peak")).toBeNull();
+  });
+
+  test("a cap at or below yMin is ignored", () => {
+    for (const yCap of [0, -5]) {
+      container.replaceChildren();
+      createChart(container, options({ series: [spiky], yMin: 0, yCap }));
+      const ticks = [...container.querySelectorAll(".app-chart-grid text")].map((t) => Number(t.textContent));
+      expect(Math.max(...ticks)).toBeGreaterThanOrEqual(1500);
+      expect(container.querySelector(".app-chart-peak")).toBeNull();
+    }
+  });
+
   test("pointer moves redraw the readout once per frame", () => {
     createChart(container, options());
     pointer("pointermove", 200);

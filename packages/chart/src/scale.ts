@@ -95,19 +95,48 @@ export function extent(series: readonly { points: readonly Point[]; kind: Kind }
   return [lo, hi];
 }
 
-/** A domain widened to round numbers, with three to five evenly spaced ticks across it. */
-export function valueTicks([lo, hi]: [number, number]): { domain: [number, number]; ticks: number[] } {
-  const magnitude = 10 ** Math.floor(Math.log10((hi - lo) / 4));
+/** A domain widened to round numbers, with three to five evenly spaced ticks across it; a cap above `lo` tops it out. */
+export function valueTicks([lo, hi]: [number, number], cap = Infinity): { domain: [number, number]; ticks: number[] } {
+  const ceiling = cap > lo ? cap : Infinity;
+  const top = Math.min(hi, ceiling);
+  const magnitude = 10 ** Math.floor(Math.log10((top - lo) / 4));
   for (const factor of [1, 2, 2.5, 5, 10, 20]) {
     const step = factor * magnitude;
     const start = Math.floor(lo / step + 1e-9);
-    const stop = Math.ceil(hi / step - 1e-9);
+    const rounded = Math.ceil(top / step - 1e-9);
+    const stop = rounded * step > ceiling ? Math.floor(ceiling / step + 1e-9) : rounded;
     if (stop - start <= 4) {
       const ticks = Array.from({ length: stop - start + 1 }, (_, i) => clean((start + i) * step));
-      return { domain: [ticks[0]!, ticks.at(-1)!], ticks };
+      return { domain: [ticks[0]!, Math.max(ticks.at(-1)!, top)], ticks };
     }
   }
-  return { domain: [lo, hi], ticks: [lo, hi] };
+  return { domain: [lo, top], ticks: [lo, top] };
+}
+
+/** The part of `range` inside the window, or nothing when they do not overlap. */
+export function clip(range: Window, window: Window): Window | undefined {
+  const from = Math.max(range.from, window.from);
+  const to = Math.min(range.to, window.to);
+  return to > from ? { from, to } : undefined;
+}
+
+/** The highest point of each unbroken run of values above `cap` inside the window; a step's peak is the middle of its hold. */
+export function peaks(points: readonly Point[], kind: Kind, { from, to }: Window, cap: number): [number, number][] {
+  const out: [number, number][] = [];
+  let peak: [number, number] | undefined;
+  const inside: Point[] = [[from, valueAt(points, from, kind)], ...points.filter(([t]) => t > from && t < to), [to, valueAt(points, to, kind)]];
+  inside.forEach(([t, v], i) => {
+    if (finite(v) && v > cap) {
+      const held = kind === "step" && (i + 2 < inside.length || finite(inside[i + 1]?.[1]));
+      const at = held ? (t + inside[i + 1]![0]) / 2 : t;
+      if (!peak || v > peak[1]) peak = [at, v];
+    } else if (peak) {
+      out.push(peak);
+      peak = undefined;
+    }
+  });
+  if (peak) out.push(peak);
+  return out;
 }
 
 const clean = (n: number) => Number(n.toPrecision(12));

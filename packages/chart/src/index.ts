@@ -1,9 +1,11 @@
 import {
   areaPath,
+  clip,
   clock,
   extent,
   finite,
   linePath,
+  peaks,
   runs,
   scale,
   timeTicks,
@@ -27,14 +29,27 @@ export interface Series {
   colour: `--${string}`;
 }
 
+/** A full-height tint over a time range, coloured like a series. */
+export interface Band {
+  from: number;
+  to: number;
+  colour: Series["colour"];
+  /** The fill's opacity; by default an area's, 0.2. */
+  opacity?: number;
+}
+
 export interface ChartOptions {
   window: Window;
   series: readonly Series[];
+  /** Drawn behind the grid and the series, in order. */
+  bands?: readonly Band[];
   unit: string;
   now?: number;
   formatValue?: (value: number) => string;
   /** The y axis reaches down to at least this value. */
   yMin?: number;
+  /** The y axis tops out at or below this; higher values are clipped and their peaks marked. */
+  yCap?: number;
   /** The y axis's width in px, so stacked charts share a time axis; by default it fits the y labels. */
   yAxisWidth?: number;
 }
@@ -60,6 +75,7 @@ const MARGIN = { top: 8, right: 16, bottom: 34 };
 const CHAR_WIDTH = 6.5;
 const TICK_SPACING = 64;
 const MUTED = "var(--app-text-muted)";
+const AREA_OPACITY = 0.2;
 
 const styled = <E extends Element & ElementCSSInlineStyle>(node: E, style: Style) => {
   for (const [name, value] of Object.entries(style)) node.style.setProperty(name, value);
@@ -138,7 +154,7 @@ export function createChart(container: HTMLElement, initial: ChartOptions): Char
     layout = undefined;
     if (width <= 0 || height <= 0 || !Number.isFinite(from) || !Number.isFinite(to) || !(to > from)) return;
 
-    const values = valueTicks(extent(shown.map(({ series, points }) => ({ points, kind: series.kind })), options.window, options.yMin));
+    const values = valueTicks(extent(shown.map(({ series, points }) => ({ points, kind: series.kind })), options.window, options.yMin), options.yCap);
     const format = options.formatValue ?? defaultFormat(values.ticks[1]! - values.ticks[0]!);
     const labels = values.ticks.map(format);
     const left = finite(options.yAxisWidth) ? Math.max(0, options.yAxisWidth) : Math.max(...labels.map((text) => text.length)) * CHAR_WIDTH + 12;
@@ -150,11 +166,26 @@ export function createChart(container: HTMLElement, initial: ChartOptions): Char
     const y = scale(values.domain, [bottom, top]);
     layout = { left, right, top, bottom, time: scale([left, right], [from, to]), format };
 
+    const bands = draw(svg, "g", { class: "app-chart-bands" });
+    for (const band of options.bands ?? []) {
+      const inside = clip(band, options.window);
+      if (!inside) continue;
+      draw(
+        bands,
+        "rect",
+        { x: x(inside.from), y: top, width: x(inside.to) - x(inside.from), height: bottom - top },
+        { fill: `var(${band.colour})`, "fill-opacity": String(band.opacity ?? AREA_OPACITY) },
+      );
+    }
+
     const grid = draw(svg, "g", { class: "app-chart-grid" });
     values.ticks.forEach((value, i) => {
       draw(grid, "line", { x1: left, x2: right, y1: y(value), y2: y(value) }, { stroke: "var(--app-border)" });
       label(grid, left - 6, y(value) + 4, labels[i]!, "end");
     });
+    if (values.domain[0] < 0 && values.domain[1] > 0) {
+      draw(grid, "line", { class: "app-chart-zero", x1: left, x2: right, y1: y(0), y2: y(0) }, { stroke: "var(--app-border-strong)" });
+    }
 
     const axis = draw(svg, "g", { class: "app-chart-time" });
     draw(axis, "line", { x1: left, x2: right, y1: bottom, y2: bottom }, { stroke: "var(--app-border-strong)" });
@@ -173,12 +204,13 @@ export function createChart(container: HTMLElement, initial: ChartOptions): Char
       { x: left, y: top, width: right - left, height: bottom - top, viewBox: `${left} ${top} ${right - left} ${bottom - top}` },
       { overflow: "hidden" },
     );
+    const markers: [number, number][][] = [];
     for (const { series, points } of shown) {
       const group = draw(plot, "g", { class: "app-chart-series", "data-series": series.id });
       const vertices = runs(points, series.kind).map((run) => run.map(([t, v]): [number, number] => [x(t), y(v)]));
       const colour = `var(${series.colour})`;
       if (series.kind === "area") {
-        draw(group, "path", { d: areaPath(vertices, baseline) }, { fill: colour, "fill-opacity": "0.2", stroke: "none" });
+        draw(group, "path", { d: areaPath(vertices, baseline) }, { fill: colour, "fill-opacity": String(AREA_OPACITY), stroke: "none" });
       }
       draw(
         group,
@@ -186,6 +218,20 @@ export function createChart(container: HTMLElement, initial: ChartOptions): Char
         { d: linePath(vertices) },
         { fill: "none", stroke: colour, "stroke-width": "1.5", "stroke-linejoin": "round", "stroke-linecap": "round" },
       );
+      for (const [t, v] of peaks(points, series.kind, options.window, values.domain[1])) {
+        const text = `↑ ${format(v)}`;
+        const half = (text.length * CHAR_WIDTH) / 2;
+        const at = Math.min(Math.max(x(t), left + half), right - half);
+        const row = markers.findIndex((spans) => spans.every(([a, b]) => at + half < a || at - half > b));
+        const free = row === -1 ? markers.push([]) - 1 : row;
+        markers[free]!.push([at - half, at + half]);
+        draw(group, "text", { class: "app-chart-peak", x: at, y: top + 11 + free * 13, "text-anchor": "middle" }, {
+          fill: colour,
+          stroke: "var(--app-surface)",
+          "stroke-width": "3",
+          "paint-order": "stroke",
+        }).textContent = text;
+      }
     }
 
     const { now } = options;
