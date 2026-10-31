@@ -192,7 +192,7 @@ test("a wheel zoom mid pane drag is kept by the drag's next step", () => {
   pointer(root, "pointerup", 160, 100);
 });
 
-test("a camera move mid node drag keeps the node under the pointer at the new zoom", () => {
+test("a camera move mid node drag is not undone by the drag's next step", () => {
   const { root, canvas } = setup({ viewport: { x: 0, y: 0, zoom: 1 }, maxZoom: 2 });
   canvas.setNodes([node("a", 0, 0)]);
   const element = root.querySelector('[data-id="a"]')!;
@@ -213,6 +213,35 @@ test("a wheel zoom waiting to settle reports before a later move takes the camer
   void canvas.setViewport({ x: 300, y: 0, zoom: 1 }, { duration: 400 });
   expect(onMoveEnd.mock.calls).toEqual([[zoomed]]);
   layout.advance(100);
+  vi.advanceTimersByTime(150);
+  expect(onMoveEnd).toHaveBeenCalledOnce();
+  vi.useRealTimers();
+});
+
+test("a camera move mid pinch is not undone by the pinch's next step", async () => {
+  const { root, canvas } = setup({ viewport: { x: 0, y: 0, zoom: 1 } });
+  const touch = (type: string, pointerId: number, x: number) => pointer(root, type, x, 100, { pointerId, pointerType: "touch" });
+  touch("pointerdown", 1, 150);
+  touch("pointerdown", 2, 250);
+  touch("pointermove", 1, 100);
+  await canvas.setViewport({ x: 50, y: 0, zoom: 1 });
+  const under = canvas.screenToCanvas({ x: 175, y: 100 });
+  touch("pointermove", 2, 300);
+  expect(canvas.getViewport().zoom).toBeCloseTo(4 / 3);
+  expect(canvas.screenToCanvas({ x: 200, y: 100 }).x).toBeCloseTo(under.x);
+  touch("pointerup", 1, 100);
+  touch("pointerup", 2, 300);
+});
+
+test("a wheel zoom mid pane drag is reported once, when the drag ends", () => {
+  vi.useFakeTimers();
+  const onMoveEnd = vi.fn();
+  const { root, canvas } = setup({ viewport: { x: 0, y: 0, zoom: 1 }, onMoveEnd });
+  pointer(root, "pointerdown", 100, 100);
+  pointer(root, "pointermove", 150, 100);
+  root.dispatchEvent(new WheelEvent("wheel", { bubbles: true, cancelable: true, clientX: 150, clientY: 100, deltaY: -100 }));
+  pointer(root, "pointerup", 150, 100);
+  expect(onMoveEnd.mock.calls).toEqual([[canvas.getViewport()]]);
   vi.advanceTimersByTime(150);
   expect(onMoveEnd).toHaveBeenCalledOnce();
   vi.useRealTimers();

@@ -163,7 +163,7 @@ test("children that come and go leave the canvas's own layers alone", () => {
   expect(root.querySelector(".app-canvas-panel")).not.toBeNull();
 });
 
-test("Canvas wears the app's class and style beside its own classes", () => {
+test("Canvas wears the app's class and style beside its own classes, and a blank class adds none", () => {
   const layout = fakeLayout();
   const [tall, setTall] = createSignal("board tall");
   const root = mount(() => (
@@ -174,4 +174,6 @@ test("Canvas wears the app's class and style beside its own classes", () => {
   expect(element.style.height).toBe("300px");
   setTall("board");
   expect([...element.classList].sort()).toEqual(["app-canvas", "board"]);
+  setTall(" ");
+  expect([...element.classList]).toEqual(["app-canvas"]);
 });

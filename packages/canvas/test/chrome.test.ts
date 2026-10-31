@@ -117,3 +117,20 @@ test("the minimap keeps its scale while it is dragged, then reframes", () => {
   pointer(map, "pointerup", 30, 10);
   expect(viewBox()).not.toBe(before);
 });
+
+test("a minimap drag follows only its own pointer, and ends on a move with no button held", () => {
+  const onMoveEnd = vi.fn();
+  const { root, canvas, layout } = setup({ viewport: { x: 0, y: 0, zoom: 1 }, minimap: {}, onMoveEnd });
+  canvas.setNodes([node("a", 0, 0)]);
+  layout.settle();
+  const map = root.querySelector(".app-canvas__minimap")!;
+  pointer(map, "pointerdown", 10, 10);
+  pointer(map, "pointermove", 20, 10, { pointerId: 2 });
+  expect(canvas.getViewport().x).toBe(0);
+  pointer(map, "pointermove", 20, 10);
+  const moved = canvas.getViewport();
+  pointer(document.body, "pointermove", 30, 10, { buttons: 0 });
+  expect(onMoveEnd).toHaveBeenCalledOnce();
+  pointer(document.body, "pointermove", 40, 10);
+  expect(canvas.getViewport()).toEqual(moved);
+});

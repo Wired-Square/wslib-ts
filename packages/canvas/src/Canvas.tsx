@@ -104,7 +104,7 @@ export function Canvas<D, E = unknown>(props: CanvasProps<D, E>) {
 
   return (
     <Scope.Provider value={{ canvas, set: () => {} }}>
-      <div ref={root} classList={props.class ? { [props.class]: true } : {}} style={props.style}>
+      <div ref={root} classList={props.class?.trim() ? { [props.class]: true } : {}} style={props.style}>
         <div class="app-canvas__children">{props.children}</div>
       </div>
     </Scope.Provider>

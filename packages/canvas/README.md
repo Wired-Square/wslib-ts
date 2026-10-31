@@ -77,13 +77,16 @@ canvas.setEdges(edges); // { id, source, target, data, className? }
   `setCentre`, `setViewport` and `fitView` return a promise that settles when the move lands or is interrupted, and
   every move but the mount fit ends with `onMoveEnd`.
 - **Opting out.** An element with the class `nopan` neither pans nor starts a drag or a click, and one with `nowheel`
-  keeps its own wheel. The controls, the minimap and panels wear both.
+  keeps its own wheel. The controls, the minimap and panels wear both. Stopping a pointer event's propagation in node
+  content does not opt out of clicks and drags, since the canvas listens in the capture phase; use `nopan`.
 - **Panels.** `<div class="app-canvas-panel" data-position="top-left">` sits in a corner (`top-left`, `top-right`,
   `bottom-left`, `bottom-right`) of its nearest positioned ancestor, inside the canvas or beside it. Panels sit at
   `z-index: 3`, above the pane and the minimap; an app may override it.
 
 `measure`, `observe` and `frame` are seams for tests: jsdom lays nothing out, observes no sizes and has no animation
 frames, so a test gives each element a size, says when it changes, and runs the frames.
+Synthetic pointer events must set `buttons`, since a `pointermove` with `buttons: 0` ends a drag; testing-library's
+events and `new PointerEvent` default it to 0.
 
 ## Solid
 

@@ -64,21 +64,22 @@ export function minimap(host: ChromeHost) {
   let rects: Rect[] = [];
 
   // The map's frame holds still while it is dragged, so the pointer keeps one scale.
-  let drag: { from: Point; moved: boolean } | undefined;
+  let drag: { pointer: number; from: Point; moved: boolean } | undefined;
   frame.addEventListener("pointerdown", (event) => {
-    if (event.button === 0) drag = { from: { x: event.clientX, y: event.clientY }, moved: false };
+    if (event.button === 0) drag = { pointer: event.pointerId, from: { x: event.clientX, y: event.clientY }, moved: false };
   });
   const move = (event: PointerEvent) => {
-    if (!drag) return;
+    if (drag?.pointer !== event.pointerId) return;
+    if (event.buttons === 0) return end(event);
     const { zoom } = host.viewport();
     const dx = drag.from.x - event.clientX;
     const dy = drag.from.y - event.clientY;
     if (!dx && !dy) return;
-    drag = { from: { x: event.clientX, y: event.clientY }, moved: true };
+    drag = { ...drag, from: { x: event.clientX, y: event.clientY }, moved: true };
     host.panBy({ x: dx * unitsPerPixel * zoom, y: dy * unitsPerPixel * zoom });
   };
-  const end = () => {
-    if (!drag) return;
+  const end = (event: PointerEvent) => {
+    if (drag?.pointer !== event.pointerId) return;
     const { moved } = drag;
     drag = undefined;
     if (!moved) return;

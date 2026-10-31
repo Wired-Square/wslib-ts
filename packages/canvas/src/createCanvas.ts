@@ -126,7 +126,7 @@ interface EdgeRecord<E> {
 
 type Gesture<D> =
   | { kind: "pane"; pointer: number; from: Point; last: Point; moved: boolean }
-  | { kind: "pinch"; from: [Point, Point]; origin: Viewport }
+  | { kind: "pinch"; last: [Point, Point] }
   | { kind: "node"; pointer: number; record: NodeRecord<D>; from: Point; last: Point; moved: boolean }
   | { kind: "connect"; pointer: number; record: NodeRecord<D>; from: Point; line: SVGPathElement };
 
@@ -259,11 +259,11 @@ export function createCanvas<D = unknown, E = unknown>(root: HTMLElement, option
     const margin = OVERSCAN / viewport.zoom;
     const area = { x: seen.x - margin, y: seen.y - margin, width: seen.width + 2 * margin, height: seen.height + 2 * margin };
     const visible = (rect: Rect) => size.width > 0 && size.height > 0 && intersects(area, rect);
-    // Walked backwards so each node shown goes in before the next one shown, keeping the layer in the nodes' order.
-    let next: Element | null = null;
-    for (const record of [...nodes.values()].reverse()) {
+    // The layer stays in the nodes' order: each node shown goes in before the next one already mounted.
+    let next = nodeLayer.firstElementChild;
+    for (const record of nodes.values()) {
+      if (record.dispose) next = record.element.nextElementSibling;
       show(record, record === dragged() || visible(rectOf(record)), next);
-      if (record.dispose) next = record.element;
     }
     for (const record of edges.values()) {
       const source = nodes.get(record.edge.source);
@@ -286,7 +286,11 @@ export function createCanvas<D = unknown, E = unknown>(root: HTMLElement, option
     sync();
   }
 
-  const settle = () => options.onMoveEnd?.(viewport);
+  function settle() {
+    clearTimeout(wheelTimer);
+    wheelTimer = undefined;
+    options.onMoveEnd?.(viewport);
+  }
 
   function interrupt() {
     animation++;
@@ -297,10 +301,7 @@ export function createCanvas<D = unknown, E = unknown>(root: HTMLElement, option
   /** Interrupts, and a wheel zoom still waiting to settle reports now. */
   function takeCamera() {
     interrupt();
-    if (wheelTimer === undefined) return;
-    clearTimeout(wheelTimer);
-    wheelTimer = undefined;
-    settle();
+    if (wheelTimer !== undefined) settle();
   }
 
   function moveTo(next: Viewport, duration = 0): Promise<void> {
@@ -353,10 +354,7 @@ export function createCanvas<D = unknown, E = unknown>(root: HTMLElement, option
     interrupt();
     apply(zoomTo(viewport, viewport.zoom * wheelFactor(event.deltaY, event.deltaMode, event.ctrlKey), about, limits));
     clearTimeout(wheelTimer);
-    wheelTimer = setTimeout(() => {
-      wheelTimer = undefined;
-      settle();
-    }, WHEEL_SETTLE);
+    wheelTimer = setTimeout(settle, WHEEL_SETTLE);
   }
 
   const host: ChromeHost = {
@@ -382,10 +380,7 @@ export function createCanvas<D = unknown, E = unknown>(root: HTMLElement, option
   const created = [...root.children].filter((element) => !existing.has(element));
 
   function nodeUnder(point: Point, except: NodeRecord<D>) {
-    return [...nodeLayer.children]
-      .reverse()
-      .map((element) => byElement.get(element)!)
-      .find((record) => record !== except && contains(rectOf(record), point));
+    return [...nodes.values()].reverse().find((record) => record !== except && contains(rectOf(record), point));
   }
 
   function endGesture() {
@@ -400,7 +395,7 @@ export function createCanvas<D = unknown, E = unknown>(root: HTMLElement, option
     pointers.set(event.pointerId, client(event));
     if (gesture?.kind === "pane" && pointers.size === 2) {
       const [a, b] = [...pointers.values()] as [Point, Point];
-      gesture = { kind: "pinch", from: [a, b], origin: viewport };
+      gesture = { kind: "pinch", last: [a, b] };
       return;
     }
     if (gesture) return;
@@ -428,12 +423,12 @@ export function createCanvas<D = unknown, E = unknown>(root: HTMLElement, option
     switch (gesture.kind) {
       case "pinch": {
         const [a, b] = [...pointers.values()] as [Point, Point];
-        const [fromA, fromB] = gesture.from;
-        const before = local(midpoint(fromA, fromB));
+        const [lastA, lastB] = gesture.last;
+        gesture.last = [a, b];
+        const before = local(midpoint(lastA, lastB));
         const now = local(midpoint(a, b));
-        const { origin: start } = gesture;
-        const moved = { ...start, x: start.x + now.x - before.x, y: start.y + now.y - before.y };
-        apply(zoomTo(moved, (start.zoom * distance(a, b)) / (distance(fromA, fromB) || 1), now, limits));
+        const moved = { ...viewport, x: viewport.x + now.x - before.x, y: viewport.y + now.y - before.y };
+        apply(zoomTo(moved, (viewport.zoom * distance(a, b)) / (distance(lastA, lastB) || 1), now, limits));
         return;
       }
       case "connect": {
