@@ -211,7 +211,8 @@ test("a wheel zoom waiting to settle reports before a later move takes the camer
   root.dispatchEvent(new WheelEvent("wheel", { bubbles: true, cancelable: true, clientX: 0, clientY: 0, deltaY: -100 }));
   const zoomed = canvas.getViewport();
   void canvas.setViewport({ x: 300, y: 0, zoom: 1 }, { duration: 400 });
-  expect(onMoveEnd.mock.calls).toEqual([[zoomed]]);
+  expect(onMoveEnd).toHaveBeenCalledTimes(1);
+  expect(onMoveEnd).toHaveBeenCalledWith(zoomed);
   layout.advance(100);
   vi.advanceTimersByTime(150);
   expect(onMoveEnd).toHaveBeenCalledOnce();
@@ -241,7 +242,8 @@ test("a wheel zoom mid pane drag is reported once, when the drag ends", () => {
   pointer(root, "pointermove", 150, 100);
   root.dispatchEvent(new WheelEvent("wheel", { bubbles: true, cancelable: true, clientX: 150, clientY: 100, deltaY: -100 }));
   pointer(root, "pointerup", 150, 100);
-  expect(onMoveEnd.mock.calls).toEqual([[canvas.getViewport()]]);
+  expect(onMoveEnd).toHaveBeenCalledTimes(1);
+  expect(onMoveEnd).toHaveBeenCalledWith(canvas.getViewport());
   vi.advanceTimersByTime(150);
   expect(onMoveEnd).toHaveBeenCalledOnce();
   vi.useRealTimers();
