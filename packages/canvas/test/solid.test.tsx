@@ -123,3 +123,55 @@ test("useCanvas outside any canvas says what it needs", () => {
   }
   expect(() => mount(() => <Lost />)).toThrow("useCanvas needs a CanvasScope or a Canvas around it");
 });
+
+test("a node scrolled out of view and back shows its content once", async () => {
+  const layout = fakeLayout();
+  let canvas: ReturnType<typeof useCanvas> | undefined;
+  function Inside() {
+    canvas = useCanvas();
+    return null;
+  }
+  const root = mount(() => (
+    <Canvas
+      nodes={[card("a", 0, "First")]}
+      viewport={{ x: 0, y: 0, zoom: 1 }}
+      measure={layout.measure}
+      observe={layout.observe}
+      node={(node) => <p class="face">{node().data.title}</p>}
+    >
+      <Inside />
+    </Canvas>
+  ));
+  await canvas!()!.setViewport({ x: -9000, y: 0, zoom: 1 });
+  await canvas!()!.setViewport({ x: 0, y: 0, zoom: 1 });
+  expect(root.querySelectorAll('[data-id="a"] .face')).toHaveLength(1);
+});
+
+test("children that come and go leave the canvas's own layers alone", () => {
+  const layout = fakeLayout();
+  const [panel, setPanel] = createSignal(true);
+  const root = mount(() => (
+    <Canvas nodes={[]} viewport={{ x: 0, y: 0, zoom: 1 }} measure={layout.measure} observe={layout.observe} controls node={() => null}>
+      {panel() && <CanvasPanel position="top-left">panel</CanvasPanel>}
+    </Canvas>
+  ));
+  setPanel(false);
+  expect(root.querySelector(".app-canvas-panel")).toBeNull();
+  expect(root.querySelector(".app-canvas__pane")).not.toBeNull();
+  expect(root.querySelector(".app-canvas__controls")).not.toBeNull();
+  setPanel(true);
+  expect(root.querySelector(".app-canvas-panel")).not.toBeNull();
+});
+
+test("Canvas wears the app's class and style beside its own classes", () => {
+  const layout = fakeLayout();
+  const [tall, setTall] = createSignal("board tall");
+  const root = mount(() => (
+    <Canvas nodes={[]} class={tall()} style={{ height: "300px" }} viewport={{ x: 0, y: 0, zoom: 1 }} measure={layout.measure} observe={layout.observe} node={() => null} />
+  ));
+  const element = root.querySelector<HTMLElement>(".app-canvas")!;
+  expect([...element.classList].sort()).toEqual(["app-canvas", "board", "tall"]);
+  expect(element.style.height).toBe("300px");
+  setTall("board");
+  expect([...element.classList].sort()).toEqual(["app-canvas", "board"]);
+});

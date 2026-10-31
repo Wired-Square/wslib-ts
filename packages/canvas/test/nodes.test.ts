@@ -152,3 +152,109 @@ test("destroy takes down every node and what the canvas added", () => {
   expect([...root.children]).toEqual([own]);
   expect(root.className).toBe("");
 });
+
+test("a node re-shown after scrolling out of view keeps its place in the stacking order, and drops land on the top one", async () => {
+  const onConnect = vi.fn();
+  const { root, canvas, layout } = setup({
+    viewport: { x: 0, y: 0, zoom: 1 },
+    onConnect,
+    mount(element, mounted) {
+      element.innerHTML = mounted.id === "c" ? `<span class="canvas-source"></span>` : "";
+      return () => {};
+    },
+  });
+  canvas.setNodes([node("a", 0, 0), node("b", 900, 0), node("c", 900, 300)]);
+  await canvas.setViewport({ x: -1000, y: 0, zoom: 1 });
+  await canvas.setViewport({ x: 0, y: 0, zoom: 1 });
+  const order = () => [...root.querySelectorAll<HTMLElement>(".app-canvas__node")].map((e) => e.dataset.id);
+  expect(order()).toEqual(["a", "b", "c"]);
+
+  canvas.setNodes([node("a", 0, 0), node("b", 0, 0), node("c", 900, 300)]);
+  layout.settle();
+  const handle = root.querySelector(".canvas-source")!;
+  pointer(handle, "pointerdown", 905, 305);
+  pointer(handle, "pointerup", 10, 10);
+  expect(onConnect).toHaveBeenCalledWith("c", "b");
+});
+
+test("a release the content stops from bubbling still ends the drag", () => {
+  const onNodeDragEnd = vi.fn();
+  const { root, canvas } = setup({
+    viewport: { x: 0, y: 0, zoom: 1 },
+    onNodeDragEnd,
+    mount(element) {
+      element.innerHTML = `<span class="grip"></span>`;
+      element.firstElementChild!.addEventListener("pointerup", (event) => event.stopPropagation());
+      return () => {};
+    },
+  });
+  canvas.setNodes([node("a", 0, 0)]);
+  drag(at(root, "a").querySelector(".grip")!, [10, 10], 40, 0);
+  expect(onNodeDragEnd).toHaveBeenCalledWith(expect.objectContaining({ id: "a" }), { x: 40, y: 0 });
+  expect(at(root, "a").classList.contains("is-dragging")).toBe(false);
+});
+
+test("a move with no button held ends a drag whose release was missed", () => {
+  const onNodeDragEnd = vi.fn();
+  const { root, canvas } = setup({ viewport: { x: 0, y: 0, zoom: 1 }, onNodeDragEnd });
+  canvas.setNodes([node("a", 0, 0)]);
+  const element = at(root, "a");
+  pointer(element, "pointerdown", 10, 10);
+  pointer(element, "pointermove", 50, 10);
+  pointer(element, "pointermove", 90, 10, { buttons: 0 });
+  expect(onNodeDragEnd).toHaveBeenCalledWith(expect.objectContaining({ id: "a" }), { x: 40, y: 0 });
+  pointer(element, "pointermove", 120, 10);
+  expect(canvas.getNode("a")).toMatchObject({ x: 40, y: 0 });
+});
+
+test("a touch whose node is removed mid-drag leaves no pointer behind to spoil the next pinch", () => {
+  const { root, canvas } = setup({ viewport: { x: 0, y: 0, zoom: 1 } });
+  const touch = (target: Element, type: string, pointerId: number, x: number) =>
+    pointer(target, type, x, 300, { pointerId, pointerType: "touch" });
+  canvas.setNodes([node("a", 0, 280)]);
+  touch(at(root, "a"), "pointerdown", 1, 10);
+  touch(at(root, "a"), "pointermove", 1, 40);
+  canvas.setNodes([]);
+  touch(root, "pointerdown", 2, 300);
+  touch(root, "pointerdown", 3, 400);
+  touch(root, "pointermove", 3, 500);
+  expect(canvas.getViewport().zoom).toBe(2);
+});
+
+test("a native drag starting inside a node is prevented, and one inside a nopan element is not", () => {
+  const { root, canvas } = setup({
+    viewport: { x: 0, y: 0, zoom: 1 },
+    mount(element) {
+      element.innerHTML = `<img><a class="nopan" href="#">link</a>`;
+      return () => {};
+    },
+  });
+  canvas.setNodes([node("a", 0, 0)]);
+  const dragStart = (target: Element) => {
+    const event = new Event("dragstart", { bubbles: true, cancelable: true });
+    target.dispatchEvent(event);
+    return event.defaultPrevented;
+  };
+  expect(dragStart(at(root, "a").querySelector("img")!)).toBe(true);
+  expect(dragStart(at(root, "a").querySelector("a")!)).toBe(false);
+});
+
+test("a hovered node that is culled or removed is reported as left", async () => {
+  const onNodeLeave = vi.fn();
+  const { root, canvas } = setup({ viewport: { x: 0, y: 0, zoom: 1 }, onNodeLeave });
+  canvas.setNodes([node("a", 0, 0), node("b", 100, 0)]);
+  at(root, "a").dispatchEvent(new PointerEvent("pointerenter"));
+  await canvas.setViewport({ x: -9000, y: 0, zoom: 1 });
+  expect(onNodeLeave).toHaveBeenCalledWith(expect.objectContaining({ id: "a" }));
+  await canvas.setViewport({ x: 0, y: 0, zoom: 1 });
+  at(root, "b").dispatchEvent(new PointerEvent("pointerenter"));
+  canvas.setNodes([node("a", 0, 0)]);
+  expect(onNodeLeave).toHaveBeenLastCalledWith(expect.objectContaining({ id: "b" }));
+  expect(onNodeLeave).toHaveBeenCalledTimes(2);
+});
+
+test("a node not yet measured is mounted when its assumed size reaches into view", () => {
+  const { mounted, canvas } = setup({ viewport: { x: 0, y: 0, zoom: 1 } });
+  canvas.setNodes([node("wide", -300, 0)]);
+  expect(mounted.has("wide")).toBe(true);
+});

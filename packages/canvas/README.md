@@ -26,7 +26,9 @@ npm install @wired-square/canvas
 | `./canvas.css` | The canvas's styles, in the cascade layer `canvas` |
 
 Import `@wired-square/kit/theme.css`, which defines the `--app-canvas-*` tokens, then `canvas.css`, once, in the entry
-module. Every colour the canvas draws is one of those tokens.
+module. Every colour the canvas draws is one of those tokens. `canvas.css` reads `--app-canvas-bg`, `-dot`,
+`-connection`, `-chrome`, `-chrome-text`, `-chrome-hover`, `-chrome-border`, `-minimap-node`, `-minimap-mask` and
+`-minimap-view`, and kit's `--app-radius`, `--app-shadow` and `--app-focus`, with no fallbacks.
 
 ## The core
 
@@ -37,7 +39,7 @@ const canvas = createCanvas(element, {
   minZoom: 0.2,
   maxZoom: 2.5,
   viewport: saved, // without one, it fits the first nodes given
-  unmeasuredSize: { width: 220, height: 160 },
+  unmeasuredSize: { width: 220, height: 160 }, // 200 by 100 by default
   background: { gap: 28, size: 1.5 },
   controls: true,
   minimap: { nodeColour: (node) => node.data.colour },
@@ -55,6 +57,9 @@ canvas.setEdges(edges); // { id, source, target, data, className? }
 - **Nodes.** Only the nodes in view are mounted, each in a `.app-canvas__node` wearing its `className`. `setNodes`
   matches by id: an unchanged node object is skipped, and a changed one keeps its element and its mount. `mount` runs
   once per showing, so content that changes reads the app's current node itself, a React portal or a Solid accessor.
+  The element is kept between showings, and `mount`'s dispose owns clearing it.
+- **Classes.** A node's app classes arrive only through `node.className`, which replaces the node element's whole
+  class on each update. Nodes stack in the order `setNodes` first gave them.
 - **Sizes** are measured by a `ResizeObserver` and kept after a node scrolls away. `getNode(id)` and `getNodes()`
   give each node's live position and its `size`, `undefined` until it has been measured; `unmeasuredSize` stands in
   for culling and fitting until then.
@@ -62,7 +67,8 @@ canvas.setEdges(edges); // { id, source, target, data, className? }
   passes again mid-drag keeps the drag's position.
 - **Edges** mount when the span of their two nodes is in view. `draw` runs with the two nodes' rectangles whenever
   either moves or resizes, or the edge changes; `floatingAnchors(source, target)` gives where the line between their
-  centres crosses each border, and the side. `label` is an HTML element in canvas space for a tag.
+  centres crosses each border, and the side. `label` is an HTML element in canvas space for a tag; labels take pointer
+  events, and a press on one pans the canvas.
 - **Connecting** starts on a press on an element with the class `canvas-source` inside a node. The canvas wears
   `is-connecting` while the line is drawn, and a drop on any other node calls `onConnect(source, target)`. A drop on
   the empty pane does nothing.
@@ -73,7 +79,8 @@ canvas.setEdges(edges); // { id, source, target, data, className? }
 - **Opting out.** An element with the class `nopan` neither pans nor starts a drag or a click, and one with `nowheel`
   keeps its own wheel. The controls, the minimap and panels wear both.
 - **Panels.** `<div class="app-canvas-panel" data-position="top-left">` sits in a corner (`top-left`, `top-right`,
-  `bottom-left`, `bottom-right`) of its nearest positioned ancestor, inside the canvas or beside it.
+  `bottom-left`, `bottom-right`) of its nearest positioned ancestor, inside the canvas or beside it. Panels sit at
+  `z-index: 3`, above the pane and the minimap; an app may override it.
 
 `measure`, `observe` and `frame` are seams for tests: jsdom lays nothing out, observes no sizes and has no animation
 frames, so a test gives each element a size, says when it changes, and runs the frames.
@@ -91,7 +98,8 @@ import { Canvas, CanvasPanel, CanvasScope, useCanvas } from "@wired-square/canva
 ```
 
 `Canvas` takes `createCanvas`'s options as props, reading the settings at mount and the callbacks when they fire;
-remount it, through a keyed `Show`, to start a new camera. `node` and `edge` render once per showing with accessors
+remount it, through a keyed `Show`, to start a new camera. `class` and `style` go on the canvas element beside its own
+classes, and `.app-canvas` fills its parent's height. `node` and `edge` render once per showing with accessors
 that follow the node, the edge and the geometry. `useCanvas()` gives an accessor to the handle of the `Canvas` in the
 nearest `CanvasScope`, or of the `Canvas` around it.
 

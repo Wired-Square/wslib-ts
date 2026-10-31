@@ -6,7 +6,7 @@ export interface ChromeHost {
   root: HTMLElement;
   viewport(): Viewport;
   size(): Size;
-  measure(element: Element): Size;
+  measure(element: HTMLElement): Size;
   panBy(delta: Point): void;
   settle(): void;
   zoomBy(factor: number, duration: number): void;
@@ -57,28 +57,40 @@ export function minimap(host: ChromeHost) {
   const map = svg("svg", "app-canvas__minimap-map", frame);
   const nodes = svg("g", "", map);
   const mask = svg("path", "app-canvas__minimap-mask", map);
-  const view = svg("rect", "app-canvas__minimap-view", map);
+  const shownBox = svg("rect", "app-canvas__minimap-view", map);
+  let size = host.measure(frame);
+  let all: Rect | undefined;
   let unitsPerPixel = 1;
   let rects: Rect[] = [];
 
-  let dragFrom: Point | undefined;
+  // The map's frame holds still while it is dragged, so the pointer keeps one scale.
+  let drag: { from: Point; moved: boolean } | undefined;
   frame.addEventListener("pointerdown", (event) => {
-    if (event.button === 0) dragFrom = { x: event.clientX, y: event.clientY };
+    if (event.button === 0) drag = { from: { x: event.clientX, y: event.clientY }, moved: false };
   });
   const move = (event: PointerEvent) => {
-    if (!dragFrom) return;
+    if (!drag) return;
     const { zoom } = host.viewport();
-    host.panBy({ x: (dragFrom.x - event.clientX) * unitsPerPixel * zoom, y: (dragFrom.y - event.clientY) * unitsPerPixel * zoom });
-    dragFrom = { x: event.clientX, y: event.clientY };
+    const dx = drag.from.x - event.clientX;
+    const dy = drag.from.y - event.clientY;
+    if (!dx && !dy) return;
+    drag = { from: { x: event.clientX, y: event.clientY }, moved: true };
+    host.panBy({ x: dx * unitsPerPixel * zoom, y: dy * unitsPerPixel * zoom });
   };
   const end = () => {
-    if (!dragFrom) return;
-    dragFrom = undefined;
+    if (!drag) return;
+    const { moved } = drag;
+    drag = undefined;
+    if (!moved) return;
+    view();
     host.settle();
   };
-  document.addEventListener("pointermove", move);
-  document.addEventListener("pointerup", end);
-  document.addEventListener("pointercancel", end);
+  const listeners = [
+    ["pointermove", move],
+    ["pointerup", end],
+    ["pointercancel", end],
+  ] as const;
+  for (const [type, listener] of listeners) document.addEventListener(type, listener, true);
   frame.addEventListener(
     "wheel",
     (event) => {
@@ -89,7 +101,27 @@ export function minimap(host: ChromeHost) {
     { passive: false },
   );
 
+  function view() {
+    if (!size.width || !size.height) return;
+    const shown = visibleRect(host.viewport(), host.size());
+    if (!drag || !all) {
+      const bounds = boundsOf([...rects, shown])!;
+      unitsPerPixel = (1 + 2 * MARGIN) * Math.max(bounds.width / size.width, bounds.height / size.height);
+      const width = size.width * unitsPerPixel;
+      const height = size.height * unitsPerPixel;
+      all = { x: bounds.x - (width - bounds.width) / 2, y: bounds.y - (height - bounds.height) / 2, width, height };
+      map.setAttribute("viewBox", `${all.x} ${all.y} ${all.width} ${all.height}`);
+    }
+    mask.setAttribute("d", `${box(all)}${box(shown)}`);
+    for (const [name, value] of Object.entries(shown)) shownBox.setAttribute(name, String(value));
+  }
+
   return {
+    frame,
+    view,
+    resize() {
+      size = host.measure(frame);
+    },
     nodes(next: readonly MinimapNode[]) {
       rects = next.map(({ rect }) => rect);
       nodes.replaceChildren(
@@ -101,23 +133,8 @@ export function minimap(host: ChromeHost) {
         }),
       );
     },
-    view() {
-      const size = host.measure(frame);
-      if (!size.width || !size.height) return;
-      const shown = visibleRect(host.viewport(), host.size());
-      const bounds = boundsOf([...rects, shown])!;
-      unitsPerPixel = (1 + 2 * MARGIN) * Math.max(bounds.width / size.width, bounds.height / size.height);
-      const width = size.width * unitsPerPixel;
-      const height = size.height * unitsPerPixel;
-      const all = { x: bounds.x - (width - bounds.width) / 2, y: bounds.y - (height - bounds.height) / 2, width, height };
-      map.setAttribute("viewBox", `${all.x} ${all.y} ${all.width} ${all.height}`);
-      mask.setAttribute("d", `${box(all)}${box(shown)}`);
-      for (const [name, value] of Object.entries(shown)) view.setAttribute(name, String(value));
-    },
     destroy() {
-      document.removeEventListener("pointermove", move);
-      document.removeEventListener("pointerup", end);
-      document.removeEventListener("pointercancel", end);
+      for (const [type, listener] of listeners) document.removeEventListener(type, listener, true);
     },
   };
 }

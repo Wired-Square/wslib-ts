@@ -22,8 +22,8 @@ const sets = [
   },
   {
     name: "canvas",
-    floor: { ...solid, vitest: "4.1.2", vite: "6.4.1" },
-    tools: ["jsdom", "typescript", "@types/node"],
+    floor: solid,
+    tools: ["jsdom", "typescript", "@types/node", "vitest", "vite"],
     entries: ["src", "test", "tsconfig.json", "tsconfig.build.json", "vitest.config.ts"],
     test: ["npx", ["vitest", "run"]],
     fixture: { FIXTURE_KIT_ONLY: "1" },

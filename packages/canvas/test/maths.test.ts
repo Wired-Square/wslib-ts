@@ -81,3 +81,8 @@ test("rectangles sharing a centre anchor there rather than at NaN", () => {
   const { source } = floatingAnchors(rect, rect);
   expect(source).toEqual({ x: 50, y: 25, side: "right" });
 });
+
+test("an empty rectangle's anchor stays on the line between the centres", () => {
+  const point = { x: 10, y: 10, width: 0, height: 0 };
+  expect(floatingAnchors(point, { ...point, x: 100 }).source).toMatchObject({ y: 10, side: "right" });
+});

@@ -75,7 +75,7 @@ export interface CanvasOptions<D = unknown, E = unknown> {
   viewport?: Viewport;
   minZoom?: number;
   maxZoom?: number;
-  /** The size assumed for a node not yet measured, for culling and fitting. */
+  /** The size assumed for a node not yet measured, for culling and fitting; 200 by 100 by default. */
   unmeasuredSize?: Size;
   background?: { gap: number; size: number };
   controls?: boolean;
@@ -91,7 +91,7 @@ export interface CanvasOptions<D = unknown, E = unknown> {
   onConnect?(source: string, target: string): void;
   onMoveEnd?(viewport: Viewport): void;
   /** Seams for tests: an element's layout size, a resize observer, and an animation frame. */
-  measure?(element: Element): Size;
+  measure?(element: HTMLElement): Size;
   observe?(onResize: (elements: readonly Element[]) => void): SizeObserver;
   frame?(step: (now: number) => void): void;
 }
@@ -102,7 +102,6 @@ export interface CanvasHandle<D = unknown, E = unknown> {
   getNode(id: string): MeasuredNode<D> | undefined;
   getNodes(): MeasuredNode<D>[];
   getViewport(): Viewport;
-  getZoom(): number;
   setViewport(viewport: Viewport, options?: MoveOptions): Promise<void>;
   setCentre(x: number, y: number, options?: MoveOptions & { zoom?: number }): Promise<void>;
   fitView(options?: FitOptions): Promise<void>;
@@ -126,9 +125,9 @@ interface EdgeRecord<E> {
 }
 
 type Gesture<D> =
-  | { kind: "pane"; pointer: number; from: Point; origin: Viewport; moved: boolean }
+  | { kind: "pane"; pointer: number; from: Point; last: Point; moved: boolean }
   | { kind: "pinch"; from: [Point, Point]; origin: Viewport }
-  | { kind: "node"; pointer: number; record: NodeRecord<D>; from: Point; origin: Point; moved: boolean }
+  | { kind: "node"; pointer: number; record: NodeRecord<D>; from: Point; last: Point; moved: boolean }
   | { kind: "connect"; pointer: number; record: NodeRecord<D>; from: Point; line: SVGPathElement };
 
 const CLICK_SLOP = 3;
@@ -141,8 +140,7 @@ const midpoint = (a: Point, b: Point) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) /
 const client = (event: MouseEvent) => ({ x: event.clientX, y: event.clientY });
 const sameRect = (a: Rect, b: Rect) => a.x === b.x && a.y === b.y && a.width === b.width && a.height === b.height;
 
-const layoutSize = (element: Element): Size =>
-  element instanceof HTMLElement ? { width: element.offsetWidth, height: element.offsetHeight } : element.getBoundingClientRect();
+const layoutSize = (element: HTMLElement): Size => ({ width: element.offsetWidth, height: element.offsetHeight });
 
 const resizeObserver = (onResize: (elements: readonly Element[]) => void): SizeObserver =>
   new ResizeObserver((entries) => onResize(entries.map((entry) => entry.target)));
@@ -152,7 +150,8 @@ export function createCanvas<D = unknown, E = unknown>(root: HTMLElement, option
   const limits = { minZoom: options.minZoom ?? 0.5, maxZoom: options.maxZoom ?? 2 };
   const measure = options.measure ?? layoutSize;
   const frame = options.frame ?? ((step: (now: number) => void) => void requestAnimationFrame(step));
-  const unmeasured = options.unmeasuredSize ?? { width: 0, height: 0 };
+  const unmeasured = options.unmeasuredSize ?? { width: 200, height: 100 };
+  const clampZoom = (next: Viewport): Viewport => ({ ...next, zoom: clamp(next.zoom, limits.minZoom, limits.maxZoom) });
 
   const existing = new Set(root.children);
   root.classList.add("app-canvas");
@@ -166,10 +165,12 @@ export function createCanvas<D = unknown, E = unknown>(root: HTMLElement, option
   const byElement = new WeakMap<Element, NodeRecord<D>>();
   const edges = new Map<string, EdgeRecord<E>>();
   const pointers = new Map<number, Point>();
-  let viewport = options.viewport ?? { x: 0, y: 0, zoom: 1 };
+  let viewport = clampZoom(options.viewport ?? { x: 0, y: 0, zoom: 1 });
   let size = measure(root);
   let gesture: Gesture<D> | undefined;
+  let hovered: NodeRecord<D> | undefined;
   let animation = 0;
+  let aim: Viewport | undefined;
   let wheelTimer: ReturnType<typeof setTimeout> | undefined;
   let mapDirty = true;
   // "pending" until the first nodes arrive, then "estimated" until they are measured, when it fits once more.
@@ -186,9 +187,13 @@ export function createCanvas<D = unknown, E = unknown>(root: HTMLElement, option
         size = measure(root);
         continue;
       }
+      if (element === map?.frame) {
+        map.resize();
+        continue;
+      }
       const record = byElement.get(element);
       if (!record?.dispose) continue;
-      const next = measure(element);
+      const next = measure(record.element);
       if (record.size && record.size.width === next.width && record.size.height === next.height) continue;
       record.size = next;
       mapDirty = true;
@@ -207,13 +212,20 @@ export function createCanvas<D = unknown, E = unknown>(root: HTMLElement, option
     record.element.style.transform = `translate(${record.x}px, ${record.y}px)`;
   }
 
-  function show(record: NodeRecord<D>, visible: boolean) {
+  function leave(record: NodeRecord<D>) {
+    if (hovered !== record) return;
+    hovered = undefined;
+    options.onNodeLeave?.(record.node);
+  }
+
+  function show(record: NodeRecord<D>, visible: boolean, before: Element | null = null) {
     if (visible === Boolean(record.dispose)) return;
     if (visible) {
-      nodeLayer.append(record.element);
+      nodeLayer.insertBefore(record.element, before);
       record.dispose = options.mount(record.element, record.node);
       observer.observe(record.element);
     } else {
+      leave(record);
       observer.unobserve(record.element);
       record.dispose!();
       record.dispose = undefined;
@@ -247,7 +259,12 @@ export function createCanvas<D = unknown, E = unknown>(root: HTMLElement, option
     const margin = OVERSCAN / viewport.zoom;
     const area = { x: seen.x - margin, y: seen.y - margin, width: seen.width + 2 * margin, height: seen.height + 2 * margin };
     const visible = (rect: Rect) => size.width > 0 && size.height > 0 && intersects(area, rect);
-    for (const record of nodes.values()) show(record, record === dragged() || visible(rectOf(record)));
+    // Walked backwards so each node shown goes in before the next one shown, keeping the layer in the nodes' order.
+    let next: Element | null = null;
+    for (const record of [...nodes.values()].reverse()) {
+      show(record, record === dragged() || visible(rectOf(record)), next);
+      if (record.dispose) next = record.element;
+    }
     for (const record of edges.values()) {
       const source = nodes.get(record.edge.source);
       const target = nodes.get(record.edge.target);
@@ -271,18 +288,30 @@ export function createCanvas<D = unknown, E = unknown>(root: HTMLElement, option
 
   const settle = () => options.onMoveEnd?.(viewport);
 
-  function stopAnimating() {
+  function interrupt() {
     animation++;
+    aim = undefined;
     mountFit = "done";
   }
 
-  function moveTo(target: Viewport, duration = 0): Promise<void> {
-    stopAnimating();
+  /** Interrupts, and a wheel zoom still waiting to settle reports now. */
+  function takeCamera() {
+    interrupt();
+    if (wheelTimer === undefined) return;
+    clearTimeout(wheelTimer);
+    wheelTimer = undefined;
+    settle();
+  }
+
+  function moveTo(next: Viewport, duration = 0): Promise<void> {
+    takeCamera();
+    const target = clampZoom(next);
     if (duration <= 0) {
       apply(target);
       settle();
       return Promise.resolve();
     }
+    aim = target;
     const run = animation;
     const from = viewport;
     let start: number | undefined;
@@ -293,6 +322,7 @@ export function createCanvas<D = unknown, E = unknown>(root: HTMLElement, option
         const t = Math.min(1, (now - start) / duration);
         apply(between(from, target, t));
         if (t < 1) return frame(step);
+        aim = undefined;
         settle();
         resolve();
       };
@@ -320,10 +350,13 @@ export function createCanvas<D = unknown, E = unknown>(root: HTMLElement, option
   };
 
   function wheelZoom(event: WheelEvent, about: Point) {
-    stopAnimating();
+    interrupt();
     apply(zoomTo(viewport, viewport.zoom * wheelFactor(event.deltaY, event.deltaMode, event.ctrlKey), about, limits));
     clearTimeout(wheelTimer);
-    wheelTimer = setTimeout(settle, WHEEL_SETTLE);
+    wheelTimer = setTimeout(() => {
+      wheelTimer = undefined;
+      settle();
+    }, WHEEL_SETTLE);
   }
 
   const host: ChromeHost = {
@@ -332,26 +365,33 @@ export function createCanvas<D = unknown, E = unknown>(root: HTMLElement, option
     size: () => size,
     measure,
     panBy: (delta) => {
-      stopAnimating();
+      takeCamera();
       apply({ ...viewport, x: viewport.x + delta.x, y: viewport.y + delta.y });
     },
     settle,
-    zoomBy: (factor, duration) =>
-      void moveTo(zoomTo(viewport, viewport.zoom * factor, { x: size.width / 2, y: size.height / 2 }, limits), duration),
+    zoomBy: (factor, duration) => {
+      const from = aim ?? viewport;
+      void moveTo(zoomTo(from, from.zoom * factor, { x: size.width / 2, y: size.height / 2 }, limits), duration);
+    },
     wheelZoom,
     fitView: () => void handle.fitView({ duration: 200 }),
   };
   if (options.controls) controls(host);
   const map = options.minimap && minimap(host);
+  if (map) observer.observe(map.frame);
   const created = [...root.children].filter((element) => !existing.has(element));
 
   function nodeUnder(point: Point, except: NodeRecord<D>) {
-    return [...nodes.values()].reverse().find((record) => record !== except && contains(rectOf(record), point));
+    return [...nodeLayer.children]
+      .reverse()
+      .map((element) => byElement.get(element)!)
+      .find((record) => record !== except && contains(rectOf(record), point));
   }
 
   function endGesture() {
     if (gesture?.kind === "connect") gesture.line.remove();
     gesture = undefined;
+    pointers.clear();
     root.classList.remove("is-connecting");
   }
 
@@ -364,7 +404,7 @@ export function createCanvas<D = unknown, E = unknown>(root: HTMLElement, option
       return;
     }
     if (gesture) return;
-    stopAnimating();
+    takeCamera();
     const element = within(event.target, "app-canvas__node", root);
     const record = element && byElement.get(element);
     const from = client(event);
@@ -374,14 +414,15 @@ export function createCanvas<D = unknown, E = unknown>(root: HTMLElement, option
       gesture = { kind: "connect", pointer: event.pointerId, record, from: handle.screenToCanvas(from), line };
       root.classList.add("is-connecting");
     } else if (record) {
-      gesture = { kind: "node", pointer: event.pointerId, record, from, origin: { x: record.x, y: record.y }, moved: false };
+      gesture = { kind: "node", pointer: event.pointerId, record, from, last: from, moved: false };
     } else {
-      gesture = { kind: "pane", pointer: event.pointerId, from, origin: viewport, moved: false };
+      gesture = { kind: "pane", pointer: event.pointerId, from, last: from, moved: false };
     }
   }
 
   function onPointerMove(event: PointerEvent) {
     if (!gesture || !pointers.has(event.pointerId)) return;
+    if (event.buttons === 0) return finish(event, true);
     const at = client(event);
     pointers.set(event.pointerId, at);
     switch (gesture.kind) {
@@ -407,28 +448,29 @@ export function createCanvas<D = unknown, E = unknown>(root: HTMLElement, option
       gesture.moved = true;
       if (gesture.kind === "node") setNodeClass(gesture.record);
     }
-    const dx = at.x - gesture.from.x;
-    const dy = at.y - gesture.from.y;
+    // Stepping from the last pointer, not the press, keeps a camera move made mid-gesture by the wheel or the app.
+    const dx = at.x - gesture.last.x;
+    const dy = at.y - gesture.last.y;
+    gesture.last = at;
     if (gesture.kind === "pane") {
-      apply({ ...gesture.origin, x: gesture.origin.x + dx, y: gesture.origin.y + dy });
+      apply({ ...viewport, x: viewport.x + dx, y: viewport.y + dy });
       return;
     }
     const { record } = gesture;
-    record.x = gesture.origin.x + dx / viewport.zoom;
-    record.y = gesture.origin.y + dy / viewport.zoom;
+    record.x += dx / viewport.zoom;
+    record.y += dy / viewport.zoom;
     place(record);
     sync();
     options.onNodeDrag?.(record.node, { x: record.x, y: record.y });
   }
 
-  function onPointerUp(event: PointerEvent) {
+  const onPointerUp = (event: PointerEvent) => finish(event, event.type === "pointercancel");
+
+  function finish(event: PointerEvent, cancelled: boolean) {
     if (!pointers.delete(event.pointerId) || !gesture) return;
     const ended = gesture;
     if (ended.kind !== "pinch" && ended.pointer !== event.pointerId) return;
-    if (ended.kind === "connect") endGesture();
-    gesture = undefined;
-    pointers.clear();
-    const cancelled = event.type === "pointercancel";
+    endGesture();
     switch (ended.kind) {
       case "pinch":
         return settle();
@@ -466,7 +508,7 @@ export function createCanvas<D = unknown, E = unknown>(root: HTMLElement, option
   const onGestureStart = (event: Event) => {
     if (within(event.target, "nowheel", root)) return;
     event.preventDefault();
-    stopAnimating();
+    takeCamera();
     gestureZoom = viewport.zoom;
   };
   const onGestureChange = (event: Event) => {
@@ -481,15 +523,22 @@ export function createCanvas<D = unknown, E = unknown>(root: HTMLElement, option
     settle();
   };
 
+  // A native drag of an image or link inside a node would end ours with a pointercancel.
+  const onDragStart = (event: DragEvent) => {
+    if (!within(event.target, "nopan", root)) event.preventDefault();
+  };
+
   const listeners: [EventTarget, string, (event: never) => void, AddEventListenerOptions?][] = [
     [root, "pointerdown", onPointerDown],
     [root, "wheel", onWheel, { passive: false }],
     [root, "gesturestart", onGestureStart],
     [root, "gesturechange", onGestureChange],
     [root, "gestureend", onGestureEnd],
-    [document, "pointermove", onPointerMove],
-    [document, "pointerup", onPointerUp],
-    [document, "pointercancel", onPointerUp],
+    [root, "dragstart", onDragStart],
+    // Captured, so content that stops these from bubbling can't leave a gesture live.
+    [document, "pointermove", onPointerMove, { capture: true }],
+    [document, "pointerup", onPointerUp, { capture: true }],
+    [document, "pointercancel", onPointerUp, { capture: true }],
   ];
   for (const [target, type, listener, opts] of listeners) target.addEventListener(type, listener as EventListener, opts);
 
@@ -497,8 +546,11 @@ export function createCanvas<D = unknown, E = unknown>(root: HTMLElement, option
     const element = document.createElement("div");
     const record: NodeRecord<D> = { node, x: node.x, y: node.y, size: undefined, element, dispose: undefined };
     element.dataset.id = node.id;
-    element.addEventListener("pointerenter", () => options.onNodeEnter?.(record.node));
-    element.addEventListener("pointerleave", () => options.onNodeLeave?.(record.node));
+    element.addEventListener("pointerenter", () => {
+      hovered = record;
+      options.onNodeEnter?.(record.node);
+    });
+    element.addEventListener("pointerleave", () => leave(record));
     byElement.set(element, record);
     return record;
   }
@@ -552,7 +604,6 @@ export function createCanvas<D = unknown, E = unknown>(root: HTMLElement, option
     },
     getNodes: () => [...nodes.values()].map(placed),
     getViewport: () => ({ ...viewport }),
-    getZoom: () => viewport.zoom,
     setViewport: (next, { duration } = {}) => moveTo(next, duration),
     setCentre: (x, y, { zoom = viewport.zoom, duration } = {}) =>
       moveTo(centreOn({ x, y }, clamp(zoom, limits.minZoom, limits.maxZoom), size), duration),
@@ -562,9 +613,10 @@ export function createCanvas<D = unknown, E = unknown>(root: HTMLElement, option
     },
     screenToCanvas: (point) => toCanvas(viewport, local(point)),
     destroy() {
-      stopAnimating();
+      interrupt();
       clearTimeout(wheelTimer);
-      for (const [target, type, listener] of listeners) target.removeEventListener(type, listener as EventListener);
+      hovered = undefined;
+      for (const [target, type, listener, opts] of listeners) target.removeEventListener(type, listener as EventListener, opts);
       for (const record of edges.values()) showEdge(record, undefined);
       for (const record of nodes.values()) show(record, false);
       observer.disconnect();

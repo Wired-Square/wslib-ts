@@ -45,6 +45,9 @@ export interface CanvasProps<D, E> extends Omit<CanvasOptions<D, E>, "mount" | "
   node(node: Accessor<CanvasNode<D>>): JSX.Element;
   edge?(edge: Accessor<CanvasEdge<E>>, geometry: Accessor<EdgeGeometry>): JSX.Element;
   edgeLabel?(edge: Accessor<CanvasEdge<E>>, geometry: Accessor<EdgeGeometry>): JSX.Element;
+  /** Classes beside the canvas's own. */
+  class?: string;
+  style?: JSX.CSSProperties | string;
   children?: JSX.Element;
 }
 
@@ -58,33 +61,36 @@ export function Canvas<D, E = unknown>(props: CanvasProps<D, E>) {
   const rooted = (render: () => void) => runWithOwner(owner, () => createRoot((dispose) => (render(), dispose)))!;
   let root!: HTMLDivElement;
 
+  const mount = (element: HTMLElement, node: CanvasNode<D>) => {
+    const dispose = rooted(() => {
+      const current = createMemo(() => nodeById().get(node.id) ?? node);
+      insert(element, untrack(() => props.node(current)));
+    });
+    return () => {
+      dispose();
+      element.replaceChildren();
+    };
+  };
+  const mountEdge = (path: SVGGElement, label: HTMLElement, edge: CanvasEdge<E>) => {
+    const [geometry, setGeometry] = createSignal<EdgeGeometry>();
+    let dispose: (() => void) | undefined;
+    return {
+      draw(_: CanvasEdge<E>, next: EdgeGeometry) {
+        setGeometry(next);
+        dispose ??= rooted(() => {
+          const current = createMemo(() => edgeById().get(edge.id) ?? edge);
+          const drawn = geometry as Accessor<EdgeGeometry>;
+          insert(path, untrack(() => props.edge?.(current, drawn)));
+          insert(label, untrack(() => props.edgeLabel?.(current, drawn)));
+        });
+      },
+      dispose: () => dispose?.(),
+    };
+  };
+
   onMount(() => {
-    const handle = createCanvas<D, E>(
-      root,
-      mergeProps(props, {
-        mount: (element: HTMLElement, node: CanvasNode<D>) =>
-          rooted(() => {
-            const current = createMemo(() => nodeById().get(node.id) ?? node);
-            insert(element, untrack(() => props.node(current)));
-          }),
-        mountEdge: (path: SVGGElement, label: HTMLElement, edge: CanvasEdge<E>) => {
-          const [geometry, setGeometry] = createSignal<EdgeGeometry>();
-          let dispose: (() => void) | undefined;
-          return {
-            draw(_: CanvasEdge<E>, next: EdgeGeometry) {
-              setGeometry(next);
-              dispose ??= rooted(() => {
-                const current = createMemo(() => edgeById().get(edge.id) ?? edge);
-                const drawn = geometry as Accessor<EdgeGeometry>;
-                insert(path, untrack(() => props.edge?.(current, drawn)));
-                insert(label, untrack(() => props.edgeLabel?.(current, drawn)));
-              });
-            },
-            dispose: () => dispose?.(),
-          };
-        },
-      }),
-    );
+    const drawsEdges = props.edge || props.edgeLabel;
+    const handle = createCanvas<D, E>(root, mergeProps(props, { mount, ...(drawsEdges && { mountEdge }) }));
     setCanvas(() => handle);
     outer?.set(handle);
     onCleanup(() => {
@@ -98,7 +104,9 @@ export function Canvas<D, E = unknown>(props: CanvasProps<D, E>) {
 
   return (
     <Scope.Provider value={{ canvas, set: () => {} }}>
-      <div ref={root}>{props.children}</div>
+      <div ref={root} classList={props.class ? { [props.class]: true } : {}} style={props.style}>
+        <div class="app-canvas__children">{props.children}</div>
+      </div>
     </Scope.Provider>
   );
 }

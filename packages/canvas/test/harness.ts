@@ -82,7 +82,16 @@ export const node = <D = undefined>(id: string, x: number, y: number, extra: Par
 
 export function pointer(target: Element, type: string, x: number, y: number, init: PointerEventInit = {}) {
   target.dispatchEvent(
-    new PointerEvent(type, { bubbles: true, cancelable: true, clientX: x, clientY: y, button: 0, pointerId: 1, ...init }),
+    new PointerEvent(type, {
+      bubbles: true,
+      cancelable: true,
+      clientX: x,
+      clientY: y,
+      button: 0,
+      buttons: type === "pointerup" ? 0 : 1,
+      pointerId: 1,
+      ...init,
+    }),
   );
 }
 

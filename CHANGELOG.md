@@ -264,7 +264,7 @@ Moved names:
 A board canvas: a pannable, zoomable pane of nodes and edges, with a framework-free core and a Solid binding.
 
 - `@wired-square/canvas/core`: `createCanvas(root, options)` and its `CanvasHandle` (`setNodes`, `setEdges`,
-  `getNode`, `getNodes`, `getViewport`, `getZoom`, `setViewport`, `setCentre`, `fitView`, `screenToCanvas` and
+  `getNode`, `getNodes`, `getViewport`, `setViewport`, `setCentre`, `fitView`, `screenToCanvas` and
   `destroy`), `floatingAnchors`, and the types. The consumer mounts each node's content and draws each edge; the
   canvas keeps no selection, and reports clicks, hover, drags, connections and moves.
 - Only the nodes and edges in view are mounted. Sizes come from a resize observer; `measure`, `observe` and `frame`

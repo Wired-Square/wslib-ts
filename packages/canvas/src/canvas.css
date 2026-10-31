@@ -1,18 +1,22 @@
 /*
- * The canvas's styles. Every colour reads an `--app-canvas-*` token from the
- * kit's `theme.css`. All of it sits in the `canvas` cascade layer, so an app's
- * unlayered rule wins whatever the import order.
+ * The canvas's styles. All of it sits in the `canvas` cascade layer, so an
+ * app's unlayered rule wins whatever the import order.
  */
 
 @layer canvas {
 
 .app-canvas {
   position: relative;
+  height: 100%;
   overflow: hidden;
   background: var(--app-canvas-bg);
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
+}
+
+.app-canvas__children {
+  display: contents;
 }
 
 .app-canvas__background {
