@@ -1,6 +1,6 @@
 {
   "name": "@wired-square/appliance-ui",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "description": "The appliance's browser half: the shell, the Settings screens and their parts, and test helpers.",
   "license": "MIT",
   "repository": {
@@ -49,7 +49,7 @@
   },
   "peerDependencies": {
     "@wired-square/appliance-types": "^0.1.0",
-    "@wired-square/kit": "^0.3.3",
+    "@wired-square/kit": "^0.3.5",
     "solid-js": "^1.9.11",
     "vite": "^8.0.0"
   },
@@ -61,7 +61,7 @@
   "devDependencies": {
     "@types/node": "^22.20.5",
     "@wired-square/appliance-types": "^0.1.0",
-    "@wired-square/kit": "^0.3.3",
+    "@wired-square/kit": "^0.3.5",
     "solid-js": "^1.9.17",
     "typescript": "^5.9.3",
     "vite": "^8.3.5",

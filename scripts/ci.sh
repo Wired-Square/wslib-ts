@@ -34,6 +34,11 @@ step "Build, gates, typecheck, tests and the consumer fixture"
 npm run check
 
 if $all; then
+  step "The serial console's wire types are generated from their pinned tag"
+  tag=$(sed -n 's/^const TAG = "\(.*\)";$/\1/p' scripts/serial-console-sync.mjs)
+  [[ $(<packages/appliance-ui/src/serial/generated/SOURCE) == "$tag" ]] \
+    || die "src/serial/generated is not from $tag: node scripts/serial-console-sync.mjs"
+
   step "Peer floors"
   npm run floor
 fi

@@ -75,8 +75,9 @@ export function applianceVite(extra: UserConfig = {}): UserConfig {
  * The dev-server proxy to a development stand-in for the console in front of
  * the app's socket.
  *
- * Both `/api` and `/healthz` are proxied: a health check that falls through to
- * the SPA gets a 200 and reports the daemon up forever.
+ * `/api`, `/healthz` and `/ws` are proxied, `/ws` with its sockets: a health
+ * check that falls through to the SPA gets a 200 and reports the daemon up
+ * forever.
  *
  * A product that serves its own HTTPS passes its own listener, such as
  * `https://localhost:8443`; `secure: false` accepts the certificate it signed
@@ -87,7 +88,7 @@ export function applianceVite(extra: UserConfig = {}): UserConfig {
  * The browser's `Host` is passed through unchanged, so the backend sees the
  * name and port the page is on: a passkey binds to them.
  */
-export function applianceProxy(target = "http://127.0.0.1:8080"): Record<"/api" | "/healthz", ProxyOptions> {
+export function applianceProxy(target = "http://127.0.0.1:8080"): Record<"/api" | "/healthz" | "/ws", ProxyOptions> {
   const to = { target, changeOrigin: false, secure: false };
-  return { "/api": to, "/healthz": to };
+  return { "/api": to, "/healthz": to, "/ws": { ...to, ws: true } };
 }

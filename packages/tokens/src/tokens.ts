@@ -108,6 +108,20 @@ export const groups = [
       "--app-logo-size-welcome": { light: "6rem" },
     },
   },
+  {
+    note: "The serial console's ANSI blue, magenta and cyan, then who typed what, clear of the status red, green and amber.",
+    tokens: {
+      "--app-console-ansi-4": { light: "#1d5fb8", dark: "#79aefc" },
+      "--app-console-ansi-5": { light: "#9a2e96", dark: "#e58ae0" },
+      "--app-console-ansi-6": { light: "#0b7480", dark: "#5fd1dc" },
+      "--app-console-writer-0": { light: "#2457b0", dark: "#7fb2ff" },
+      "--app-console-writer-1": { light: "#7038c0", dark: "#c39bff" },
+      "--app-console-writer-2": { light: "#b02a7a", dark: "#ff8ad0" },
+      "--app-console-writer-3": { light: "#4646c8", dark: "#a3a7ff" },
+      "--app-console-writer-4": { light: "#8a2f9e", dark: "#e19bf0" },
+      "--app-console-writer-5": { light: "#2f6f9e", dark: "#8fd3ff" },
+    },
+  },
 ] as const satisfies readonly Group[];
 
 type KeysOf<T> = T extends unknown ? keyof T : never;

@@ -259,4 +259,167 @@
   padding-left: 1.5rem;
 }
 
+
+/* --- serial console ----------------------------------------------------- */
+
+.app-serial {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.app-serial > :is(.app-notice, .app-field) {
+  margin: 0;
+}
+
+.app-console {
+  display: grid;
+  border: 1px solid var(--app-border-strong);
+  border-radius: var(--app-radius);
+  overflow: hidden;
+}
+
+.app-console__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 1rem;
+  padding: 0.25rem 0.75rem;
+  background: var(--app-surface);
+}
+
+.app-console__head > :first-child {
+  margin-inline-end: auto;
+}
+
+.app-console__state {
+  font-weight: 600;
+}
+
+.app-console__state--open {
+  color: var(--app-good);
+}
+
+.app-console__state--connecting,
+.app-console__state--retrying,
+.app-console__state--paused {
+  color: var(--app-warn);
+}
+
+.app-console__state--unreachable {
+  color: var(--app-bad);
+}
+
+.app-console__users {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  margin: 0;
+  padding: 0.5rem 0.75rem 0;
+  list-style: none;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.app-console__users li::before {
+  content: "● ";
+}
+
+.app-console__hint {
+  margin: 0;
+  padding: 0.25rem 0.75rem 0.375rem;
+  font-size: 0.8125rem;
+}
+
+.app-console__refusal {
+  margin: 0;
+  padding: 0.25rem 0.75rem;
+  border-top: 1px solid var(--app-warn);
+  background: var(--app-warn-bg);
+  font-size: 0.8125rem;
+}
+
+.app-console > .app-notice {
+  margin: 0.75rem;
+}
+
+/* What is left of the viewport once the rest of the console and a dialog's own chrome take theirs. */
+.app-console__screen {
+  height: clamp(8rem, 100vh - 32rem, 22rem);
+  margin: 0;
+  padding: 0.75rem;
+  overflow: auto;
+  background: var(--app-surface-sunken);
+  color: var(--app-text);
+  font-family: var(--app-font-mono);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.app-console__screen:focus-visible {
+  outline: none;
+  box-shadow: inset var(--app-focus);
+}
+
+.app-console__ink--bad {
+  color: var(--app-bad);
+}
+
+.app-console__ink--good {
+  color: var(--app-good);
+}
+
+.app-console__ink--warn {
+  color: var(--app-warn);
+}
+
+.app-console__ink--blue {
+  color: var(--app-console-ansi-4);
+}
+
+.app-console__ink--magenta {
+  color: var(--app-console-ansi-5);
+}
+
+.app-console__ink--cyan {
+  color: var(--app-console-ansi-6);
+}
+
+.app-console__ink--muted {
+  color: var(--app-text-muted);
+}
+
+.app-console__ink--bold {
+  font-weight: 700;
+}
+
+.app-console__mark {
+  font-style: italic;
+}
+
+.app-console__who--0 {
+  color: var(--app-console-writer-0);
+}
+
+.app-console__who--1 {
+  color: var(--app-console-writer-1);
+}
+
+.app-console__who--2 {
+  color: var(--app-console-writer-2);
+}
+
+.app-console__who--3 {
+  color: var(--app-console-writer-3);
+}
+
+.app-console__who--4 {
+  color: var(--app-console-writer-4);
+}
+
+.app-console__who--5 {
+  color: var(--app-console-writer-5);
+}
+
 }

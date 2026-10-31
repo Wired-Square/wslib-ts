@@ -74,6 +74,18 @@
   /* The logo's height in the masthead, and its cap on the signed-out card. */
   --app-logo-size: 2.25rem;
   --app-logo-size-welcome: 6rem;
+
+  /* The serial console's ANSI blue, magenta and cyan, then who typed what,
+   * clear of the status red, green and amber. */
+  --app-console-ansi-4: #1d5fb8;
+  --app-console-ansi-5: #9a2e96;
+  --app-console-ansi-6: #0b7480;
+  --app-console-writer-0: #2457b0;
+  --app-console-writer-1: #7038c0;
+  --app-console-writer-2: #b02a7a;
+  --app-console-writer-3: #4646c8;
+  --app-console-writer-4: #8a2f9e;
+  --app-console-writer-5: #2f6f9e;
 }
 
 /*
@@ -112,6 +124,16 @@
     --app-alert: #c43c3c;
 
     --app-shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 1px 3px rgb(0 0 0 / 0.5);
+
+    --app-console-ansi-4: #79aefc;
+    --app-console-ansi-5: #e58ae0;
+    --app-console-ansi-6: #5fd1dc;
+    --app-console-writer-0: #7fb2ff;
+    --app-console-writer-1: #c39bff;
+    --app-console-writer-2: #ff8ad0;
+    --app-console-writer-3: #a3a7ff;
+    --app-console-writer-4: #e19bf0;
+    --app-console-writer-5: #8fd3ff;
   }
 }
 
@@ -145,6 +167,16 @@
   --app-alert: #c43c3c;
 
   --app-shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 1px 3px rgb(0 0 0 / 0.5);
+
+  --app-console-ansi-4: #79aefc;
+  --app-console-ansi-5: #e58ae0;
+  --app-console-ansi-6: #5fd1dc;
+  --app-console-writer-0: #7fb2ff;
+  --app-console-writer-1: #c39bff;
+  --app-console-writer-2: #ff8ad0;
+  --app-console-writer-3: #a3a7ff;
+  --app-console-writer-4: #e19bf0;
+  --app-console-writer-5: #8fd3ff;
 }
 
 :root:where([data-app-scheme="light"]) {
