@@ -122,6 +122,25 @@ export const groups = [
       "--app-console-writer-5": { light: "#2f6f9e", dark: "#8fd3ff" },
     },
   },
+  {
+    heading: "canvas",
+    note: "The board canvas, its dot grid, the line drawn while connecting, and its controls and minimap.",
+    tokens: {
+      "--app-canvas-bg": { light: "var(--app-bg)" },
+      "--app-canvas-dot": { light: "var(--app-border-strong)" },
+      "--app-canvas-connection": { light: "var(--app-accent)" },
+      "--app-canvas-chrome": { light: "var(--app-surface)" },
+      "--app-canvas-chrome-text": { light: "var(--app-text)" },
+      "--app-canvas-chrome-hover": { light: "var(--app-surface-sunken)" },
+      "--app-canvas-chrome-border": { light: "var(--app-border)" },
+      "--app-canvas-minimap-node": { light: "var(--app-border-strong)" },
+      "--app-canvas-minimap-mask": {
+        light: "color-mix(in srgb, var(--app-bg) 70%, transparent)",
+        note: "Over the minimap outside the view; translucent, so the nodes under it still show.",
+      },
+      "--app-canvas-minimap-view": { light: "var(--app-accent)" },
+    },
+  },
 ] as const satisfies readonly Group[];
 
 type KeysOf<T> = T extends unknown ? keyof T : never;

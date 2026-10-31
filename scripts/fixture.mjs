@@ -1,4 +1,4 @@
-// Builds fixtures/consumer against the kit and appliance-ui as installed
+// Builds fixtures/consumer against the kit, the canvas and appliance-ui as installed
 // packages: packed, so `files` is what ships, and copied into node_modules
 // rather than linked, since vite treats a linked workspace as the app's own
 // source and would prove nothing about the `solid` export condition.
@@ -48,7 +48,7 @@ try {
   symlinkSync(join(repo, "node_modules/@tauri-apps/api"), join(modules, "@tauri-apps/api"), "dir");
   if (withUi) symlinkSync(join(existsSync(join(deps, "uqr")) ? deps : join(repo, "node_modules"), "uqr"), join(modules, "uqr"), "dir");
 
-  const packed = ["@wired-square/kit", "@wired-square/tokens", "@wired-square/mcp-bridge", "@wired-square/appliance-types"];
+  const packed = ["@wired-square/kit", "@wired-square/tokens", "@wired-square/mcp-bridge", "@wired-square/appliance-types", "@wired-square/canvas"];
   for (const name of withUi ? [...packed, "@wired-square/appliance-ui"] : packed) {
     const tarball = execFileSync("npm", ["pack", "--silent", "--pack-destination", work, "-w", name], {
       cwd: repo,
@@ -90,6 +90,16 @@ try {
     if (!existsSync(join(modules, `@wired-square/mcp-bridge/dist/${entry}.d.ts`))) problems.push(`the packed mcp-bridge's ${entry} carries no types`);
   }
 
+  const canvasCore = `
+    const { createCanvas, floatingAnchors } = await import("@wired-square/canvas/core");
+    const { source, target } = floatingAnchors({ x: 0, y: 0, width: 100, height: 50 }, { x: 300, y: 0, width: 100, height: 50 });
+    process.stdout.write(String(typeof createCanvas === "function" && source.side === "right" && source.x === 100 && target.side === "left"));
+  `;
+  if (execFileSync("node", ["--input-type=module", "-e", canvasCore], { cwd: work, encoding: "utf8" }) !== "true") {
+    problems.push("plain node imported @wired-square/canvas/core, but its floatingAnchors misbehaved");
+  }
+  if (!existsSync(join(modules, "@wired-square/canvas/dist/core.d.ts"))) problems.push("the packed canvas's core carries no types");
+
   const constants = `
     const { ROLE_LADDER, TOKEN_PREFIX } = await import("@wired-square/appliance-types");
     process.stdout.write(String(ROLE_LADDER.includes("admin") && TOKEN_PREFIX === "--app-"));
@@ -130,6 +140,15 @@ try {
     if (!/\/node_modules\/@wired-square\/kit\/src\/index\.ts/.test(kitImport)) {
       problems.push(`the dev server imports the kit from ${kitImport || "nowhere"}, not its source`);
     }
+    const board = await server.transformRequest("/src/canvas.tsx");
+    const canvasImport = board?.code.match(/from\s+"([^"]*@wired-square[_/]canvas(?!\/core)[^"]*)"/)?.[1] ?? "";
+    if (!/\/node_modules\/@wired-square\/canvas\/src\/index\.ts/.test(canvasImport)) {
+      problems.push(`the dev server imports the canvas from ${canvasImport || "nowhere"}, not its source`);
+    }
+    const binding = (await server.transformRequest("/node_modules/@wired-square/canvas/src/Canvas.tsx"))?.code ?? "";
+    if (!/from\s+"\/node_modules\/@wired-square\/canvas\/dist\/core\.js/.test(binding)) {
+      problems.push("the canvas's Solid binding does not import its core from dist/core.js");
+    }
     if (withUi) {
       const appliance = await server.transformRequest("/src/appliance.tsx");
       const uiImport = appliance?.code.match(/from\s+"([^"]*@wired-square[_/]appliance-ui[^"]*)"/)?.[1] ?? "";
@@ -145,7 +164,10 @@ try {
     if (coreImports.some((url) => !/^\/node_modules\/@wired-square\/kit\/dist\/core\.js/.test(url ?? ""))) {
       problems.push(`the app and the kit's source import core from ${coreImports.join(" and ")}, not one dist/core.js`);
     }
-    const compiled = [["the kit", "/node_modules/@wired-square/kit/src/Notice.tsx"]];
+    const compiled = [
+      ["the kit", "/node_modules/@wired-square/kit/src/Notice.tsx"],
+      ["the canvas", "/node_modules/@wired-square/canvas/src/Canvas.tsx"],
+    ];
     if (withUi) compiled.push(["appliance-ui", "/node_modules/@wired-square/appliance-ui/src/screens/OutboundTrust.tsx"]);
     for (const [owner, url] of compiled) {
       const code = (await server.transformRequest(url))?.code ?? "";
@@ -155,8 +177,10 @@ try {
     }
     await server.waitForRequestsIdle();
     const { optimized, discovered } = server.environments.client.depsOptimizer.metadata;
-    if ([...Object.keys(optimized), ...Object.keys(discovered)].some((id) => id.startsWith("@wired-square/appliance-ui"))) {
-      problems.push("the dev server pre-bundles appliance-ui, outside Solid's transform");
+    for (const name of ["@wired-square/appliance-ui", "@wired-square/canvas"]) {
+      if ([...Object.keys(optimized), ...Object.keys(discovered)].some((id) => id === name || id.startsWith(`${name}/src`))) {
+        problems.push(`the dev server pre-bundles ${name}, outside Solid's transform`);
+      }
     }
   } finally {
     // Vite 6 never settles close() while the pre-transforms of main.tsx's imports are in flight.
@@ -180,6 +204,9 @@ try {
   if (withUi && !css.some((text) => text.includes(".app-masthead") && text.includes(".app-qr") && text.includes("--app-qr-dark:"))) {
     problems.push("the built stylesheet is missing appliance-ui's shell.css or appliance.css, or kit's appliance tokens");
   }
+  if (!css.some((text) => text.includes(".app-canvas__pane") && text.includes("--app-canvas-dot:"))) {
+    problems.push("the built stylesheet is missing canvas.css or kit's canvas tokens");
+  }
   if (css.some((text) => /@font-face|url\(/.test(text))) problems.push("the built stylesheet loads a font or a URL");
   if (scripts.some((file) => /createElement\(["']style["']\)/.test(readFileSync(join(dist, "assets", file), "utf8")))) {
     problems.push("the built script injects a <style>");
@@ -193,6 +220,11 @@ try {
     localStorage: dom.window.localStorage,
     Node: dom.window.Node,
     MutationObserver: dom.window.MutationObserver,
+    ResizeObserver: class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    },
     fetch: async () => Response.json([]),
   });
   for (const file of scripts) await import(pathToFileURL(join(dist, "assets", file)).href);
@@ -212,6 +244,17 @@ try {
   if (!app.textContent.includes("Refused through core") || !app.textContent.includes("Recognised by core")) {
     problems.push("a Refusal from core and one from the root are not one class in the built app");
   }
+  const board = dom.window.document.getElementById("canvas");
+  const face = board.querySelector(".app-canvas__node .face");
+  face?.click();
+  [...board.querySelectorAll("button")].find((b) => b.textContent === "Zoom")?.click();
+  if (!face || !board.querySelector('.app-canvas__controls [aria-label="Fit view"]')) {
+    problems.push("the built app did not render the canvas's node or controls");
+  } else if (face.textContent !== "Moved") {
+    problems.push("the built app's canvas node does not react to the app's signal");
+  } else if (!board.querySelector(".app-canvas__pane").style.transform.endsWith("scale(2)")) {
+    problems.push("a useCanvas beside the built app's Canvas did not move its camera");
+  }
   if (withUi && !/Trusted authorities.*No authorities yet/s.test(appliance.textContent)) {
     problems.push("the built app's appliance-ui Settings did not render its fetched section");
   }
@@ -222,6 +265,6 @@ try {
 fail("consumer fixture", problems);
 console.log(
   withUi
-    ? "consumer fixture: built against the packed kit and appliance-ui; core, tokens, mcp-bridge, appliance-types and appliance-ui/vite imported in plain node"
-    : "consumer fixture: built against the packed kit, without appliance-ui; core, tokens, mcp-bridge and appliance-types imported in plain node",
+    ? "consumer fixture: built against the packed kit, canvas and appliance-ui; the kit's and canvas's core, tokens, mcp-bridge, appliance-types and appliance-ui/vite imported in plain node"
+    : "consumer fixture: built against the packed kit and canvas, without appliance-ui; the kit's and canvas's core, tokens, mcp-bridge and appliance-types imported in plain node",
 );
