@@ -526,6 +526,16 @@ test("Chrome's switcher lists every app it is answered with its icon, the consol
   ]);
 });
 
+test("At an app's root without its trailing slash, the switcher marks that app, and choosing the console loads it", async (t) => {
+  const { root, assigned } = await switching(t, "/apps/hello", () => Response.json(apps));
+  assert.deepEqual((await switcherItems(root, 0)).map((item) => item.split(" ").slice(1).join(" ")), [
+    "Console",
+    "Hello (current)",
+    "Hello there",
+  ]);
+  assert.deepEqual(assigned, ["/"]);
+});
+
 test("Reopening the switcher lists an app installed since, keeping the items that were already there", async (t) => {
   let answered = apps.slice(0, 2);
   const { root } = await switching(t, "/", () => Response.json(answered));
