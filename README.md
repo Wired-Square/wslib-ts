@@ -10,6 +10,7 @@ Wired Square's shared TypeScript packages, as npm workspaces.
 | [`@wired-square/appliance-types`](packages/appliance-types) | The appliance's wire types and limits, generated from wslib-rs's `wslib-appliance-types` |
 | [`@wired-square/appliance-ui`](packages/appliance-ui) | The appliance's browser half: the shell, the Settings screens and their parts, and test helpers |
 | [`@wired-square/canvas`](packages/canvas) | A pan and zoom board canvas of nodes and edges: a framework-free core and a Solid binding |
+| [`@wired-square/chart`](packages/chart) | A framework-free time-series chart drawn as SVG |
 
 ## `@wired-square/kit`
 
@@ -266,6 +267,20 @@ The app owns the nodes, the edges and the selection, and the canvas mounts only 
 `CanvasPanel`, `CanvasScope` and `useCanvas` ship as TSX behind the `solid` condition, as the kit's components do. Its
 colours are the kit's `--app-canvas-*` tokens.
 
+## `@wired-square/chart`
+
+A time-series chart drawn as plain SVG, compiled to `dist/`, installed from the same registry. It has no dependencies
+and no peers, and colours everything it draws with CSS custom properties: the series' own, and the kit's `--app-*`
+tokens for the rest.
+
+```ts
+import { createChart } from "@wired-square/chart";
+
+const chart = createChart(container, { window: { from, to }, unit: "kW", series });
+```
+
+`packages/chart/README.md` covers the options and the rules for each kind of series.
+
 ## Development
 
 The repo's tooling needs Node 22.18 or later, which runs TypeScript tests without a build.
@@ -276,7 +291,7 @@ scripts/ci.sh
 ```
 
 `scripts/ci.sh` is the CI definition: the lockfile, the commit-message and dossier gates, no runtime dependencies in
-the packages but appliance-ui's `uqr`, no peers in tokens or appliance-types, only the optional `@tauri-apps/api` in mcp-bridge and only the optional `solid-js` in canvas, then `npm run check`. `--tag` adds `npm run floor`. Run it before every push,
+the packages but appliance-ui's `uqr`, no peers in tokens, appliance-types or chart, only the optional `@tauri-apps/api` in mcp-bridge and only the optional `solid-js` in canvas, then `npm run check`. `--tag` adds `npm run floor`. Run it before every push,
 once per clone:
 
 ```sh
@@ -290,12 +305,12 @@ same Solid floors, vite 8.0.0, uqr 0.1.3, and the kit 0.3.5 and appliance-types 
 while it is at them and from the registry past them. The kit's and the canvas's runs leave appliance-ui out of the
 fixture.
 
-`check` builds `dist/` (the kit's and the canvas's compiled `./core`, the tokens, mcp-bridge, appliance-types and
+`check` builds `dist/` (the kit's and the canvas's compiled `./core`, the tokens, mcp-bridge, appliance-types, chart and
 appliance-ui's `./vite`, which `npm pack` builds too), then runs the gates (no name of another repository, no colour literal outside
 `theme.css` and the token values, and `theme.css` as `scripts/theme-css.mjs` writes it from `packages/tokens`), the
 typecheck, the tests, and a build of `fixtures/consumer` through `applianceVite` against the packed kit, canvas and
-appliance-ui, with the packed tokens, mcp-bridge, appliance-types, the canvas's `./core` and appliance-ui's `./vite` imported in plain node
-and appliance-types typechecked under NodeNext.
+appliance-ui, with the packed tokens, mcp-bridge, appliance-types, chart, the canvas's `./core` and appliance-ui's `./vite` imported in plain node
+and appliance-types and chart typechecked under NodeNext.
 
 ## Releasing a package
 

@@ -22,13 +22,13 @@ step "No other repository is named in a commit message"
 step "No reference to the project dossier"
 ! git grep -nIE --untracked '\[\[[A-Za-z][^]]*\]\]' -- ':!scripts/ci.sh' || die "the dossier is cited; state the constraint here"
 
-step "The packages have no runtime dependencies but appliance-ui's uqr, tokens and appliance-types no peers, and mcp-bridge and canvas one optional peer each"
-node -e 'const [kit, tokens, bridge, types, ui, canvas] = ["kit", "tokens", "mcp-bridge", "appliance-types", "appliance-ui", "canvas"].map((name) => require(`./packages/${name}/package.json`));
-const declared = { ...kit.dependencies, ...tokens.dependencies, ...tokens.peerDependencies, ...bridge.dependencies, ...types.dependencies, ...types.peerDependencies, ...canvas.dependencies };
+step "The packages have no runtime dependencies but appliance-ui's uqr, tokens, appliance-types and chart no peers, and mcp-bridge and canvas one optional peer each"
+node -e 'const [kit, tokens, bridge, types, ui, canvas, chart] = ["kit", "tokens", "mcp-bridge", "appliance-types", "appliance-ui", "canvas", "chart"].map((name) => require(`./packages/${name}/package.json`));
+const declared = { ...kit.dependencies, ...tokens.dependencies, ...tokens.peerDependencies, ...bridge.dependencies, ...types.dependencies, ...types.peerDependencies, ...canvas.dependencies, ...chart.dependencies, ...chart.peerDependencies };
 const onlyOptional = (pkg, peer) => Object.keys(pkg.peerDependencies).join() === peer && pkg.peerDependenciesMeta[peer].optional;
 const uqrOnly = Object.keys(ui.dependencies).join() === "uqr";
 process.exit(Object.keys(declared).length || !onlyOptional(bridge, "@tauri-apps/api") || !onlyOptional(canvas, "solid-js") || !uqrOnly ? 1 : 0)' \
-  || die "a package declares dependencies beyond appliance-ui's uqr, tokens or appliance-types declares peers, or mcp-bridge or canvas a peer beyond optional @tauri-apps/api or solid-js"
+  || die "a package declares dependencies beyond appliance-ui's uqr, tokens, appliance-types or chart declares peers, or mcp-bridge or canvas a peer beyond optional @tauri-apps/api or solid-js"
 
 step "Build, gates, typecheck, tests and the consumer fixture"
 npm run check

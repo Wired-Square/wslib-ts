@@ -274,3 +274,13 @@ A board canvas: a pannable, zoomable pane of nodes and edges, with a framework-f
 - A dot background, controls and a minimap, as options, and `.app-canvas-panel` for corner panels.
 - `Canvas`, `CanvasPanel`, `CanvasScope` and `useCanvas`, as TSX behind the `solid` condition.
 - `canvas.css`, in the cascade layer `canvas`. No dependencies; solid-js ^1.9.11 is an optional peer.
+
+## `@wired-square/chart`
+
+### 0.1.0
+
+`createChart(container, options)`, a time-series chart drawn as SVG and sized to its container, returning `update`
+and `destroy`. Line, area and step series clipped to a window, with gaps at missing values; time ticks on the local
+clock's whole hours and three to five y ticks; a `now` marker; and a hover readout of each series' value. Colours
+are CSS custom properties: each series names its own, and the axes use the kit's `--app-*` tokens. No dependencies
+and no peers.

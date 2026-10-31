@@ -48,7 +48,7 @@ try {
   symlinkSync(join(repo, "node_modules/@tauri-apps/api"), join(modules, "@tauri-apps/api"), "dir");
   if (withUi) symlinkSync(join(existsSync(join(deps, "uqr")) ? deps : join(repo, "node_modules"), "uqr"), join(modules, "uqr"), "dir");
 
-  const packed = ["@wired-square/kit", "@wired-square/tokens", "@wired-square/mcp-bridge", "@wired-square/appliance-types", "@wired-square/canvas"];
+  const packed = ["@wired-square/kit", "@wired-square/tokens", "@wired-square/mcp-bridge", "@wired-square/appliance-types", "@wired-square/canvas", "@wired-square/chart"];
   for (const name of withUi ? [...packed, "@wired-square/appliance-ui"] : packed) {
     const tarball = execFileSync("npm", ["pack", "--silent", "--pack-destination", work, "-w", name], {
       cwd: repo,
@@ -117,6 +117,24 @@ try {
     execFileSync(join(repo, "node_modules/.bin/tsc"), ["--noEmit", "--strict", "--module", "nodenext", "appliance-types.ts"], { cwd: work, encoding: "utf8" });
   } catch (error) {
     problems.push(`the packed appliance-types does not typecheck under NodeNext:\n${error.stdout}`);
+  }
+
+  const chart = `
+    const { createChart } = await import("@wired-square/chart");
+    process.stdout.write(String(typeof createChart === "function"));
+  `;
+  if (execFileSync("node", ["--input-type=module", "-e", chart], { cwd: work, encoding: "utf8" }) !== "true") {
+    problems.push("plain node imported @wired-square/chart, but it has no createChart");
+  }
+  writeFileSync(
+    join(work, "chart.ts"),
+    `import type { Chart, ChartOptions } from "@wired-square/chart";
+    export const typed: [ChartOptions["series"][number]["colour"], keyof Chart] = ["--app-accent", "update"];\n`,
+  );
+  try {
+    execFileSync(join(repo, "node_modules/.bin/tsc"), ["--noEmit", "--strict", "--module", "nodenext", "chart.ts"], { cwd: work, encoding: "utf8" });
+  } catch (error) {
+    problems.push(`the packed chart does not typecheck under NodeNext:\n${error.stdout}`);
   }
 
   if (withUi) {
@@ -265,6 +283,6 @@ try {
 fail("consumer fixture", problems);
 console.log(
   withUi
-    ? "consumer fixture: built against the packed kit, canvas and appliance-ui; the kit's and canvas's core, tokens, mcp-bridge, appliance-types and appliance-ui/vite imported in plain node"
-    : "consumer fixture: built against the packed kit and canvas, without appliance-ui; the kit's and canvas's core, tokens, mcp-bridge and appliance-types imported in plain node",
+    ? "consumer fixture: built against the packed kit, canvas and appliance-ui; the kit's and canvas's core, tokens, mcp-bridge, appliance-types, chart and appliance-ui/vite imported in plain node"
+    : "consumer fixture: built against the packed kit and canvas, without appliance-ui; the kit's and canvas's core, tokens, mcp-bridge, appliance-types and chart imported in plain node",
 );
