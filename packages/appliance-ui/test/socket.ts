@@ -23,6 +23,10 @@ export class FakeSocket {
     this.readyState = 1;
     this.onopen?.();
   }
+  attach() {
+    this.open();
+    this.text({ type: "attached", name: "olive", writes: true });
+  }
   drop() {
     this.readyState = 3;
     this.onclose?.();

@@ -160,6 +160,8 @@ test("A reconnect clears a refusal and leaves a marker line in the scrollback", 
   t.mock.timers.tick(1000);
   c.socket().open();
   await settled();
+  assert.match(c.shown(), /Not sent/, "a reconnect isn't made until the back end attaches it");
+  await c.say({ type: "attached", name: "olive", writes: true });
   assert.doesNotMatch(c.shown(), /Not sent/);
   const lines = c.screen().children.map((line) => textOf(line));
   assert.deepEqual(lines, ["boot\n", "— reconnected —\n", "\n"]);
@@ -203,6 +205,20 @@ test("A console that never opens offers to try again, and trying dials once more
   (retry.props.onClick as () => void)();
   await settled();
   assert.equal(Dialled.all.length, 2);
+});
+
+test("A console the back end refuses says why, and trying again dials once more", async () => {
+  const c = await opened(URL_PROPS);
+  c.socket().open();
+  await c.say({ type: "error", message: "/dev/ttyACM0 is not a serial port on this box" });
+  c.socket().drop();
+  await settled();
+  assert.match(c.shown(), /The serial console didn't connect: \/dev\/ttyACM0 is not a serial port on this box\./);
+  assert.doesNotMatch(c.shown(), /signed in/);
+  assert.match(c.shown(), /Not connected/);
+  await click(c.root, "Try again");
+  assert.equal(Dialled.all.length, 2);
+  assert.match(c.shown(), /Connecting…/);
 });
 
 test("Given a port, it offers the bauds, and a new baud reopens the console at it", async (t) => {

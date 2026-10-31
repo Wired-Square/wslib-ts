@@ -20,15 +20,16 @@ export function serialUrl(port: ConsolePort, baud: number, page = fromBase("/ws/
 }
 
 /**
- * `unreachable` is a console that never opened: the upgrade itself was
- * refused, which a retry will not change. One that opened and then dropped
- * is `retrying` until it opens again.
+ * A console is `open` once the back end says it is attached. `unreachable` is
+ * one the back end refused, by refusing the upgrade or by closing before
+ * attaching, with its `error` message when it sent one; a retry would not
+ * change that. One that was attached and then dropped is `retrying`.
  */
 export type LinkState =
   | { is: "connecting" }
   | { is: "open" }
   | { is: "retrying"; inMs: number }
-  | { is: "unreachable" };
+  | { is: "unreachable"; message?: string };
 
 export type ShownEvent = Exclude<ConsoleEvent, { type: "spans" }>;
 
@@ -58,7 +59,7 @@ export function openLink(
   socket: (url: string) => Socket = (url) => new WebSocket(url),
 ): Link {
   let retryMs = FIRST_RETRY_MS;
-  let everOpened = false;
+  let everAttached = false;
   let closed = false;
   let current: Socket | undefined;
   let spans: readonly EchoSpan[] = [];
@@ -69,10 +70,11 @@ export function openLink(
     const ws = socket(url);
     current = ws;
     ws.binaryType = "arraybuffer";
+    let upgraded = false;
+    let attached = false;
+    let error: string | undefined;
     ws.onopen = () => {
-      everOpened = true;
-      retryMs = FIRST_RETRY_MS;
-      on.state({ is: "open" });
+      upgraded = true;
     };
     ws.onmessage = (event: MessageEvent) => {
       const data = event.data as ArrayBuffer | string;
@@ -83,13 +85,21 @@ export function openLink(
       }
       const parsed = parse(data);
       if (parsed?.type === "spans") spans = parsed.spans;
-      else if (parsed) on.event(parsed);
+      else if (parsed) {
+        if (parsed.type === "attached" && !attached) {
+          attached = everAttached = true;
+          retryMs = FIRST_RETRY_MS;
+          on.state({ is: "open" });
+        }
+        if (parsed.type === "error") error = parsed.message;
+        on.event(parsed);
+      }
     };
     ws.onclose = () => {
       spans = [];
       if (closed) return;
-      if (!everOpened) {
-        on.state({ is: "unreachable" });
+      if (upgraded ? !attached : !everAttached) {
+        on.state(error === undefined ? { is: "unreachable" } : { is: "unreachable", message: error });
         return;
       }
       on.state({ is: "retrying", inMs: retryMs });
