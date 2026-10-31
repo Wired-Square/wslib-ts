@@ -9,6 +9,7 @@ Wired Square's shared TypeScript packages, as npm workspaces.
 | [`@wired-square/mcp-bridge`](packages/mcp-bridge) | The page half of wslib-mcp's `dom` tools, and their bridge over Tauri events |
 | [`@wired-square/appliance-types`](packages/appliance-types) | The appliance's wire types and limits, generated from wslib-rs's `wslib-appliance-types` |
 | [`@wired-square/appliance-ui`](packages/appliance-ui) | The appliance's browser half: the shell, the Settings screens and their parts, and test helpers |
+| [`@wired-square/canvas`](packages/canvas) | A pan and zoom board canvas of nodes and edges: a framework-free core and a Solid binding |
 
 ## `@wired-square/kit`
 
@@ -246,6 +247,25 @@ Wire types and limits are imported from `@wired-square/appliance-types`; this pa
 That includes `Pending` and its parts, which the kit also declares, with the same shape, for its own components.
 `./testing` and `./testing/setup` are the kit's test helpers with a session around the screen.
 
+## `@wired-square/canvas`
+
+A board canvas, installed from the same registry: a pannable, zoomable pane of nodes and edges, with connecting, a
+dot background, controls, a minimap and corner panels. It has no dependencies; solid-js ^1.9.11 is an optional peer,
+needed only by the Solid binding, so a React app takes `./core` alone and portals into the elements it mounts.
+
+```ts
+import "@wired-square/kit/theme.css";
+import "@wired-square/canvas/canvas.css";
+import { createCanvas } from "@wired-square/canvas/core";
+
+const canvas = createCanvas(element, { mount: (el, node) => show(el, node), onNodeDragEnd: (node, at) => commit(node.id, at) });
+canvas.setNodes(nodes);
+```
+
+The app owns the nodes, the edges and the selection, and the canvas mounts only what is in view. `Canvas`,
+`CanvasPanel`, `CanvasScope` and `useCanvas` ship as TSX behind the `solid` condition, as the kit's components do. Its
+colours are the kit's `--app-canvas-*` tokens.
+
 ## Development
 
 The repo's tooling needs Node 22.18 or later, which runs TypeScript tests without a build.
@@ -256,7 +276,7 @@ scripts/ci.sh
 ```
 
 `scripts/ci.sh` is the CI definition: the lockfile, the commit-message and dossier gates, no runtime dependencies in
-the packages but appliance-ui's `uqr`, no peers in tokens or appliance-types and only the optional `@tauri-apps/api` in mcp-bridge, then `npm run check`. `--tag` adds `npm run floor`. Run it before every push,
+the packages but appliance-ui's `uqr`, no peers in tokens or appliance-types, only the optional `@tauri-apps/api` in mcp-bridge and only the optional `solid-js` in canvas, then `npm run check`. `--tag` adds `npm run floor`. Run it before every push,
 once per clone:
 
 ```sh
@@ -265,15 +285,16 @@ git config core.hooksPath scripts/hooks
 
 `npm run floor` (needs the network) reruns the typecheck, the tests and the fixture in a temp install of the oldest
 versions the ranges claim, once per package: for the kit, solid-js 1.9.11, vitest 4.1.2, vite 6.4.1, and
-vite-plugin-solid 2.11.10 with babel-preset-solid 1.9.10; for appliance-ui, the same Solid floors, vite 8.0.0, uqr
-0.1.3, and the kit and appliance-types packed from this checkout, which must be at 0.3.5 and 0.1.0. The kit's run
-leaves appliance-ui out of the fixture.
+vite-plugin-solid 2.11.10 with babel-preset-solid 1.9.10; for the canvas, the kit's floors; for appliance-ui, the
+same Solid floors, vite 8.0.0, uqr 0.1.3, and the kit 0.3.5 and appliance-types 0.1.0, packed from this checkout
+while it is at them and from the registry past them. The kit's and the canvas's runs leave appliance-ui out of the
+fixture.
 
-`check` builds `dist/` (the kit's compiled `./core`, the tokens, mcp-bridge, appliance-types and appliance-ui's
-`./vite`, which `npm pack` builds too), then runs the gates (no name of another repository, no colour literal outside
+`check` builds `dist/` (the kit's and the canvas's compiled `./core`, the tokens, mcp-bridge, appliance-types and
+appliance-ui's `./vite`, which `npm pack` builds too), then runs the gates (no name of another repository, no colour literal outside
 `theme.css` and the token values, and `theme.css` as `scripts/theme-css.mjs` writes it from `packages/tokens`), the
-typecheck, the tests, and a build of `fixtures/consumer` through `applianceVite` against the packed kit and
-appliance-ui, with the packed tokens, mcp-bridge, appliance-types and appliance-ui's `./vite` imported in plain node
+typecheck, the tests, and a build of `fixtures/consumer` through `applianceVite` against the packed kit, canvas and
+appliance-ui, with the packed tokens, mcp-bridge, appliance-types, the canvas's `./core` and appliance-ui's `./vite` imported in plain node
 and appliance-types typechecked under NodeNext.
 
 ## Releasing a package

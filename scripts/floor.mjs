@@ -1,4 +1,4 @@
-// Runs the kit's and appliance-ui's tests, and the consumer fixture, at the
+// Runs the kit's, the canvas's and appliance-ui's tests, and the consumer fixture, at the
 // oldest versions their peer and dependency ranges claim, each installed into a
 // temp copy so the repo's tree is untouched. appliance-ui takes the kit and
 // appliance-types packed while the workspace sits at their floor, so the kit's
@@ -14,6 +14,14 @@ const solid = { "solid-js": "1.9.11", "vite-plugin-solid": "2.11.10", "babel-pre
 const sets = [
   {
     name: "kit",
+    floor: { ...solid, vitest: "4.1.2", vite: "6.4.1" },
+    tools: ["jsdom", "typescript", "@types/node"],
+    entries: ["src", "test", "tsconfig.json", "tsconfig.build.json", "vitest.config.ts"],
+    test: ["npx", ["vitest", "run"]],
+    fixture: { FIXTURE_KIT_ONLY: "1" },
+  },
+  {
+    name: "canvas",
     floor: { ...solid, vitest: "4.1.2", vite: "6.4.1" },
     tools: ["jsdom", "typescript", "@types/node"],
     entries: ["src", "test", "tsconfig.json", "tsconfig.build.json", "vitest.config.ts"],

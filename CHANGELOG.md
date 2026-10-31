@@ -2,6 +2,10 @@
 
 ## `@wired-square/kit`
 
+### 0.3.6
+
+- `theme.css` defines tokens 0.4.0's ten canvas tokens, which `@wired-square/canvas` draws with.
+
 ### 0.3.5
 
 - `theme.css` defines tokens 0.3.0's nine serial console tokens, which `@wired-square/appliance-ui`'s
@@ -84,6 +88,13 @@ The component kit from a prior appliance, as its own package.
 - `@wired-square/kit/core`: the modules with no JSX, compiled to JavaScript for plain node.
 
 ## `@wired-square/tokens`
+
+### 0.4.0
+
+Ten tokens for `@wired-square/canvas`, each defaulting to an existing token, so they follow the scheme with light
+values only: `--app-canvas-bg`, `--app-canvas-dot` (the dot grid), `--app-canvas-connection` (the line drawn while
+connecting), `--app-canvas-chrome`, `-chrome-text`, `-chrome-hover` and `-chrome-border` (the controls and the
+minimap's frame), and `--app-canvas-minimap-node`, `-minimap-mask` and `-minimap-view`. 57 tokens in all.
 
 ### 0.3.0
 
@@ -245,3 +256,21 @@ Moved names:
   `MAX_PASSKEY_NAME_LEN`, `STALE_PROOF`, `MAX_AUDIT_PAGE`, `MAX_PEM_LEN`, `MAX_BUNDLE_LEN`, `MIN_PASSPHRASE_LEN`,
   `MIN_EVERY_HOURS`, `MAX_EVERY_HOURS`, `MIN_KEEP`, `MAX_KEEP`, `LOG_RING`, `LOG_LEVELS` and `FEED_HEARTBEAT_S`.
 - From `@wired-square/appliance-ui` to `@wired-square/kit` (or `/core`): `Refusal` and `refusalMessage`.
+
+## `@wired-square/canvas`
+
+### 0.1.0
+
+A board canvas: a pannable, zoomable pane of nodes and edges, with a framework-free core and a Solid binding.
+
+- `@wired-square/canvas/core`: `createCanvas(root, options)` and its `CanvasHandle` (`setNodes`, `setEdges`,
+  `getNode`, `getNodes`, `getViewport`, `getZoom`, `setViewport`, `setCentre`, `fitView`, `screenToCanvas` and
+  `destroy`), `floatingAnchors`, and the types. The consumer mounts each node's content and draws each edge; the
+  canvas keeps no selection, and reports clicks, hover, drags, connections and moves.
+- Only the nodes and edges in view are mounted. Sizes come from a resize observer; `measure`, `observe` and `frame`
+  are seams for tests.
+- Classes the content wears: `nopan` on what must not pan or start a drag, `nowheel` on what the wheel must not zoom,
+  and `canvas-source` on a connection's handle. The canvas wears `is-connecting` while a connection is drawn.
+- A dot background, controls and a minimap, as options, and `.app-canvas-panel` for corner panels.
+- `Canvas`, `CanvasPanel`, `CanvasScope` and `useCanvas`, as TSX behind the `solid` condition.
+- `canvas.css`, in the cascade layer `canvas`. No dependencies; solid-js ^1.9.11 is an optional peer.

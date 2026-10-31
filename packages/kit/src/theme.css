@@ -86,6 +86,21 @@
   --app-console-writer-3: #4646c8;
   --app-console-writer-4: #8a2f9e;
   --app-console-writer-5: #2f6f9e;
+
+  /* --- canvas ----------------------------------------------------------- */
+  /* The board canvas, its dot grid, the line drawn while connecting, and its
+   * controls and minimap. */
+  --app-canvas-bg: var(--app-bg);
+  --app-canvas-dot: var(--app-border-strong);
+  --app-canvas-connection: var(--app-accent);
+  --app-canvas-chrome: var(--app-surface);
+  --app-canvas-chrome-text: var(--app-text);
+  --app-canvas-chrome-hover: var(--app-surface-sunken);
+  --app-canvas-chrome-border: var(--app-border);
+  --app-canvas-minimap-node: var(--app-border-strong);
+  /* Over the minimap outside the view; translucent, so the nodes under it still show. */
+  --app-canvas-minimap-mask: color-mix(in srgb, var(--app-bg) 70%, transparent);
+  --app-canvas-minimap-view: var(--app-accent);
 }
 
 /*
