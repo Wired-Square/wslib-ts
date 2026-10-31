@@ -6,7 +6,7 @@ import { Scrollback } from "./ansi";
 import type { Line } from "./ansi";
 import { BAUDS, DEFAULT_BAUD, keyBytes, openLink, serialUrl } from "./link";
 import type { ConsolePort, Link, LinkState, ShownEvent } from "./link";
-import type { ConsoleUser, MonitorState } from "./wire";
+import type { ConsoleUser, MonitorState, RefusalReason } from "./wire";
 
 export type SerialConsoleProps = ({ url: string } | { port: ConsolePort; baud?: number }) & {
   /** Names the port, in the heading and the console's accessible name. */
@@ -23,7 +23,6 @@ export type SerialConsoleProps = ({ url: string } | { port: ConsolePort; baud?: 
 export function SerialConsole(props: SerialConsoleProps) {
   const [baud, setBaud] = createSignal(("port" in props && props.baud) || DEFAULT_BAUD);
   const url = () => ("url" in props ? props.url : serialUrl(props.port, baud()));
-  const heading = () => ("url" in props ? props.label : `${props.label} (requested ${baud()} baud)`);
 
   return (
     <div class="app-serial">
@@ -43,21 +42,28 @@ export function SerialConsole(props: SerialConsoleProps) {
         </Select>
       </Show>
       <Show when={url()} keyed>
-        {(opened) => <Pane url={opened} heading={heading()} label={props.label} readOnly={Boolean(props.readOnly)} />}
+        {(opened) => (
+          <Pane
+            url={opened}
+            label={props.label}
+            requested={"port" in props ? baud() : undefined}
+            readOnly={Boolean(props.readOnly)}
+          />
+        )}
       </Show>
     </div>
   );
 }
 
-function Pane(props: { url: string; heading: string; label: string; readOnly: boolean }) {
+function Pane(props: { url: string; label: string; requested: number | undefined; readOnly: boolean }) {
   const screen = new Scrollback();
   const encoder = new TextEncoder();
   const [lines, setLines] = createSignal<readonly Line[]>([[]]);
   const [link, setLink] = createSignal<LinkState>({ is: "connecting" });
   const [monitor, setMonitor] = createSignal<{ state: MonitorState; label: string; message?: string }>();
-  const [me, setMe] = createSignal<{ name: string; writes: boolean }>();
+  const [me, setMe] = createSignal<{ name: string; writes: boolean; baud?: number }>();
   const [people, setPeople] = createSignal<readonly ConsoleUser[]>([]);
-  const [refused, setRefused] = createSignal<string>();
+  const [refused, setRefused] = createSignal<{ reason: RefusalReason; detail?: string }>();
   const [typingOn, setTypingOn] = createSignal(false);
   let pane: HTMLPreElement | undefined;
   let current: Link | undefined;
@@ -86,7 +92,7 @@ function Pane(props: { url: string; heading: string; label: string; readOnly: bo
       case "input":
         return show(() => screen.note(event.marker, event));
       case "refused":
-        return setRefused(event.message);
+        return setRefused(event);
       case "error":
         return show(() => screen.write(`\r\n\x1b[31m[serial: error — ${event.message}]\x1b[0m\r\n`));
     }
@@ -123,12 +129,17 @@ function Pane(props: { url: string; heading: string; label: string; readOnly: bo
     if (text && send(text)) event.preventDefault();
   };
 
+  const heading = () => {
+    const actual = me()?.baud;
+    if (actual) return `${props.label} (${actual} baud)`;
+    return props.requested ? `${props.label} (requested ${props.requested} baud)` : props.label;
+  };
   const state = () => (link().is === "open" ? (monitor()?.label ?? "Connected") : undefined);
 
   return (
     <div class="app-console">
       <div class="app-console__head">
-        <span>{props.heading}</span>
+        <span>{heading()}</span>
         <span
           class={`app-console__state app-console__state--${paused() ? "paused" : link().is}`}
           role="status"
@@ -230,9 +241,10 @@ function Pane(props: { url: string; heading: string; label: string; readOnly: bo
         </For>
       </pre>
       <Show when={refused()}>
-        {(message) => (
+        {(refusal) => (
           <p class="app-console__refusal" role="status">
-            {refusal(message())}
+            {REFUSALS[refusal().reason] ?? "Not sent."}
+            <Show when={refusal().detail}>{(detail) => <> <small class="app-muted">{detail()}</small></>}</Show>
           </p>
         )}
       </Show>
@@ -240,18 +252,8 @@ function Pane(props: { url: string; heading: string; label: string; readOnly: bo
   );
 }
 
-const REFUSALS: [RegExp, string][] = [
-  [/paused/i, "Not sent while the port is paused."],
-  [/no active reader/i, "Not sent: nothing is reading this port, so input can't be sent."],
-];
-
-function refusal(message: string): JSX.Element {
-  const known = REFUSALS.find(([pattern]) => pattern.test(message));
-  return known ? (
-    known[1]
-  ) : (
-    <>
-      Not sent. <small class="app-muted">{message}</small>
-    </>
-  );
-}
+const REFUSALS: Record<RefusalReason, string> = {
+  paused: "Not sent while the port is paused.",
+  no_active_reader: "Not sent: nothing is reading this port, so input can't be sent.",
+  not_permitted: "Not sent: this session can watch but not type.",
+};

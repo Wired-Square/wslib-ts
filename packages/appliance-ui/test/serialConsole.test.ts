@@ -123,7 +123,7 @@ test("A pause keeps the console attached, shows its progress, and refuses input 
   const toggle = () => find(c.root, (n) => n.tag === "button" && textOf(n).trim() === "Stop typing");
   assert.equal(toggle().props.disabled, true, "the viewer's choice holds, unchangeable, through the pause");
   await click(c.root, "Stop typing");
-  await c.say({ type: "refused", message: "paused" });
+  await c.say({ type: "refused", reason: "paused" });
   assert.match(c.shown(), /Not sent while the port is paused\./);
 
   await c.say({ type: "state", state: "reading", label: "Reading" });
@@ -134,28 +134,27 @@ test("A pause keeps the console attached, shows its progress, and refuses input 
   assert.equal(Dialled.all.length, 1);
 });
 
-test("A refusal is said in plain words where it is known, and clears when the viewer next sends", async () => {
+test("A refusal is said in plain words for its reason, any detail beside it, and clears when the viewer next sends", async () => {
   const c = await opened(URL_PROPS);
   await c.writer();
-  await c.say({ type: "refused", message: 'no active reader for "/dev/ttyACM0"' });
+  await c.say({ type: "refused", reason: "no_active_reader" });
   assert.match(c.shown(), /Not sent: nothing is reading this port, so input can't be sent\./);
-  assert.doesNotMatch(c.shown(), /no active reader/);
+  assert.equal([...within(c.root)].filter((n) => n.tag === "small").length, 0);
 
   assert.equal(c.press("a"), true);
   await settled();
   assert.doesNotMatch(c.shown(), /Not sent/);
 
-  await c.say({ type: "refused", message: "unknown peripheral" });
-  assert.match(c.shown(), /Not sent\. unknown peripheral/);
-  const raw = find(c.root, (n) => n.tag === "small");
-  assert.equal(textOf(raw), "unknown peripheral");
+  await c.say({ type: "refused", reason: "not_permitted", detail: "watch-only link" });
+  assert.match(c.shown(), /Not sent: this session can watch but not type\. watch-only link/);
+  assert.equal(textOf(find(c.root, (n) => n.tag === "small")), "watch-only link");
 });
 
 test("A reconnect clears a refusal and leaves a marker line in the scrollback", async (t) => {
   const c = await opened(URL_PROPS);
   await c.writer();
   c.socket().binary("boot");
-  await c.say({ type: "refused", message: "paused" });
+  await c.say({ type: "refused", reason: "paused" });
   t.mock.timers.enable({ apis: ["setTimeout"] });
   c.socket().drop();
   t.mock.timers.tick(1000);
@@ -226,4 +225,20 @@ test("Given a port, it offers the bauds, and a new baud reopens the console at i
   assert.equal(first.closed, true);
   assert.equal(new URL(c.socket().url).searchParams.get("baud"), "74880");
   assert.match(c.shown(), /Board \(requested 74880 baud\)/);
+
+  c.socket().open();
+  await c.say({ type: "attached", name: "olive", writes: true });
+  assert.match(c.shown(), /Board \(requested 74880 baud\)/, "a relay may attach before the port's baud is known");
+  await c.say({ type: "attached", name: "olive", writes: true, baud: 115200 });
+  assert.match(c.shown(), /Board \(115200 baud\)/);
+  assert.doesNotMatch(c.shown(), /requested/);
+});
+
+test("Given a URL, the heading is the label until the port's baud is known", async () => {
+  const c = await opened(URL_PROPS);
+  c.socket().open();
+  await c.say({ type: "attached", name: "olive", writes: false });
+  assert.doesNotMatch(c.shown(), /baud/);
+  await c.say({ type: "attached", name: "olive", writes: false, baud: 74880 });
+  assert.match(c.shown(), /Board \(74880 baud\)/);
 });

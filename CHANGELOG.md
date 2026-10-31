@@ -137,7 +137,8 @@ and `constants` are exported from the root. No dependencies and no peers.
 - `SerialConsole`: a shared console on the app's `/ws/serial`, given its `url`, or a `port` (`ConsolePort`: `path`
   and `serialNumber`) and an optional `baud`, with a `label`. Given a port it offers the bauds, 115200 by default and
   74880 for an ESP32's boot ROM, and a new baud reopens it; the first to open a port sets its baud, so the heading
-  names the baud as requested. `readOnly` keeps it from typing, and `warning` is a short caution shown above it.
+  names the port's baud once the back end says it, and the requested one until then. `readOnly` keeps it from
+  typing, and `warning` is a short caution shown above it.
 - Input is off until the viewer chooses Type, in each console and for that page only, and only while the session may
   write; Stop typing turns it off again, and is held while the port is paused. Keys are sent as a terminal sends
   them, Tab and Escape included, and a paste whole; Shift+Tab is never sent, and leaves the console. With input off,
@@ -147,8 +148,11 @@ and `constants` are exported from the root. No dependencies and no peers.
 - The link and the port's state show inline. A console that drops reconnects, waiting up to 15 seconds, and marks
   where it did in the scrollback; one that never opened offers to try again. While the port is paused, as for a
   flash, the console stays attached and refuses input rather than queueing it.
-- A refusal is said in one line under the scrollback, in plain words where it is known, otherwise as "Not sent."
-  with the back end's message beside it, and clears when the viewer next sends or the console reconnects.
+- A refusal is said in one line under the scrollback, in plain words for its reason (paused, nothing reading the
+  port, or watch only) with any detail from the back end beside it, and clears when the viewer next sends or the
+  console reconnects.
+- The wire types are generated from the back end's `wslib-serial-console` crate, by
+  `scripts/serial-console-sync.mjs`.
 - The scrollback's height follows the viewport's, between 8rem and 22rem, so the console fits in a dialog.
 - ANSI blue, magenta and cyan are drawn in their own colours, not the accent.
 - `applianceProxy` proxies `/ws` too, with its sockets.
