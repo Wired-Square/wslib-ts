@@ -96,6 +96,7 @@ export function createChart(container: HTMLElement, initial: ChartOptions): Char
   let shown: Shown[] = [];
   let pointer: number | undefined;
   let frame: number | undefined;
+  let hideOnRelease = false;
 
   const root = styled(document.createElement("div"), { position: "relative", width: "100%", height: "100%" });
   root.className = "app-chart";
@@ -140,11 +141,11 @@ export function createChart(container: HTMLElement, initial: ChartOptions): Char
     const values = valueTicks(extent(shown.map(({ series, points }) => ({ points, kind: series.kind })), options.window, options.yMin));
     const format = options.formatValue ?? defaultFormat(values.ticks[1]! - values.ticks[0]!);
     const labels = values.ticks.map(format);
-    const left = options.yAxisWidth ?? Math.max(...labels.map((text) => text.length)) * CHAR_WIDTH + 12;
+    const left = finite(options.yAxisWidth) ? Math.max(0, options.yAxisWidth) : Math.max(...labels.map((text) => text.length)) * CHAR_WIDTH + 12;
     const right = width - MARGIN.right;
     const bottom = height - MARGIN.bottom;
-    const top = MARGIN.top;
-    if (right <= left || bottom <= top) return;
+    const { top } = MARGIN;
+    if (!(right > left && bottom > top)) return;
     const x = scale([from, to], [left, right]);
     const y = scale(values.domain, [bottom, top]);
     layout = { left, right, top, bottom, time: scale([left, right], [from, to]), format };
@@ -236,25 +237,35 @@ export function createChart(container: HTMLElement, initial: ChartOptions): Char
     point();
   };
   const move = (event: PointerEvent) => {
-    if (event.pointerType !== "mouse" && pointer === undefined) return;
+    if (event.pointerType !== "mouse") {
+      if (pointer === undefined) return;
+      hideOnRelease = false;
+    }
     pointer = offset(event);
     frame ??= requestAnimationFrame(() => {
       frame = undefined;
       point();
     });
   };
-  // A touch's pointerup is followed at once by pointerleave, so a tap holds the readout until the next tap.
-  const tap = (event: PointerEvent) => {
-    if (event.pointerType !== "mouse") show(pointer === undefined ? offset(event) : undefined);
+  // A touch's pointerup is followed at once by pointerleave, so a tap holds the readout until the next tap, and a drag scrubs it.
+  const press = (event: PointerEvent) => {
+    if (event.pointerType === "mouse") return;
+    hideOnRelease = pointer !== undefined;
+    show(offset(event));
+  };
+  const release = () => {
+    if (hideOnRelease) show(undefined);
+    hideOnRelease = false;
   };
   const leave = (event: PointerEvent) => {
     if (event.pointerType === "mouse") show(undefined);
   };
   const elsewhere = (event: PointerEvent) => {
-    if (pointer !== undefined && !root.contains(event.target as Node)) show(undefined);
+    if (pointer !== undefined && !event.composedPath().includes(root)) show(undefined);
   };
   svg.addEventListener("pointermove", move);
-  svg.addEventListener("pointerdown", tap);
+  svg.addEventListener("pointerdown", press);
+  svg.addEventListener("pointerup", release);
   svg.addEventListener("pointerleave", leave);
   document.addEventListener("pointerdown", elsewhere);
   const observer =
@@ -275,7 +286,8 @@ export function createChart(container: HTMLElement, initial: ChartOptions): Char
       observer?.disconnect();
       if (frame !== undefined) cancelAnimationFrame(frame);
       svg.removeEventListener("pointermove", move);
-      svg.removeEventListener("pointerdown", tap);
+      svg.removeEventListener("pointerdown", press);
+      svg.removeEventListener("pointerup", release);
       svg.removeEventListener("pointerleave", leave);
       document.removeEventListener("pointerdown", elsewhere);
       root.remove();

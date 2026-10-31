@@ -35,7 +35,7 @@ const svg = () => container.querySelector("svg")!;
 const series = (id: string) => container.querySelector(`.app-chart-series[data-series="${id}"]`)!;
 const readout = () => container.querySelector<HTMLElement>(".app-chart-readout")!;
 const pointer = (type: string, clientX: number, pointerType = "mouse", target: Element = svg()) =>
-  target.dispatchEvent(new PointerEvent(type, { clientX, pointerType, bubbles: true }));
+  target.dispatchEvent(new PointerEvent(type, { clientX, pointerType, bubbles: true, composed: true }));
 const hover = (clientX: number) => {
   pointer("pointermove", clientX);
   flush();
@@ -187,7 +187,7 @@ describe("createChart", () => {
     chart.destroy();
     expect(container.children).toHaveLength(0);
     expect(observers[0]!.disconnect).toHaveBeenCalled();
-    expect(removed.mock.calls.map(([type]) => type).sort()).toEqual(["pointerdown", "pointerleave", "pointermove"]);
+    expect(removed.mock.calls.map(([type]) => type).sort()).toEqual(["pointerdown", "pointerleave", "pointermove", "pointerup"]);
     expect(removedFromDocument.mock.calls.map(([type]) => type)).toEqual(["pointerdown"]);
   });
 
@@ -243,7 +243,56 @@ describe("createChart", () => {
     flush();
     expect(readout().hidden).toBe(false);
     pointer("pointerdown", 200, "touch");
+    pointer("pointerup", 200, "touch");
     expect(readout().hidden).toBe(true);
+  });
+
+  test("a touch drag scrubs the readout whether or not it was shown", () => {
+    createChart(container, options());
+    for (const pen of ["touch", "pen"]) {
+      pointer("pointerdown", 300, pen);
+      pointer("pointermove", 250, pen);
+      flush();
+      expect(cursorX()).toBe(250);
+      pointer("pointerdown", 200, pen);
+      expect(cursorX()).toBe(200);
+      pointer("pointermove", 220, pen);
+      pointer("pointerup", 220, pen);
+      flush();
+      expect(readout().hidden).toBe(false);
+      expect(cursorX()).toBe(220);
+      pointer("pointerdown", 220, pen);
+      pointer("pointerup", 220, pen);
+    }
+  });
+
+  test("a tap inside a shadow root keeps its readout", () => {
+    const host = document.createElement("div");
+    document.body.append(host);
+    const shadow = host.attachShadow({ mode: "open" });
+    const inner = document.createElement("div");
+    shadow.append(inner);
+    try {
+      createChart(inner, options());
+      const drawing = inner.querySelector("svg")!;
+      pointer("pointerdown", 300, "touch", drawing);
+      pointer("pointerup", 300, "touch", drawing);
+      expect(inner.querySelector<HTMLElement>(".app-chart-readout")!.hidden).toBe(false);
+      pointer("pointerdown", 0, "touch", document.body);
+      expect(inner.querySelector<HTMLElement>(".app-chart-readout")!.hidden).toBe(true);
+    } finally {
+      host.remove();
+    }
+  });
+
+  test("an unusable y axis width draws no NaN", () => {
+    for (const yAxisWidth of [Number.NaN, -20]) {
+      container.replaceChildren();
+      createChart(container, options({ yAxisWidth }));
+      expect(container.querySelector(".app-chart-series")).not.toBeNull();
+      expect(container.innerHTML).not.toContain("NaN");
+    }
+    expect(plotLeft()).toBe(0);
   });
 
   test("a tap elsewhere clears a tapped readout", () => {

@@ -1,4 +1,5 @@
 import { deepEqual, equal, ok } from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import { test } from "node:test";
 
 import { areaPath, extent, linePath, runs, scale, timeTicks, valueAt, valueTicks, visible, type Point } from "../src/scale.ts";
@@ -167,18 +168,41 @@ test("time ticks keep to whole local hours across a daylight saving change", () 
   equal(ticks.length, 8);
 });
 
-test("time ticks keep to whole local hours after a half-hour daylight saving change", () => {
-  process.env.TZ = "Australia/Lord_Howe";
+const inZone = (zone: string, body: () => void) => {
+  process.env.TZ = zone;
   try {
+    body();
+  } finally {
+    process.env.TZ = "Australia/Adelaide";
+  }
+};
+
+test("time ticks keep to whole local hours after a half-hour daylight saving change", () => {
+  inZone("Australia/Lord_Howe", () => {
     const from = local(2026, 10, 3);
     const ticks = timeTicks({ from, to: from + 3 * 24 * HOUR }, 13);
     deepEqual(
       ticks.map(({ label }) => label),
       ["00:00", "06:00", "12:00", "18:00", "00:00", "06:00", "12:00", "18:00", "00:00", "06:00", "12:00", "18:00", "00:00"],
     );
-  } finally {
-    process.env.TZ = "Australia/Adelaide";
-  }
+  });
+});
+
+test("a day or month whose midnight daylight saving skips keeps its tick", () => {
+  inZone("America/Santiago", () => {
+    const days = timeTicks({ from: local(2024, 9, 4), to: local(2024, 9, 11) }, 8);
+    deepEqual(
+      days.map(({ label }) => label),
+      ["Wed 4", "Thu 5", "Fri 6", "Sat 7", "Sun 8", "Mon 9", "Tue 10", "Wed 11"],
+    );
+  });
+  inZone("America/Asuncion", () => {
+    const months = timeTicks({ from: local(2023, 7, 1), to: local(2024, 1, 1) }, 8);
+    deepEqual(
+      months.map(({ label }) => label),
+      ["Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan"],
+    );
+  });
 });
 
 test("a short window gets ticks every 5, 10, 15 or 30 minutes", () => {
@@ -197,6 +221,28 @@ test("a long window steps by days, weeks or months, and never gives more ticks t
     ok(ticks.length >= 1 && ticks.length <= 10, `${years} years: ${ticks.length}`);
     ok(ticks.every(({ label }) => label === "Jan"), `${years} years`);
   }
+});
+
+test("year ticks fall on the same years as the window pans", () => {
+  const years = (from: number) => timeTicks({ from: local(from, 1, 1), to: local(from + 26, 1, 1) }, 6).map(({ time }) => new Date(time).getFullYear());
+  const now = years(2000);
+  const later = years(2001);
+  deepEqual(now.filter((year) => year > 2001), later.filter((year) => year < 2026));
+  ok(now.length <= 6 && later.length <= 6);
+});
+
+test("a window beyond the range of dates ends", () => {
+  const scaleUrl = new URL("../src/scale.ts", import.meta.url).href;
+  const windows = [
+    { from: 0, to: 8.64e15 },
+    { from: 0, to: 1e17 },
+    { from: -1e16, to: 0 },
+    { from: 0, to: Number.MAX_SAFE_INTEGER },
+  ];
+  const script = `import { timeTicks } from ${JSON.stringify(scaleUrl)}; for (const w of ${JSON.stringify(windows)}) timeTicks(w, 5);`;
+  const { status, signal } = spawnSync(process.execPath, ["--input-type=module", "-e", script], { timeout: 10_000 });
+  equal(signal, null);
+  equal(status, 0);
 });
 
 test("a window too short for a tick gets none, and a tiny count still gets one", () => {

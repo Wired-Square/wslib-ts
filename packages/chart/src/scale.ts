@@ -121,9 +121,9 @@ type Step = { unit: "minute" | "day" | "month"; n: number };
 const STEPS: Step[] = [
   ...[5, 10, 15, 30, 60, 120, 180, 360, 720].map((n) => ({ unit: "minute" as const, n })),
   ...[1, 2, 7, 14].map((n) => ({ unit: "day" as const, n })),
-  ...[1, 3, 6, 12].map((n) => ({ unit: "month" as const, n })),
+  ...[1, 3, 6].map((n) => ({ unit: "month" as const, n })),
 ];
-const LONGEST_MINUTES = { minute: 1, day: DAY_MINUTES + 60, month: 31 * DAY_MINUTES };
+const YEARLY: Step = { unit: "month", n: 12 };
 
 // Ticks count wall-clock minutes from a Monday, so they step on the local calendar across daylight saving and weeks start on Mondays.
 const EPOCH = Date.UTC(2000, 0, 3);
@@ -143,14 +143,17 @@ const index = (step: Step, minutes: number) => {
 const minutesAt = (step: Step, k: number) =>
   step.unit === "month" ? (Date.UTC(2000, k * step.n, 1) - EPOCH) / MINUTE : k * stepMinutes(step);
 
-function dates(step: Step, { from, to }: Window): Date[] {
+// A day or month whose midnight daylight saving skips keeps the time the clock jumps to, so its label still names it.
+// A time beyond Date's range is an invalid date, which must end the ticks rather than compare false for ever.
+function dates(step: Step, { from, to }: Window, most = Infinity): Date[] {
   const out: Date[] = [];
-  for (let k = index(step, wall(new Date(from))); ; k++) {
+  for (let k = index(step, wall(new Date(from))); out.length <= most; k++) {
     const minutes = minutesAt(step, k);
     const at = local(minutes);
-    if (at.getTime() > to) return out;
-    if (at.getTime() >= from && wall(at) === minutes) out.push(at);
+    if (!(at.getTime() <= to)) break;
+    if (at.getTime() >= from && (step.unit !== "minute" || wall(at) === minutes)) out.push(at);
   }
+  return out;
 }
 
 function labelled(ticks: Date[], { unit }: Step): TimeTick[] {
@@ -168,14 +171,11 @@ function labelled(ticks: Date[], { unit }: Step): TimeTick[] {
 /** Ticks on the local calendar at the finest of 5 minutes to 12 months that gives at most `count` of them. */
 export function timeTicks(window: Window, count: number): TimeTick[] {
   const most = Math.max(1, count);
-  const span = (window.to - window.from) / MINUTE;
-  for (const step of STEPS.slice(0, -1)) {
-    if (span / (step.n * LONGEST_MINUTES[step.unit]) > most + 2) continue;
-    const ticks = dates(step, window);
+  for (const step of STEPS) {
+    const ticks = dates(step, window, most);
     if (ticks.length <= most) return labelled(ticks, step);
   }
-  const yearly = STEPS.at(-1)!;
-  const ticks = dates(yearly, window);
-  const every = Math.ceil(ticks.length / most);
-  return labelled(ticks.filter((_, i) => i % every === 0), yearly);
+  const years = dates(YEARLY, window);
+  const every = Math.ceil(years.length / most);
+  return labelled(years.filter((d) => d.getFullYear() % every === 0), YEARLY);
 }
