@@ -5,7 +5,7 @@
 # released; with none it lists those whose version the registry lacks. Without
 # --execute it stops before tagging, and with --no-mirror after publishing.
 #
-#   scripts/release.sh kit|tokens|mcp-bridge|appliance-types|appliance-ui|canvas ... [--execute] [--no-mirror]
+#   scripts/release.sh kit|tokens|mcp-bridge|appliance-types|appliance-ui|canvas|chart ... [--execute] [--no-mirror]
 # Lists of names and tags are split on purpose.
 # shellcheck disable=SC2086
 set -eu

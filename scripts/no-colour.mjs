@@ -31,7 +31,7 @@ const TOKENS = "packages/tokens/src/tokens.ts";
 const withoutValues = (text) => text.replace(/\b(light|dark): ("[^"]*"|'[^']*')/g, "$1: ''");
 
 const hits = repoFiles()
-  .filter((file) => /^packages\/(kit|tokens|appliance-ui|canvas)\/src\/.*\.(tsx?|css)$/.test(file) && file !== "packages/kit/src/theme.css")
+  .filter((file) => /^packages\/(kit|tokens|appliance-ui|canvas|chart)\/src\/.*\.(tsx?|css)$/.test(file) && file !== "packages/kit/src/theme.css")
   .flatMap((file) => {
     const css = file.endsWith(".css");
     const text = readFileSync(file, "utf8");

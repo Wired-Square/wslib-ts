@@ -14,7 +14,7 @@ covers using and publishing them.
   Node 22.18 or later.
 - The kit, appliance-ui and the canvas ship TSX source behind a `solid`
   export condition. The kit's and the canvas's `./core`, appliance-ui's
-  `./vite`, tokens, mcp-bridge and appliance-types compile to `dist/`.
+  `./vite`, tokens, mcp-bridge, appliance-types and chart compile to `dist/`.
 
 ## Gates
 
