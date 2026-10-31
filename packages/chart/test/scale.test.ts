@@ -1,8 +1,7 @@
 import { deepEqual, equal, ok } from "node:assert/strict";
 import { test } from "node:test";
 
-import { areaPath, extent, linePath, runs, scale, timeTicks, valueAt, valueTicks, visible } from "../src/scale.ts";
-import type { Point } from "../src/index.ts";
+import { areaPath, extent, linePath, runs, scale, timeTicks, valueAt, valueTicks, visible, type Point } from "../src/scale.ts";
 
 // A half-hour offset with daylight saving: whole hours here are not whole hours in UTC.
 process.env.TZ = "Australia/Adelaide";
@@ -95,10 +94,15 @@ test("extent spans every series, reaches down to a floor, and is never empty or 
   const b: Point[] = [[0, 5], [10, null]];
   deepEqual(extent([{ points: a, kind: "line" }, { points: b, kind: "line" }], window), [2, 5]);
   deepEqual(extent([{ points: a, kind: "line" }], window, 0), [0, 3]);
-  deepEqual(extent([{ points: a, kind: "line" }], window, 10), [2, 10]);
+  deepEqual(extent([{ points: a, kind: "line" }], window, 10), [2, 3]);
   deepEqual(extent([], window), [0, 1]);
   deepEqual(extent([{ points: [[5, 4]], kind: "line" }], window), [3, 5]);
   deepEqual(extent([{ points: [[5, 0]], kind: "line" }], window, 0), [0, 1]);
+});
+
+test("extent takes one pass, so a long series does not overflow the stack", () => {
+  const points: Point[] = Array.from({ length: 200_000 }, (_, i) => [i, i % 7]);
+  deepEqual(extent([{ points, kind: "line" }], { from: 0, to: 200_000 }), [0, 6]);
 });
 
 test("value ticks are three to five round, evenly spaced numbers covering the extent", () => {
@@ -125,7 +129,7 @@ test("time ticks fall on the local clock's whole hours, labelled HH:MM", () => {
     ["07:00", "08:00", "09:00", "10:00", "11:00"],
   );
   equal(ticks[0]!.time, local(2026, 11, 3, 7));
-  ok(ticks.every(({ day }) => day === undefined));
+  deepEqual(ticks.map(({ period }) => period), ["Tue 3", undefined, undefined, undefined, undefined]);
 });
 
 test("time ticks take the finest of 1, 2, 3, 6, 12 and 24 hours that fits the count", () => {
@@ -147,13 +151,13 @@ test("time ticks take the finest of 1, 2, 3, 6, 12 and 24 hours that fits the co
   );
 });
 
-test("a tick on a new day names it; the first tick does only when the day turned inside the window", () => {
+test("the first tick and each tick on a new day name the day", () => {
   const ticks = timeTicks({ from: local(2026, 10, 31, 13), to: local(2026, 11, 1, 13) }, 5);
   deepEqual(
-    ticks.map(({ label, day }) => [label, day]),
-    [["18:00", undefined], ["00:00", "Sun 1"], ["06:00", undefined], ["12:00", undefined]],
+    ticks.map(({ label, period }) => [label, period]),
+    [["18:00", "Sat 31"], ["00:00", "Sun 1"], ["06:00", undefined], ["12:00", undefined]],
   );
-  equal(timeTicks({ from: local(2026, 10, 31, 23, 30), to: local(2026, 11, 1, 3) }, 4)[0]!.day, "Sun 1");
+  equal(timeTicks({ from: local(2026, 10, 31, 23, 30), to: local(2026, 11, 1, 3) }, 4)[0]!.period, "Sun 1");
 });
 
 test("time ticks keep to whole local hours across a daylight saving change", () => {
@@ -163,7 +167,39 @@ test("time ticks keep to whole local hours across a daylight saving change", () 
   equal(ticks.length, 8);
 });
 
-test("a window without a whole hour gets no time ticks, and a tiny count still gets one", () => {
-  deepEqual(timeTicks({ from: local(2026, 11, 3, 6, 10), to: local(2026, 11, 3, 6, 50) }, 5), []);
+test("time ticks keep to whole local hours after a half-hour daylight saving change", () => {
+  process.env.TZ = "Australia/Lord_Howe";
+  try {
+    const from = local(2026, 10, 3);
+    const ticks = timeTicks({ from, to: from + 3 * 24 * HOUR }, 13);
+    deepEqual(
+      ticks.map(({ label }) => label),
+      ["00:00", "06:00", "12:00", "18:00", "00:00", "06:00", "12:00", "18:00", "00:00", "06:00", "12:00", "18:00", "00:00"],
+    );
+  } finally {
+    process.env.TZ = "Australia/Adelaide";
+  }
+});
+
+test("a short window gets ticks every 5, 10, 15 or 30 minutes", () => {
+  const ticks = timeTicks({ from: local(2026, 11, 3, 6, 10), to: local(2026, 11, 3, 6, 50) }, 5);
+  deepEqual(ticks.map(({ label }) => label), ["06:10", "06:20", "06:30", "06:40", "06:50"]);
+  deepEqual(timeTicks({ from: local(2026, 11, 3, 6, 10), to: local(2026, 11, 3, 6, 59) }, 2).map(({ label }) => label), ["06:30"]);
+});
+
+test("a long window steps by days, weeks or months, and never gives more ticks than the count", () => {
+  const month = timeTicks({ from: local(2026, 11, 1), to: local(2026, 12, 1) }, 10);
+  ok(month.length <= 10 && month.length >= 4, month.map(({ label }) => label).join());
+  ok(month.every(({ label }) => label.startsWith("Mon ")), month.map(({ label }) => label).join());
+  equal(month[0]!.period, "Nov");
+  for (const years of [10, 1000]) {
+    const ticks = timeTicks({ from: local(2026, 1, 1), to: local(2026 + years, 1, 1) }, 10);
+    ok(ticks.length >= 1 && ticks.length <= 10, `${years} years: ${ticks.length}`);
+    ok(ticks.every(({ label }) => label === "Jan"), `${years} years`);
+  }
+});
+
+test("a window too short for a tick gets none, and a tiny count still gets one", () => {
+  deepEqual(timeTicks({ from: local(2026, 11, 3, 6, 11), to: local(2026, 11, 3, 6, 14) }, 5), []);
   equal(timeTicks({ from: local(2026, 11, 3), to: local(2026, 11, 3, 1) }, 0).length, 1);
 });

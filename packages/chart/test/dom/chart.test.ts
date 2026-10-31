@@ -18,27 +18,65 @@ const options = (overrides: Partial<ChartOptions> = {}): ChartOptions => ({
 });
 
 let container: HTMLElement;
+let frames: FrameRequestCallback[];
 
 const sized = (width: number, height: number) => {
-  Object.defineProperty(container, "clientWidth", { configurable: true, value: width });
-  Object.defineProperty(container, "clientHeight", { configurable: true, value: height });
+  for (const [name, value] of [["clientWidth", width], ["clientHeight", height]] as const) {
+    Object.defineProperty(HTMLElement.prototype, name, {
+      configurable: true,
+      get(this: HTMLElement) {
+        return this.classList.contains("app-chart") ? value : 0;
+      },
+    });
+  }
 };
+const flush = () => frames.splice(0).forEach((frame) => frame(0));
 const svg = () => container.querySelector("svg")!;
 const series = (id: string) => container.querySelector(`.app-chart-series[data-series="${id}"]`)!;
 const readout = () => container.querySelector<HTMLElement>(".app-chart-readout")!;
-const hover = (clientX: number) => svg().dispatchEvent(new PointerEvent("pointermove", { clientX, bubbles: true }));
+const pointer = (type: string, clientX: number, pointerType = "mouse", target: Element = svg()) =>
+  target.dispatchEvent(new PointerEvent(type, { clientX, pointerType, bubbles: true }));
+const hover = (clientX: number) => {
+  pointer("pointermove", clientX);
+  flush();
+};
+const plotLeft = () => Number(container.querySelector(".app-chart-time line")!.getAttribute("x1"));
 const cursorX = () => Number(container.querySelector(".app-chart-cursor")?.getAttribute("x1"));
 
 beforeEach(() => {
   container = document.createElement("div");
   document.body.append(container);
   sized(600, 200);
+  frames = [];
+  vi.stubGlobal("requestAnimationFrame", (frame: FrameRequestCallback) => frames.push(frame));
+  vi.stubGlobal("cancelAnimationFrame", () => frames.splice(0));
 });
 
 afterEach(() => {
   container.remove();
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+  delete (HTMLElement.prototype as { clientWidth?: number }).clientWidth;
+  delete (HTMLElement.prototype as { clientHeight?: number }).clientHeight;
 });
+
+const stubResizeObserver = () => {
+  const observers: { callback: () => void; observed: Element[]; disconnect: ReturnType<typeof vi.fn> }[] = [];
+  vi.stubGlobal(
+    "ResizeObserver",
+    class {
+      observed: Element[] = [];
+      disconnect = vi.fn();
+      constructor(public callback: () => void) {
+        observers.push(this);
+      }
+      observe(target: Element) {
+        this.observed.push(target);
+      }
+    },
+  );
+  return observers;
+};
 
 describe("createChart", () => {
   test("draws a group of paths per series, stroked with the series' custom property", () => {
@@ -98,7 +136,7 @@ describe("createChart", () => {
     expect(readout().firstElementChild!.textContent).toBe("Tue 3 03:30");
     expect(rows).toEqual(["Alpha 3.25 kW", "Beta 3 kW", "Gamma –"]);
 
-    svg().dispatchEvent(new PointerEvent("pointerleave"));
+    pointer("pointerleave", 0);
     expect(readout().hidden).toBe(true);
     expect(container.querySelector(".app-chart-cursor")).toBeNull();
   });
@@ -128,27 +166,102 @@ describe("createChart", () => {
     expect(readout().hidden).toBe(true);
   });
 
-  test("redraws on resize, and destroy removes the chart and stops observing", () => {
-    const observers: { callback: () => void; disconnect: ReturnType<typeof vi.fn> }[] = [];
-    vi.stubGlobal(
-      "ResizeObserver",
-      class {
-        disconnect = vi.fn();
-        constructor(public callback: () => void) {
-          observers.push(this);
-        }
-        observe() {}
-      },
-    );
-    const chart = createChart(container, options());
+  test("observes its own box, draws once on creation, and redraws only when the size changes", () => {
+    const observers = stubResizeObserver();
+    createChart(container, options());
+    expect(observers[0]!.observed).toEqual([container.querySelector(".app-chart")]);
+    const first = series("a");
+    observers[0]!.callback();
+    expect(first.isConnected).toBe(true);
     sized(300, 100);
     observers[0]!.callback();
+    expect(first.isConnected).toBe(false);
     expect(svg().getAttribute("width")).toBe("300");
+  });
 
+  test("destroy removes the chart and stops observing and listening", () => {
+    const observers = stubResizeObserver();
+    const chart = createChart(container, options());
     const removed = vi.spyOn(SVGElement.prototype, "removeEventListener");
+    const removedFromDocument = vi.spyOn(document, "removeEventListener");
     chart.destroy();
     expect(container.children).toHaveLength(0);
     expect(observers[0]!.disconnect).toHaveBeenCalled();
     expect(removed.mock.calls.map(([type]) => type).sort()).toEqual(["pointerdown", "pointerleave", "pointermove"]);
+    expect(removedFromDocument.mock.calls.map(([type]) => type)).toEqual(["pointerdown"]);
+  });
+
+  test("measures its own box, not the container's padded one, and keeps the drawing out of the flow", () => {
+    Object.defineProperty(container, "clientWidth", { configurable: true, value: 640 });
+    Object.defineProperty(container, "clientHeight", { configurable: true, value: 240 });
+    createChart(container, options());
+    expect(svg().getAttribute("width")).toBe("600");
+    expect(svg().getAttribute("height")).toBe("200");
+    expect(svg().style.getPropertyValue("position")).toBe("absolute");
+  });
+
+  test("clips the series without an id, so copies on one page cannot collide", () => {
+    createChart(container, options());
+    expect(container.querySelector("[id]")).toBeNull();
+    const plot = series("a").closest("svg")!;
+    expect(plot).not.toBe(svg());
+    expect(plot.style.getPropertyValue("overflow")).toBe("hidden");
+  });
+
+  test("a window with an infinite end draws nothing", () => {
+    createChart(container, options({ window: { from, to: Infinity } }));
+    expect(container.querySelector(".app-chart-series")).toBeNull();
+    createChart(container, options({ window: { from: -Infinity, to } }));
+    expect(container.querySelector(".app-chart-series")).toBeNull();
+  });
+
+  test("the default format keeps as many decimals as the ticks need", () => {
+    const tiny = { id: "t", label: "Tiny", kind: "line" as const, colour: "--app-good" as const, points: [[from, 0], [to, 0.004]] as [number, number][] };
+    createChart(container, options({ series: [tiny] }));
+    const values = [...container.querySelectorAll(".app-chart-grid text")].map((t) => t.textContent);
+    expect(values).toEqual(["0", "0.001", "0.002", "0.003", "0.004"]);
+  });
+
+  test("a fixed y axis width lines up the time axes of charts with different labels", () => {
+    const wide = { id: "w", label: "Wide", kind: "line" as const, colour: "--app-good" as const, points: [[from, -20000], [to, 10000]] as [number, number][] };
+    createChart(container, options({ yAxisWidth: 48 }));
+    const narrow = plotLeft();
+    container.replaceChildren();
+    createChart(container, options({ series: [wide], yAxisWidth: 48 }));
+    expect(plotLeft()).toBe(48);
+    expect(narrow).toBe(48);
+    container.replaceChildren();
+    createChart(container, options({ series: [wide] }));
+    expect(plotLeft()).toBeGreaterThan(48);
+  });
+
+  test("a tap keeps the readout through the touch's pointerup and pointerleave, until a second tap", () => {
+    createChart(container, options());
+    pointer("pointerdown", 300, "touch");
+    pointer("pointerup", 300, "touch");
+    pointer("pointerleave", 300, "touch");
+    flush();
+    expect(readout().hidden).toBe(false);
+    pointer("pointerdown", 200, "touch");
+    expect(readout().hidden).toBe(true);
+  });
+
+  test("a tap elsewhere clears a tapped readout", () => {
+    createChart(container, options());
+    pointer("pointerdown", 300, "touch");
+    expect(readout().hidden).toBe(false);
+    pointer("pointerdown", 0, "touch", document.body);
+    expect(readout().hidden).toBe(true);
+  });
+
+  test("pointer moves redraw the readout once per frame", () => {
+    createChart(container, options());
+    pointer("pointermove", 200);
+    pointer("pointermove", 250);
+    pointer("pointermove", 300);
+    expect(frames).toHaveLength(1);
+    expect(readout().hidden).toBe(true);
+    flush();
+    expect(cursorX()).toBe(300);
   });
 });

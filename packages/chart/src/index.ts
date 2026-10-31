@@ -11,12 +11,12 @@ import {
   valueTicks,
   visible,
   weekday,
+  type Kind,
+  type Point,
+  type Window,
 } from "./scale.ts";
 
-/** A time in ms since the epoch and its value; a missing value is a gap. */
-export type Point = [time: number, value: number | null];
-export type Kind = "line" | "area" | "step";
-export type Window = { from: number; to: number };
+export type { Kind, Point, Window } from "./scale.ts";
 
 export interface Series {
   id: string;
@@ -25,7 +25,6 @@ export interface Series {
   kind: Kind;
   /** A CSS custom property's name, such as `--app-good`, drawn as `var(name)`. */
   colour: `--${string}`;
-  axis?: "left";
 }
 
 export interface ChartOptions {
@@ -36,6 +35,8 @@ export interface ChartOptions {
   formatValue?: (value: number) => string;
   /** The y axis reaches down to at least this value. */
   yMin?: number;
+  /** The y axis's width in px, so stacked charts share a time axis; by default it fits the y labels. */
+  yAxisWidth?: number;
 }
 
 export interface Chart {
@@ -45,15 +46,20 @@ export interface Chart {
 
 type Style = Record<string, string>;
 type Shown = { series: Series; points: Point[] };
-type Layout = { left: number; right: number; top: number; bottom: number; x: (t: number) => number; time: (x: number) => number };
+type Layout = {
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
+  time: (x: number) => number;
+  format: (value: number) => string;
+};
 
 const SVG = "http://www.w3.org/2000/svg";
 const MARGIN = { top: 8, right: 16, bottom: 34 };
 const CHAR_WIDTH = 6.5;
 const TICK_SPACING = 64;
 const MUTED = "var(--app-text-muted)";
-
-let charts = 0;
 
 const styled = <E extends Element & ElementCSSInlineStyle>(node: E, style: Style) => {
   for (const [name, value] of Object.entries(style)) node.style.setProperty(name, value);
@@ -71,19 +77,32 @@ const label = (parent: Element, x: number, y: number, text: string, anchor: stri
   draw(parent, "text", { x, y, "text-anchor": anchor }, { fill: MUTED }).textContent = text;
 };
 
-const defaultFormat = (value: number) => String(Math.round(value * 100) / 100);
+const decimals = (step: number) => {
+  let digits = 2;
+  while (digits < 12 && Math.abs(Math.round(step * 10 ** digits) - step * 10 ** digits) > 1e-6) digits++;
+  return digits;
+};
+
+const defaultFormat = (step: number) => {
+  const digits = decimals(step);
+  return (value: number) => String(Number(value.toFixed(digits)));
+};
 
 /** Draws a time-series chart into `container`, sized to it, until `destroy()`. */
 export function createChart(container: HTMLElement, initial: ChartOptions): Chart {
   let options = initial;
+  let size = { width: 0, height: 0 };
   let layout: Layout | undefined;
   let shown: Shown[] = [];
   let pointer: number | undefined;
-  const clip = `app-chart-clip-${++charts}`;
+  let frame: number | undefined;
 
   const root = styled(document.createElement("div"), { position: "relative", width: "100%", height: "100%" });
   root.className = "app-chart";
   const svg = styled(document.createElementNS(SVG, "svg"), {
+    position: "absolute",
+    left: "0",
+    top: "0",
     display: "block",
     "font-family": "var(--app-font)",
     "font-size": "11px",
@@ -109,29 +128,26 @@ export function createChart(container: HTMLElement, initial: ChartOptions): Char
 
   function render() {
     svg.replaceChildren();
-    const width = container.clientWidth;
-    const height = container.clientHeight;
+    size = { width: root.clientWidth, height: root.clientHeight };
+    const { width, height } = size;
     svg.setAttribute("width", String(width));
     svg.setAttribute("height", String(height));
     const { from, to } = options.window;
-    const format = options.formatValue ?? defaultFormat;
     shown = options.series.map((series) => ({ series, points: visible(series.points, options.window) }));
     layout = undefined;
-    if (width <= 0 || height <= 0 || !(to > from)) return;
+    if (width <= 0 || height <= 0 || !Number.isFinite(from) || !Number.isFinite(to) || !(to > from)) return;
 
     const values = valueTicks(extent(shown.map(({ series, points }) => ({ points, kind: series.kind })), options.window, options.yMin));
+    const format = options.formatValue ?? defaultFormat(values.ticks[1]! - values.ticks[0]!);
     const labels = values.ticks.map(format);
-    const left = Math.max(...labels.map((text) => text.length)) * CHAR_WIDTH + 12;
+    const left = options.yAxisWidth ?? Math.max(...labels.map((text) => text.length)) * CHAR_WIDTH + 12;
     const right = width - MARGIN.right;
     const bottom = height - MARGIN.bottom;
     const top = MARGIN.top;
     if (right <= left || bottom <= top) return;
     const x = scale([from, to], [left, right]);
     const y = scale(values.domain, [bottom, top]);
-    layout = { left, right, top, bottom, x, time: scale([left, right], [from, to]) };
-
-    const plot = draw(draw(svg, "defs", {}), "clipPath", { id: clip });
-    draw(plot, "rect", { x: left, y: top, width: right - left, height: bottom - top });
+    layout = { left, right, top, bottom, time: scale([left, right], [from, to]), format };
 
     const grid = draw(svg, "g", { class: "app-chart-grid" });
     values.ticks.forEach((value, i) => {
@@ -146,13 +162,18 @@ export function createChart(container: HTMLElement, initial: ChartOptions): Char
       const anchor = at - left < 16 ? "start" : right - at < 16 ? "end" : "middle";
       draw(axis, "line", { x1: at, x2: at, y1: bottom, y2: bottom + 4 }, { stroke: "var(--app-border-strong)" });
       label(axis, at, bottom + 16, tick.label, anchor);
-      if (tick.day) label(axis, at, bottom + 29, tick.day, anchor);
+      if (tick.period) label(axis, at, bottom + 29, tick.period, anchor);
     }
 
     const baseline = y(Math.min(Math.max(0, values.domain[0]), values.domain[1]));
-    const lines = draw(svg, "g", { "clip-path": `url(#${clip})` });
+    const plot = draw(
+      svg,
+      "svg",
+      { x: left, y: top, width: right - left, height: bottom - top, viewBox: `${left} ${top} ${right - left} ${bottom - top}` },
+      { overflow: "hidden" },
+    );
     for (const { series, points } of shown) {
-      const group = draw(lines, "g", { class: "app-chart-series", "data-series": series.id });
+      const group = draw(plot, "g", { class: "app-chart-series", "data-series": series.id });
       const vertices = runs(points, series.kind).map((run) => run.map(([t, v]): [number, number] => [x(t), y(v)]));
       const colour = `var(${series.colour})`;
       if (series.kind === "area") {
@@ -182,7 +203,7 @@ export function createChart(container: HTMLElement, initial: ChartOptions): Char
 
     const time = layout.time(at);
     const minute = new Date(Math.round(time / 60_000) * 60_000);
-    const format = options.formatValue ?? defaultFormat;
+    const { format } = layout;
     const heading = document.createElement("div");
     heading.textContent = `${weekday(minute)} ${clock(minute)}`;
     styled(heading, { color: MUTED });
@@ -205,23 +226,44 @@ export function createChart(container: HTMLElement, initial: ChartOptions): Char
       }),
     );
     const width = readout.offsetWidth;
-    const beside = at + 12 + width <= container.clientWidth ? at + 12 : at - 12 - width;
+    const beside = at + 12 + width <= size.width ? at + 12 : at - 12 - width;
     styled(readout, { left: `${Math.max(0, beside)}px`, top: `${layout.top}px` });
   }
 
-  const move = (event: PointerEvent) => {
-    pointer = event.clientX - svg.getBoundingClientRect().left;
+  const offset = (event: PointerEvent) => event.clientX - svg.getBoundingClientRect().left;
+  const show = (at: number | undefined) => {
+    pointer = at;
     point();
   };
-  const leave = () => {
-    pointer = undefined;
-    point();
+  const move = (event: PointerEvent) => {
+    if (event.pointerType !== "mouse" && pointer === undefined) return;
+    pointer = offset(event);
+    frame ??= requestAnimationFrame(() => {
+      frame = undefined;
+      point();
+    });
+  };
+  // A touch's pointerup is followed at once by pointerleave, so a tap holds the readout until the next tap.
+  const tap = (event: PointerEvent) => {
+    if (event.pointerType !== "mouse") show(pointer === undefined ? offset(event) : undefined);
+  };
+  const leave = (event: PointerEvent) => {
+    if (event.pointerType === "mouse") show(undefined);
+  };
+  const elsewhere = (event: PointerEvent) => {
+    if (pointer !== undefined && !root.contains(event.target as Node)) show(undefined);
   };
   svg.addEventListener("pointermove", move);
-  svg.addEventListener("pointerdown", move);
+  svg.addEventListener("pointerdown", tap);
   svg.addEventListener("pointerleave", leave);
-  const observer = typeof ResizeObserver === "undefined" ? undefined : new ResizeObserver(render);
-  observer?.observe(container);
+  document.addEventListener("pointerdown", elsewhere);
+  const observer =
+    typeof ResizeObserver === "undefined"
+      ? undefined
+      : new ResizeObserver(() => {
+          if (root.clientWidth !== size.width || root.clientHeight !== size.height) render();
+        });
+  observer?.observe(root);
   render();
 
   return {
@@ -231,9 +273,11 @@ export function createChart(container: HTMLElement, initial: ChartOptions): Char
     },
     destroy() {
       observer?.disconnect();
+      if (frame !== undefined) cancelAnimationFrame(frame);
       svg.removeEventListener("pointermove", move);
-      svg.removeEventListener("pointerdown", move);
+      svg.removeEventListener("pointerdown", tap);
       svg.removeEventListener("pointerleave", leave);
+      document.removeEventListener("pointerdown", elsewhere);
       root.remove();
     },
   };

@@ -1,10 +1,15 @@
-import type { Kind, Point, Window } from "./index.ts";
+/** A time in ms since the epoch and its value; a missing value is a gap. */
+export type Point = [time: number, value: number | null];
+export type Kind = "line" | "area" | "step";
+export type Window = { from: number; to: number };
 
-export type TimeTick = { time: number; label: string; day?: string };
+/** A time tick; `period` names the day, month or year it starts when that differs from the tick before. */
+export type TimeTick = { time: number; label: string; period?: string };
 
-const HOUR = 3_600_000;
-const HOUR_STEPS = [1, 2, 3, 6, 12, 24];
+const MINUTE = 60_000;
+const DAY_MINUTES = 1440;
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 export const finite = (v: number | null | undefined): v is number => typeof v === "number" && Number.isFinite(v);
 
@@ -69,14 +74,20 @@ export function areaPath(runs: [number, number][][], baseline: number): string {
 
 /** The lowest and highest values the series show inside the window, reaching down to `floor` when one is given. */
 export function extent(series: readonly { points: readonly Point[]; kind: Kind }[], window: Window, floor?: number): [number, number] {
-  const values = series.flatMap(({ points, kind }) => [
-    ...points.flatMap(([t, v]) => (t >= window.from && t <= window.to && finite(v) ? [v] : [])),
-    ...[valueAt(points, window.from, kind), valueAt(points, window.to, kind)].filter(finite),
-  ]);
-  if (floor !== undefined) values.push(floor);
-  if (!values.length) return [0, 1];
-  let lo = Math.min(...values);
-  let hi = Math.max(...values);
+  let lo = Infinity;
+  let hi = -Infinity;
+  const include = (v: number | null) => {
+    if (!finite(v)) return;
+    lo = Math.min(lo, v);
+    hi = Math.max(hi, v);
+  };
+  for (const { points, kind } of series) {
+    for (const [t, v] of points) if (t >= window.from && t <= window.to) include(v);
+    include(valueAt(points, window.from, kind));
+    include(valueAt(points, window.to, kind));
+  }
+  if (lo > hi) return floor === undefined ? [0, 1] : [floor, floor + 1];
+  if (floor !== undefined) lo = Math.min(lo, floor);
   if (lo === hi) {
     hi += 1;
     if (floor === undefined) lo -= 1;
@@ -104,26 +115,67 @@ const clean = (n: number) => Number(n.toPrecision(12));
 const pad = (n: number) => String(n).padStart(2, "0");
 export const clock = (d: Date) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
 export const weekday = (d: Date) => `${WEEKDAYS[d.getDay()]} ${d.getDate()}`;
-const dayOf = (d: Date) => d.toDateString();
 
-/** Ticks on the local clock's whole hours, every 1, 2, 3, 6, 12 or 24 hours, at most `count` of them; a tick on a new day names it. */
-export function timeTicks({ from, to }: Window, count: number): TimeTick[] {
-  const first = new Date(from);
-  first.setMinutes(0, 0, 0);
-  if (first.getTime() < from) first.setTime(first.getTime() + HOUR);
-  const hours: Date[] = [];
-  for (let t = first.getTime(); t <= to; t += HOUR) hours.push(new Date(t));
-  for (const step of HOUR_STEPS) {
-    const chosen = hours.filter((d) => d.getMinutes() === 0 && d.getHours() % step === 0);
-    if (chosen.length <= Math.max(1, count) || step === HOUR_STEPS.at(-1)) {
-      let previous = dayOf(new Date(from));
-      return chosen.map((d) => {
-        const tick: TimeTick = { time: d.getTime(), label: clock(d) };
-        if (dayOf(d) !== previous) tick.day = weekday(d);
-        previous = dayOf(d);
-        return tick;
-      });
-    }
+type Step = { unit: "minute" | "day" | "month"; n: number };
+
+const STEPS: Step[] = [
+  ...[5, 10, 15, 30, 60, 120, 180, 360, 720].map((n) => ({ unit: "minute" as const, n })),
+  ...[1, 2, 7, 14].map((n) => ({ unit: "day" as const, n })),
+  ...[1, 3, 6, 12].map((n) => ({ unit: "month" as const, n })),
+];
+const LONGEST_MINUTES = { minute: 1, day: DAY_MINUTES + 60, month: 31 * DAY_MINUTES };
+
+// Ticks count wall-clock minutes from a Monday, so they step on the local calendar across daylight saving and weeks start on Mondays.
+const EPOCH = Date.UTC(2000, 0, 3);
+const wall = (d: Date) => (Date.UTC(d.getFullYear(), d.getMonth(), d.getDate(), d.getHours(), d.getMinutes()) - EPOCH) / MINUTE;
+const onWall = (minutes: number) => new Date(EPOCH + minutes * MINUTE);
+const local = (minutes: number) => {
+  const u = onWall(minutes);
+  return new Date(u.getUTCFullYear(), u.getUTCMonth(), u.getUTCDate(), u.getUTCHours(), u.getUTCMinutes());
+};
+
+const stepMinutes = ({ unit, n }: Step) => n * (unit === "day" ? DAY_MINUTES : 1);
+const index = (step: Step, minutes: number) => {
+  if (step.unit !== "month") return Math.floor(minutes / stepMinutes(step));
+  const u = onWall(minutes);
+  return Math.floor(((u.getUTCFullYear() - 2000) * 12 + u.getUTCMonth()) / step.n);
+};
+const minutesAt = (step: Step, k: number) =>
+  step.unit === "month" ? (Date.UTC(2000, k * step.n, 1) - EPOCH) / MINUTE : k * stepMinutes(step);
+
+function dates(step: Step, { from, to }: Window): Date[] {
+  const out: Date[] = [];
+  for (let k = index(step, wall(new Date(from))); ; k++) {
+    const minutes = minutesAt(step, k);
+    const at = local(minutes);
+    if (at.getTime() > to) return out;
+    if (at.getTime() >= from && wall(at) === minutes) out.push(at);
   }
-  return [];
+}
+
+function labelled(ticks: Date[], { unit }: Step): TimeTick[] {
+  let previous: string | undefined;
+  return ticks.map((d) => {
+    const [label, period] =
+      unit === "minute" ? [clock(d), weekday(d)] : unit === "day" ? [weekday(d), MONTHS[d.getMonth()]!] : [MONTHS[d.getMonth()]!, String(d.getFullYear())];
+    const tick: TimeTick = { time: d.getTime(), label };
+    if (period !== previous) tick.period = period;
+    previous = period;
+    return tick;
+  });
+}
+
+/** Ticks on the local calendar at the finest of 5 minutes to 12 months that gives at most `count` of them. */
+export function timeTicks(window: Window, count: number): TimeTick[] {
+  const most = Math.max(1, count);
+  const span = (window.to - window.from) / MINUTE;
+  for (const step of STEPS.slice(0, -1)) {
+    if (span / (step.n * LONGEST_MINUTES[step.unit]) > most + 2) continue;
+    const ticks = dates(step, window);
+    if (ticks.length <= most) return labelled(ticks, step);
+  }
+  const yearly = STEPS.at(-1)!;
+  const ticks = dates(yearly, window);
+  const every = Math.ceil(ticks.length / most);
+  return labelled(ticks.filter((_, i) => i % every === 0), yearly);
 }

@@ -280,7 +280,8 @@ A board canvas: a pannable, zoomable pane of nodes and edges, with a framework-f
 ### 0.1.0
 
 `createChart(container, options)`, a time-series chart drawn as SVG and sized to its container, returning `update`
-and `destroy`. Line, area and step series clipped to a window, with gaps at missing values; time ticks on the local
-clock's whole hours and three to five y ticks; a `now` marker; and a hover readout of each series' value. Colours
+and `destroy`. Line, area and step series clipped to a window, with gaps at missing values; time ticks stepped on the
+local calendar from 5 minutes to 12 months and three to five y ticks; a fixed `yAxisWidth` for stacked charts; a
+`now` marker; and a readout of each series' value on hover or tap. Colours
 are CSS custom properties: each series names its own, and the axes use the kit's `--app-*` tokens. No dependencies
 and no peers.
