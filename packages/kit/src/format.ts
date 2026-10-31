@@ -3,9 +3,9 @@ export function num(value: number | null | undefined, unit = "", digits = 0): st
   return value === null || value === undefined ? "—" : `${value.toFixed(digits)}${unit}`;
 }
 
-/** `1 device`, `2 devices`. Regular plurals only. */
-export function count(n: number, noun: string): string {
-  return `${n} ${noun}${n === 1 ? "" : "s"}`;
+/** `1 device`, `2 devices`; an irregular plural is given, `1 person`, `2 people`. */
+export function count(n: number, noun: string, plural = `${noun}s`): string {
+  return `${n} ${n === 1 ? noun : plural}`;
 }
 
 export function commaList(text: string): string[] {
@@ -15,10 +15,12 @@ export function commaList(text: string): string[] {
     .filter(Boolean);
 }
 
-export function size(bytes: number): string {
+export function size(bytes: number | null | undefined): string {
+  if (bytes === null || bytes === undefined) return "—";
   if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KiB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MiB`;
+  if (bytes < 1024 ** 2) return `${Math.round(bytes / 1024)} KiB`;
+  if (bytes < 1024 ** 3) return `${(bytes / 1024 ** 2).toFixed(1)} MiB`;
+  return `${(bytes / 1024 ** 3).toFixed(1)} GiB`;
 }
 
 export function when(at: string | null | undefined): string {
@@ -29,8 +31,12 @@ export function time(at: string | null | undefined): string {
   return at ? new Date(at).toLocaleTimeString() : "—";
 }
 
+const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
+
+/** A date-only `YYYY-MM-DD` is shown as written: it parses as UTC midnight, the day before west of UTC. */
 export function day(at: string | null | undefined): string {
-  return at ? new Date(at).toLocaleDateString() : "—";
+  if (!at) return "—";
+  return new Date(at).toLocaleDateString(undefined, DATE_ONLY.test(at) ? { timeZone: "UTC" } : {});
 }
 
 /** `3s ago`, `4m ago`. `now` is a parameter so a ticking signal makes the text count up. */
