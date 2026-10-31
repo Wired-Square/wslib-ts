@@ -132,6 +132,12 @@ and `constants` are exported from the root. No dependencies and no peers.
 
 ## `@wired-square/appliance-ui`
 
+### 0.4.1
+
+- `SerialConsole` is open once the back end attaches it, not when the socket opens. A console it refuses before
+  attaching, on first opening or on reconnecting, is not dialled again: it shows the back end's message, if any,
+  with Try again. `LinkState`'s `unreachable` carries that `message`.
+
 ### 0.4.0
 
 - `SerialConsole`: a shared console on the app's `/ws/serial`, given its `url`, or a `port` (`ConsolePort`: `path`

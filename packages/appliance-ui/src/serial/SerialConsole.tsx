@@ -135,6 +135,10 @@ function Pane(props: { url: string; label: string; requested: number | undefined
     return props.requested ? `${props.label} (requested ${props.requested} baud)` : props.label;
   };
   const state = () => (link().is === "open" ? (monitor()?.label ?? "Connected") : undefined);
+  const unreachable = () => {
+    const now = link();
+    return now.is === "unreachable" ? now : undefined;
+  };
 
   return (
     <div class="app-console">
@@ -172,13 +176,17 @@ function Pane(props: { url: string; label: string; requested: number | undefined
           </Button>
         </Show>
       </div>
-      <Show when={link().is === "unreachable"}>
-        <Notice tone="bad">
-          The serial console didn't connect. Check that you are signed in, then try again.{" "}
-          <Button tone="plain" onClick={connect}>
-            Try again
-          </Button>
-        </Notice>
+      <Show when={unreachable()}>
+        {(refused) => (
+          <Notice tone="bad">
+            {refused().message
+              ? `The serial console didn't connect: ${refused().message?.replace(/\.$/, "")}.`
+              : "The serial console didn't connect. Check that you are signed in, then try again."}{" "}
+            <Button tone="plain" onClick={connect}>
+              Try again
+            </Button>
+          </Notice>
+        )}
       </Show>
       <Show when={people().length > 0}>
         <ul class="app-console__users" aria-label="Attached">

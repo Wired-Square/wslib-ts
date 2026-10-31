@@ -57,10 +57,48 @@ test("A socket that never opens is unreachable and is not dialled again", async 
   assert.equal(opened.sockets.length, 1);
 });
 
-test("One that opened and dropped redials, waiting longer each time up to fifteen seconds", async () => {
+test("One the back end refused before attaching is unreachable with its message, and is not dialled again", async () => {
   const opened = await dialled();
   mock.timers.enable({ apis: ["setTimeout"] });
-  opened.sockets[0]!.open();
+  const socket = opened.sockets[0]!;
+  socket.open();
+  socket.text({ type: "error", message: "/dev/ttyACM0 is held by the app flasher" });
+  socket.drop();
+  mock.timers.tick(60_000);
+  assert.deepEqual(opened.states, [
+    { is: "connecting" },
+    { is: "unreachable", message: "/dev/ttyACM0 is held by the app flasher" },
+  ]);
+  assert.equal(opened.events.length, 1, "the error is still handed on");
+  assert.equal(opened.sockets.length, 1);
+});
+
+test("One revoked after attaching redials once, and is unreachable when that dial is refused", async () => {
+  const opened = await dialled();
+  mock.timers.enable({ apis: ["setTimeout"] });
+  opened.sockets[0]!.attach();
+  opened.sockets[0]!.text({ type: "error", message: "access revoked" });
+  opened.sockets[0]!.drop();
+  mock.timers.tick(1000);
+  assert.equal(opened.sockets.length, 2);
+  opened.sockets[1]!.open();
+  opened.sockets[1]!.text({ type: "error", message: "not permitted" });
+  opened.sockets[1]!.drop();
+  mock.timers.tick(60_000);
+  assert.deepEqual(opened.states, [
+    { is: "connecting" },
+    { is: "open" },
+    { is: "retrying", inMs: 1000 },
+    { is: "connecting" },
+    { is: "unreachable", message: "not permitted" },
+  ]);
+  assert.equal(opened.sockets.length, 2);
+});
+
+test("One that attached and dropped redials, waiting longer each time up to fifteen seconds", async () => {
+  const opened = await dialled();
+  mock.timers.enable({ apis: ["setTimeout"] });
+  opened.sockets[0]!.attach();
   const waits: number[] = [];
   for (let i = 0; i < 6; i++) {
     opened.sockets.at(-1)!.drop();
@@ -70,6 +108,9 @@ test("One that opened and dropped redials, waiting longer each time up to fiftee
   }
   assert.deepEqual(waits, [1000, 2000, 4000, 8000, 15000, 15000]);
   assert.equal(opened.sockets.length, 7);
+  opened.sockets.at(-1)!.attach();
+  opened.sockets.at(-1)!.drop();
+  assert.deepEqual(opened.states.at(-1), { is: "retrying", inMs: 1000 }, "attaching resets the wait");
 });
 
 test("Bytes are handed on as they arrive, and closing stops the redial", async () => {
