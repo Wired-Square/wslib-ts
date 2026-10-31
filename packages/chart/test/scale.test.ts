@@ -2,7 +2,7 @@ import { deepEqual, equal, ok } from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { test } from "node:test";
 
-import { areaPath, extent, linePath, runs, scale, timeTicks, valueAt, valueTicks, visible, type Point } from "../src/scale.ts";
+import { areaPath, clip, extent, linePath, peaks, runs, scale, timeTicks, valueAt, valueTicks, visible, type Point } from "../src/scale.ts";
 
 // A half-hour offset with daylight saving: whole hours here are not whole hours in UTC.
 process.env.TZ = "Australia/Adelaide";
@@ -121,6 +121,49 @@ test("value ticks are three to five round, evenly spaced numbers covering the ex
   deepEqual(valueTicks([0, 7.3]).ticks, [0, 2, 4, 6, 8]);
   deepEqual(valueTicks([0, 1]).ticks, [0, 0.25, 0.5, 0.75, 1]);
   deepEqual(valueTicks([0.1, 0.7]).ticks, [0, 0.2, 0.4, 0.6, 0.8]);
+});
+
+test("a cap tops the axis out at or below it, even where round ticks would pass it", () => {
+  const ranges: [number, number, number][] = [[0, 100, 10.5], [0, 100, 4.1], [-3, 50, 4.9], [-20, 1500, 40], [0, 10.1, 10.2], [0, 1, 0.37]];
+  for (const [lo, hi, cap] of ranges) {
+    const { domain, ticks } = valueTicks([lo, hi], cap);
+    ok(ticks.length >= 3 && ticks.length <= 5, `${lo}..${hi} cap ${cap}: ${ticks}`);
+    ok(ticks.every((tick) => tick <= cap) && domain[1] <= cap, `${lo}..${hi} cap ${cap}: ${domain}`);
+    equal(domain[1], Math.min(hi, cap));
+    equal(domain[0], ticks[0]);
+  }
+  deepEqual(valueTicks([0, 100], 10.5), { domain: [0, 10.5], ticks: [0, 2.5, 5, 7.5, 10] });
+  deepEqual(valueTicks([0, 7.3], 20), valueTicks([0, 7.3]));
+});
+
+test("a cap at or below the axis's bottom is ignored", () => {
+  deepEqual(valueTicks([0, 7.3], 0), valueTicks([0, 7.3]));
+  deepEqual(valueTicks([0, 7.3], -5), valueTicks([0, 7.3]));
+  deepEqual(valueTicks([0, 7.3], Number.NaN), valueTicks([0, 7.3]));
+});
+
+test("clip keeps the part of a range inside the window, and nothing of one outside or empty", () => {
+  deepEqual(clip({ from: -5, to: 5 }, { from: 0, to: 10 }), { from: 0, to: 5 });
+  deepEqual(clip({ from: 2, to: 20 }, { from: 0, to: 10 }), { from: 2, to: 10 });
+  equal(clip({ from: 10, to: 20 }, { from: 0, to: 10 }), undefined);
+  equal(clip({ from: -5, to: -1 }, { from: 0, to: 10 }), undefined);
+  equal(clip({ from: 6, to: 4 }, { from: 0, to: 10 }), undefined);
+  equal(clip({ from: Number.NaN, to: 4 }, { from: 0, to: 10 }), undefined);
+});
+
+test("peaks finds the highest point of each run above the cap, at the window's edges too", () => {
+  const points = [[0, 1], [10, 50], [20, 80], [30, 2], [40, null], [50, 60], [60, 3], [70, 90], [80, 95]] as Point[];
+  deepEqual(peaks(points, "line", { from: 0, to: 100 }, 10), [[20, 80], [50, 60], [80, 95]]);
+  deepEqual(peaks(points, "line", { from: 15, to: 75 }, 10), [[20, 80], [50, 60], [75, 92.5]]);
+  deepEqual(peaks(points, "line", { from: 0, to: 100 }, 100), []);
+});
+
+test("a step's peak is the middle of its hold inside the window, and a last point's is the point", () => {
+  const points = [[0, 1], [10, 50], [20, 80], [30, 2], [40, null], [50, 60], [60, 3], [70, 90], [80, 95]] as Point[];
+  deepEqual(peaks(points, "step", { from: 0, to: 100 }, 10), [[25, 80], [55, 60], [80, 95]]);
+  deepEqual(peaks(points, "step", { from: 15, to: 75 }, 10), [[25, 80], [55, 60], [72.5, 90]]);
+  deepEqual(peaks(points, "step", { from: 22, to: 28 }, 10), [[25, 80]]);
+  deepEqual(peaks([[0, 1], [10, 50], [20, null]], "step", { from: 0, to: 30 }, 10), [[15, 50]]);
 });
 
 test("time ticks fall on the local clock's whole hours, labelled HH:MM", () => {

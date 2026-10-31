@@ -282,6 +282,14 @@ A board canvas: a pannable, zoomable pane of nodes and edges, with a framework-f
 
 ## `@wired-square/chart`
 
+### 0.2.0
+
+- `bands`: full-height tints over time ranges, each `{ from, to, colour, opacity? }`, drawn behind the grid and the
+  series and clipped to the window. `Band` is exported.
+- `yCap`: the y axis tops out at or below it, values above it are clipped, and each run above it is marked "↑" with
+  its peak. The readout shows the real values. A cap at or below the axis's bottom is ignored.
+- A zero line in `--app-border-strong` whenever zero is inside the y axis, not at its edge.
+
 ### 0.1.0
 
 `createChart(container, options)`, a time-series chart drawn as SVG and sized to its container, returning `update`
