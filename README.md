@@ -26,8 +26,19 @@ Reads need a `read:package` Forgejo token, kept machine-wide in `~/.npmrc`:
 npm config set -- '//forge.wiredsquare.com/api/packages/wired-square/npm/:_authToken' <token>
 ```
 
+Forgejo's packument gives tarball URLs under `/api/packages/Wired-Square/npm/`, and they land in the lockfile. pnpm
+matches the token to that path case-sensitively, so without a second line keyed to it the tarballs fail with a 401:
+
+```sh
+npm config set -- '//forge.wiredsquare.com/api/packages/Wired-Square/npm/:_authToken' <token>
+```
+
+The mirror rewrites tarball URLs onto its own lowercase host, so it needs only the one.
+
 The host must trust the CA that signs `forge.wiredsquare.com`. Node keeps its own CA store, so point it at the
-system's with `NODE_OPTIONS=--use-system-ca` (Node 22.15 or later), or at the CA with `NODE_EXTRA_CA_CERTS`.
+system's with `NODE_OPTIONS=--use-system-ca` (Node 22.15 or later), or at the CA with `NODE_EXTRA_CA_CERTS`. pnpm
+checks the lockfile against the registry before every script, so every pnpm script reading Forgejo needs it, not only
+an install.
 
 Off the network, and in CI, read the read-only mirror instead, with its own token:
 
