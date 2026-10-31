@@ -12,7 +12,7 @@ import { join, resolve } from "node:path";
 
 import { fail } from "./files.mjs";
 
-const TAG = "wslib-serial-console-v0.1.0";
+const TAG = "wslib-serial-console-v0.1.1";
 const REMOTE = "git@github.com:Wired-Square/wslib-rs.git";
 const CRATE = "wslib-serial-console";
 
@@ -38,12 +38,7 @@ try {
   } else {
     git("clone", "--quiet", "--depth", "1", "--branch", TAG, REMOTE, clone);
   }
-  // The crate marks no type for export, so the console's event and everything it names are exported here.
-  writeFileSync(
-    join(clone, "crates", CRATE, "tests", "export_console.rs"),
-    "#[test]\nfn export() {\n    <wslib_serial_console::ConsoleEvent as ts_rs::TS>::export_all(&ts_rs::Config::from_env()).unwrap();\n}\n",
-  );
-  execFileSync("cargo", ["test", "--quiet", "-p", CRATE, "--features", "ts", "--test", "export_console"], {
+  execFileSync("cargo", ["test", "--quiet", "-p", CRATE, "--features", "ts"], {
     cwd: clone,
     stdio: ["ignore", "ignore", "inherit"],
     env: { ...process.env, TS_RS_EXPORT_DIR: output },
