@@ -12,10 +12,10 @@ covers using them, and `CONTRIBUTING.md` working on and publishing them.
   `CHANGELOG.md` holds a section per package.
 - `scripts/` holds the gates, the release and the mirror; repo tooling needs
   Node 22.18 or later.
-- The kit, appliance-ui and the canvas ship TSX source behind a `solid`
-  export condition. The kit's and the canvas's `./core`, the canvas's
-  `./react`, appliance-ui's `./vite`, tokens, mcp-bridge, appliance-types and
-  chart compile to `dist/`.
+- The kit, appliance-ui, the canvas and the icons' `./solid` ship TSX source
+  behind a `solid` export condition. The kit's and the canvas's `./core`, the
+  canvas's `./react`, appliance-ui's `./vite`, the icons' names and sprite,
+  tokens, mcp-bridge, appliance-types and chart compile to `dist/`.
 
 ## Gates
 
@@ -53,7 +53,7 @@ covers using them, and `CONTRIBUTING.md` working on and publishing them.
   than an afternoon's work. Otherwise write it. The packages have no runtime
   `dependencies`, only peers, except appliance-ui's `uqr`, a QR encoder.
   The canvas's peers, solid-js, react and react-dom, are optional, so
-  `./core` alone needs nothing.
+  `./core` alone needs nothing; the icons' solid-js is optional too.
 - No component names a colour; every value it draws is an `--app-*` token.
   A new token or export arrives only with the component that needs it.
 - When a name moves between packages, the old home re-exports it for one
