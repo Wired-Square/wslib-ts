@@ -171,6 +171,18 @@ test("without a viewport, Canvas fits its nodes at mount with fitPadding", () =>
   expect(element.querySelector<HTMLElement>(".app-canvas__pane")!.style.transform).toBe("translate(200px, 200px) scale(4)");
 });
 
+test("fitPadding is read when a fit runs, so a new one reaches the Fit control", () => {
+  const { fake, seams } = layout();
+  const view = (fitPadding: number) =>
+    h(Canvas<Card, string>, { ...seams, controls: true, fitPadding, maxZoom: 10, nodes: [card("a", 0, "First")], node: (node) => node.data.title });
+  const { element, update } = render(view(1));
+  act(() => fake.settle());
+  update(view(0));
+  act(() => element.querySelector<HTMLButtonElement>('.app-canvas__controls [aria-label="Fit view"]')!.click());
+  act(() => fake.advance(300));
+  expect(element.querySelector<HTMLElement>(".app-canvas__pane")!.style.transform).toBe("translate(0px, 100px) scale(8)");
+});
+
 test("useCanvas outside any canvas says what it needs", () => {
   function Lost() {
     useCanvas();

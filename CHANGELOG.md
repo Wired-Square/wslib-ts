@@ -290,7 +290,7 @@ Moved names:
   promise. It had framed a node just added at `unmeasuredSize`, clipping one taller.
 - The fit at mount, without a `viewport`, refits as the canvas resizes and its nodes are measured, until the canvas
   is pressed or the camera moved.
-- `fitPadding`: the padding of the mount fit, the Fit control and a `fitView` given none; 0.1 by default.
+- `fitPadding`: the padding of the mount fit, the Fit control and a `fitView` given none, read when each fit runs; 0.1 by default.
 - `onEdgeClick(edge, event)`, for a click on an edge or its label, not after a drag. Edges take pointer events where
   they are painted; without `onEdgeClick`, a click on one is still a pane click.
 - `@wired-square/canvas/react`: `Canvas`, `CanvasPanel`, `CanvasScope` and `useCanvas` for React 19, compiled to

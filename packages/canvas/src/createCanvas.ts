@@ -235,7 +235,6 @@ export function createCanvas<D = unknown, E = unknown>(root: HTMLElement, option
   let aim: Viewport | undefined;
   let wheelTimer: ReturnType<typeof setTimeout> | undefined;
   let mapDirty = true;
-  const fitPadding = options.fitPadding ?? 0.1;
   // The fit that follows sizes as they land: the mount fit until the camera moves, or a `fitView` while it animates.
   let following: FitOptions | undefined = options.viewport ? undefined : {};
   let connectionLayer: SVGSVGElement | undefined;
@@ -462,7 +461,7 @@ export function createCanvas<D = unknown, E = unknown>(root: HTMLElement, option
     });
   }
 
-  function fitTarget({ ids, padding = fitPadding, maxZoom = limits.maxZoom }: FitOptions): Viewport | undefined {
+  function fitTarget({ ids, padding = options.fitPadding ?? 0.1, maxZoom = limits.maxZoom }: FitOptions): Viewport | undefined {
     const chosen = ids ? ids.flatMap((id) => nodes.get(id) ?? []) : [...nodes.values()];
     const bounds = boundsOf(chosen.map(rectOf));
     if (!bounds || !size.width || !size.height) return undefined;
