@@ -33,6 +33,7 @@ const sized = (width: number, height: number) => {
 const flush = () => frames.splice(0).forEach((frame) => frame(0));
 const svg = () => container.querySelector("svg")!;
 const series = (id: string) => container.querySelector(`.app-chart-series[data-series="${id}"]`)!;
+const peaksOf = (id: string) => [...container.querySelectorAll<SVGElement>(`.app-chart-peak[data-series="${id}"]`)];
 const readout = () => container.querySelector<HTMLElement>(".app-chart-readout")!;
 const pointer = (type: string, clientX: number, pointerType = "mouse", target: Element = svg()) =>
   target.dispatchEvent(new PointerEvent(type, { clientX, pointerType, bubbles: true, composed: true }));
@@ -358,7 +359,7 @@ describe("createChart", () => {
     createChart(container, options({ series: [spiky], yCap: 25 }));
     const ticks = [...container.querySelectorAll(".app-chart-grid text")].map((t) => Number(t.textContent));
     expect(Math.max(...ticks)).toBeLessThanOrEqual(25);
-    const peaks = [...series("p").querySelectorAll<SVGElement>(".app-chart-peak")];
+    const peaks = peaksOf("p");
     expect(peaks.map((peak) => peak.textContent)).toEqual(["↑ 1500", "↑ 950"]);
     expect(peaks[0]!.style.getPropertyValue("fill")).toBe("var(--app-warn)");
     const left = plotLeft();
@@ -374,9 +375,29 @@ describe("createChart", () => {
   test("peaks that would overlap stack downwards, and apart ones share the top row", () => {
     const echo = { ...spiky, id: "q", label: "Echo", colour: "--app-good" as const, points: spiky.points.map(([t, v]): [number, number] => [t, v - 300]) };
     createChart(container, options({ series: [spiky, echo], yCap: 25 }));
-    const at = (id: string) => [...series(id).querySelectorAll(".app-chart-peak")].map((peak) => Number(peak.getAttribute("y")));
+    const at = (id: string) => peaksOf(id).map((peak) => Number(peak.getAttribute("y")));
     expect(at("p")).toEqual([19, 19]);
     expect(at("q")).toEqual([32, 32]);
+  });
+
+  test("peaks sit above every series, each on a surface box spanning its text", () => {
+    const echo = { ...spiky, id: "q", label: "Echo", colour: "--app-good" as const };
+    createChart(container, options({ series: [spiky, echo], yCap: 25 }));
+    const marks = container.querySelector(".app-chart-peaks")!;
+    expect(marks.previousElementSibling).toBe(series("q"));
+    expect([...marks.children].map((node) => node.getAttribute("class"))).toEqual(
+      Array.from({ length: 4 }, () => ["app-chart-peak-box", "app-chart-peak"]).flat(),
+    );
+    for (const text of [...peaksOf("p"), ...peaksOf("q")]) {
+      const box = text.previousElementSibling as SVGElement;
+      const width = text.textContent!.length * 6.5;
+      expect(box.style.getPropertyValue("fill")).toBe("var(--app-surface)");
+      expect(Number(box.getAttribute("width"))).toBeCloseTo(width);
+      expect(Number(box.getAttribute("x"))).toBeCloseTo(Number(text.getAttribute("x")) - width / 2);
+      const y = Number(box.getAttribute("y"));
+      expect(y).toBeLessThan(Number(text.getAttribute("y")) - 8);
+      expect(y + Number(box.getAttribute("height"))).toBeGreaterThan(Number(text.getAttribute("y")));
+    }
   });
 
   test("without a cap, or with one above every value, no peak is marked", () => {

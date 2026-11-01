@@ -66,8 +66,8 @@ A point is `[time, value]`. A `null` or `NaN` value is a gap: the line stops the
 same, filled at its `opacity`, by default an area's 0.2, and clipped to the window.
 
 Above `yCap`, a series is clipped at the plot's top. Each unbroken run above it is marked at its peak (a step's in the
-middle of its hold) with "↑" and the peak's value, in the series' colour and kept inside the plot; marks that would
-overlap stack downwards. The readout still shows the real values.
+middle of its hold) with "↑" and the peak's value, in the series' colour on a box in the surface colour, above every
+series and kept inside the plot; marks that would overlap stack downwards. The readout still shows the real values.
 
 ## Theme
 
@@ -80,7 +80,7 @@ required one, what it styles is invisible or unreadable; an optional one falls b
 | `--app-border` | yes | Grid lines and the readout's border |
 | `--app-border-strong` | yes | The time axis and its ticks, and the zero line |
 | `--app-accent` | yes | The `now` marker |
-| `--app-surface` | yes | The readout's background, and the halo behind a peak's mark |
+| `--app-surface` | yes | The readout's background, and the box and halo behind a peak's mark |
 | `--app-text` | no | The readout's values |
 | `--app-font` | no | All text |
 | `--app-radius` | no | The readout's corners |
