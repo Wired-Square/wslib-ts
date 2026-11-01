@@ -322,6 +322,12 @@ A board canvas: a pannable, zoomable pane of nodes and edges, with a framework-f
 
 ## `@wired-square/chart`
 
+### 0.2.1
+
+- A peak's mark is drawn above every series on a box in `--app-surface`, so no line, its own clipped spike's included,
+  runs through its digits. The marks move from each `.app-chart-series` group to one `.app-chart-peaks` group, each
+  `.app-chart-peak` carrying its series' `data-series`.
+
 ### 0.2.0
 
 - `bands`: full-height tints over time ranges, each `{ from, to, colour, opacity? }`, drawn behind the grid and the

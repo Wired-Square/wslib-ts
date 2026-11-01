@@ -204,7 +204,8 @@ export function createChart(container: HTMLElement, initial: ChartOptions): Char
       { x: left, y: top, width: right - left, height: bottom - top, viewBox: `${left} ${top} ${right - left} ${bottom - top}` },
       { overflow: "hidden" },
     );
-    const markers: [number, number][][] = [];
+    const rows: [number, number][][] = [];
+    const marks: { series: Series; text: string; at: number; half: number; row: number }[] = [];
     for (const { series, points } of shown) {
       const group = draw(plot, "g", { class: "app-chart-series", "data-series": series.id });
       const vertices = runs(points, series.kind).map((run) => run.map(([t, v]): [number, number] => [x(t), y(v)]));
@@ -222,16 +223,23 @@ export function createChart(container: HTMLElement, initial: ChartOptions): Char
         const text = `↑ ${format(v)}`;
         const half = (text.length * CHAR_WIDTH) / 2;
         const at = Math.min(Math.max(x(t), left + half), right - half);
-        const row = markers.findIndex((spans) => spans.every(([a, b]) => at + half < a || at - half > b));
-        const free = row === -1 ? markers.push([]) - 1 : row;
-        markers[free]!.push([at - half, at + half]);
-        draw(group, "text", { class: "app-chart-peak", x: at, y: top + 11 + free * 13, "text-anchor": "middle" }, {
-          fill: colour,
-          stroke: "var(--app-surface)",
-          "stroke-width": "3",
-          "paint-order": "stroke",
-        }).textContent = text;
+        const fits = rows.findIndex((spans) => spans.every(([a, b]) => at + half < a || at - half > b));
+        const row = fits === -1 ? rows.push([]) - 1 : fits;
+        rows[row]!.push([at - half, at + half]);
+        marks.push({ series, text, at, half, row });
       }
+    }
+    // Above every series, each on a box in the surface colour, so no series' line runs through a mark's digits.
+    const peakMarks = draw(plot, "g", { class: "app-chart-peaks" });
+    for (const { series, text, at, half, row } of marks) {
+      const baseline = top + 11 + row * 13;
+      draw(peakMarks, "rect", { class: "app-chart-peak-box", x: at - half, y: baseline - 10, width: 2 * half, height: 13 }, { fill: "var(--app-surface)" });
+      draw(peakMarks, "text", { class: "app-chart-peak", "data-series": series.id, x: at, y: baseline, "text-anchor": "middle" }, {
+        fill: `var(${series.colour})`,
+        stroke: "var(--app-surface)",
+        "stroke-width": "3",
+        "paint-order": "stroke",
+      }).textContent = text;
     }
 
     const { now } = options;
