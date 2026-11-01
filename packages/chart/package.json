@@ -1,6 +1,6 @@
 {
   "name": "@wired-square/chart",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "A framework-free time-series chart drawn as SVG, coloured by the --app-* tokens.",
   "license": "MIT",
   "repository": {

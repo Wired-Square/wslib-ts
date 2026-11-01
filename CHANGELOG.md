@@ -331,6 +331,10 @@ A board canvas: a pannable, zoomable pane of nodes and edges, with a framework-f
 
 ## `@wired-square/chart`
 
+### 0.2.2
+
+- A peak mark's box starts at the top of its row, so a capped spike no longer shows through a 1 px gap above it.
+
 ### 0.2.1
 
 - A peak's mark is drawn above every series on a box in `--app-surface`, so no line, its own clipped spike's included,
