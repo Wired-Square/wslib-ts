@@ -1,9 +1,16 @@
 // Written by scripts/icons.mjs from packages/icons/glyphs; the gates fail when it differs.
 export const ICON_NAMES = [
   "alert",
+  "arrow-down",
+  "arrow-left",
+  "arrow-right",
+  "arrow-up",
   "bang",
   "check",
-  "chevron",
+  "chevron-down",
+  "chevron-left",
+  "chevron-right",
+  "chevron-up",
   "clear",
   "cloud",
   "copy",

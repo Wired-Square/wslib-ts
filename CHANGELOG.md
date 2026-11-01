@@ -6,9 +6,9 @@
 
 - The default glyphs other than `NothingYet`'s picture are written from `@wired-square/icons`' sources, which kit does
   not depend on. `Menu`'s default trigger is now an svg of three dots in place of the text "⋮", sized 1em and as
-  tall as a line of text. `copy` is redrawn on a 24 grid with stroke 2, its back square cut behind the front;
-  `schemeLight` and `schemeDark` take the set's `sun` and `moon`. Each reads `--icon-stroke` for its width, 2 by
-  default.
+  tall as a line of text. The glyphs are redrawn: `copy` on a 24 grid with stroke 2, its back square cut behind the
+  front, `chevron`, `clear`, `more` and `schemeSystem` in the set's own proportions, and `schemeLight` and
+  `schemeDark` take the set's `sun` and `moon`. Each reads `--icon-stroke` for its width, 2 by default.
 
 ### 0.3.6
 
@@ -343,10 +343,10 @@ and no peers.
 
 ### 0.1.0
 
-Twenty-one glyphs, one plain SVG each on a 24 grid with a 2 stroke in `currentColor` and round caps and joins:
-alert, bang, check, chevron, clear, cloud, copy, database, info, lock, moon, more, overcast, pencil, plus,
-scheme-system, sun, timer, trash, unlock and x. `./sprite.svg` holds each as a `<symbol id="icon-<name>">` that draws
-with no CSS, and `./glyphs/<name>.svg` each alone. `.` exports `ICON_NAMES` and `IconName`; `./solid` one function
-per glyph, in camelCase, behind the `solid` export condition, with `solid-js` an optional peer. `--icon-stroke` sets
-the stroke's width; `--icon-sun` and `--icon-cloud` colour the sun and cloud parts. Some glyphs derive from Feather
-(MIT) and Lucide (ISC), whose notices are in `LICENSE`.
+Twenty-eight glyphs, one plain SVG each on a 24 grid with a 2 stroke in `currentColor` and round caps and joins:
+alert, arrow-down, arrow-left, arrow-right, arrow-up, bang, check, chevron-down, chevron-left, chevron-right,
+chevron-up, clear, cloud, copy, database, info, lock, moon, more, overcast, pencil, plus, scheme-system, sun, timer,
+trash, unlock and x. `./sprite.svg` holds each as a `<symbol id="icon-<name>">` that draws with no CSS, and
+`./glyphs/<name>.svg` each alone. `.` exports `ICON_NAMES` and `IconName`; `./solid` one function per glyph, in
+camelCase, behind the `solid` export condition, with `solid-js` an optional peer. `--icon-stroke` sets the stroke's
+width; `--icon-sun` and `--icon-cloud` colour the sun and cloud parts.

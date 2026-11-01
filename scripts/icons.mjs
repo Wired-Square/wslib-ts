@@ -49,7 +49,7 @@ ${indent(body, 4)}
   .join("\n")}
 `;
 
-const KIT = { schemeSystem: "scheme-system", schemeLight: "sun", schemeDark: "moon", copy: "copy", clear: "clear", chevron: "chevron", more: "more" };
+const KIT = { schemeSystem: "scheme-system", schemeLight: "sun", schemeDark: "moon", copy: "copy", clear: "clear", chevron: "chevron-down", more: "more" };
 const kit = `${banner}import type { JSX } from "solid-js";
 
 const glyph = (children: JSX.Element) => (

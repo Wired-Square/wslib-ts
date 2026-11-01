@@ -43,6 +43,29 @@ test("every --icon- colour part falls back to currentColor", () => {
   for (const [, , fallback] of colours) expect(fallback).toBe(", currentColor");
 });
 
+const turns = {
+  half: ([x, y]: number[]) => [24 - x!, 24 - y!],
+  clockwise: ([x, y]: number[]) => [24 - y!, x!],
+  anticlockwise: ([x, y]: number[]) => [y!, 24 - x!],
+};
+
+test.each([
+  ["chevron-up", "chevron-down", turns.half],
+  ["chevron-left", "chevron-down", turns.clockwise],
+  ["chevron-right", "chevron-down", turns.anticlockwise],
+  ["arrow-left", "arrow-right", turns.half],
+  ["arrow-down", "arrow-right", turns.clockwise],
+  ["arrow-up", "arrow-right", turns.anticlockwise],
+] as const)("%s is %s turned about the centre", (name, base, turn) => {
+  const points = (glyph: string) =>
+    [...sources.find((source) => source.name === glyph)!.doc.querySelectorAll("path")].map((path) => {
+      const flat = path.getAttribute("d")!.slice(1).split(" ").map(Number);
+      return flat.flatMap((_, i) => (i % 2 ? [] : [flat.slice(i, i + 2)]));
+    });
+  const rounded = (paths: number[][][]) => paths.map((path) => path.map((point) => point.map((v) => Math.round(v * 100) / 100)));
+  expect(points(name)).toEqual(rounded(points(base).map((path) => path.map(turn))));
+});
+
 test("the built sprite holds exactly one symbol per glyph, each drawn as its source with the stroke on the symbol", () => {
   const sprite = new DOMParser().parseFromString(readFileSync(join(root, "dist/sprite.svg"), "utf8"), "image/svg+xml");
   const symbols = [...sprite.documentElement.children];

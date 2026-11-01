@@ -11,8 +11,8 @@ export const glyphs = {
   schemeSystem: () =>
     glyph(
       <>
-        <rect x="2" y="3" width="20" height="14" rx="2"/>
-        <path d="M8 21h8m-4-4v4"/>
+        <rect x="3" y="4" width="18" height="12" rx="1.5"/>
+        <path d="M10 16l-1 4h6l-1-4"/>
       </>,
     ),
   schemeLight: () =>
@@ -30,14 +30,15 @@ export const glyphs = {
         <path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/>
       </>,
     ),
-  clear: () => glyph(<path d="M6 6l12 12M18 6 6 18"/>),
-  chevron: () => glyph(<path d="m6 9 6 6 6-6"/>),
+  clear: () => glyph(<path d="M7 7l10 10M17 7 7 17"/>),
+  chevron: () => glyph(<path d="M5 8.75 12 15.25 19 8.75"/>),
   more: () =>
     glyph(
       <>
-        <circle cx="12" cy="5" r="1"/>
-        <circle cx="12" cy="12" r="1"/>
-        <circle cx="12" cy="19" r="1"/>
+        <circle cx="12" cy="5.5" r="1.25"/>
+        <circle cx="12" cy="12" r="1.25"/>
+        <circle cx="12" cy="18.5" r="1.25"/>
+        <path d="M12 5.5h.01M12 12h.01M12 18.5h.01"/>
       </>,
     ),
 };
