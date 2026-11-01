@@ -44,7 +44,7 @@ scripts/ci.sh
 ```
 
 `scripts/ci.sh` is the CI definition: the lockfile, the commit-message and dossier gates, no runtime dependencies in
-the packages but appliance-ui's `uqr`, no peers in tokens, appliance-types or chart, only the optional `@tauri-apps/api` in mcp-bridge and only the optional `solid-js` in canvas, then `npm run check`. `--tag` adds `npm run floor`. Run it before every push,
+the packages but appliance-ui's `uqr`, no peers in tokens, appliance-types or chart, only the optional `@tauri-apps/api` in mcp-bridge and only the optional `solid-js` in canvas and icons, then `npm run check`. `--tag` adds `npm run floor`. Run it before every push,
 once per clone:
 
 ```sh
@@ -53,16 +53,17 @@ git config core.hooksPath scripts/hooks
 
 `npm run floor` (needs the network) reruns the typecheck, the tests and the fixture in a temp install of the oldest
 versions the ranges claim, once per package: for the kit, solid-js 1.9.11, vitest 4.1.2, vite 6.4.1, and
-vite-plugin-solid 2.11.10 with babel-preset-solid 1.9.10; for the canvas, the kit's floors; for appliance-ui, the
+vite-plugin-solid 2.11.10 with babel-preset-solid 1.9.10; for the canvas and the icons' Solid glyphs, the kit's floors; for appliance-ui, the
 same Solid floors, vite 8.0.0, uqr 0.1.3, and the kit 0.3.5 and appliance-types 0.1.0, packed from this checkout
 while it is at them and from the registry past them. The kit's and the canvas's runs leave appliance-ui out of the
 fixture.
 
-`check` builds `dist/` (the kit's and the canvas's compiled `./core`, the tokens, mcp-bridge, appliance-types, chart and
+`check` builds `dist/` (the kit's and the canvas's compiled `./core`, the tokens, mcp-bridge, appliance-types, chart, the icons and
 appliance-ui's `./vite`, which `npm pack` builds too), then runs the gates (no name of another repository, no colour literal outside
-`theme.css` and the token values, and `theme.css` as `scripts/theme-css.mjs` writes it from `packages/tokens`), the
-typecheck, the tests, and a build of `fixtures/consumer` through `applianceVite` against the packed kit, canvas and
-appliance-ui, with the packed tokens, mcp-bridge, appliance-types, chart, the canvas's `./core` and appliance-ui's `./vite` imported in plain node
+`theme.css` and the token values, `theme.css` as `scripts/theme-css.mjs` writes it from `packages/tokens`, and the icons' generated files and kit's
+default glyphs as `scripts/icons.mjs` writes them from `packages/icons/glyphs`), the
+typecheck, the tests, and a build of `fixtures/consumer` through `applianceVite` against the packed kit, canvas, icons and
+appliance-ui, with the packed tokens, mcp-bridge, appliance-types, chart, icons, the canvas's `./core` and appliance-ui's `./vite` imported in plain node
 and appliance-types and chart typechecked under NodeNext.
 
 ## Releasing a package

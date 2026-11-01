@@ -8,6 +8,7 @@
   "dependencies": {
     "@wired-square/appliance-ui": "*",
     "@wired-square/canvas": "*",
+    "@wired-square/icons": "*",
     "@wired-square/kit": "*",
     "solid-js": "^1.9.17"
   },

@@ -1,4 +1,4 @@
-// Builds fixtures/consumer against the kit, the canvas and appliance-ui as installed
+// Builds fixtures/consumer against the kit, the canvas, the icons and appliance-ui as installed
 // packages: packed, so `files` is what ships, and copied into node_modules
 // rather than linked, since vite treats a linked workspace as the app's own
 // source and would prove nothing about the `solid` export condition.
@@ -53,7 +53,7 @@ try {
   mkdirSync(join(modules, "@types"));
   for (const dep of ["react", "react-dom", "@types/react", "@types/react-dom"]) fromDeps(dep);
 
-  const packed = ["@wired-square/kit", "@wired-square/tokens", "@wired-square/mcp-bridge", "@wired-square/appliance-types", "@wired-square/canvas", "@wired-square/chart"];
+  const packed = ["@wired-square/kit", "@wired-square/tokens", "@wired-square/mcp-bridge", "@wired-square/appliance-types", "@wired-square/canvas", "@wired-square/chart", "@wired-square/icons"];
   for (const name of withUi ? [...packed, "@wired-square/appliance-ui"] : packed) {
     const tarball = execFileSync("npm", ["pack", "--silent", "--pack-destination", work, "-w", name], {
       cwd: repo,
@@ -169,6 +169,22 @@ try {
     problems.push(`the packed chart does not typecheck under NodeNext:\n${error.stdout}`);
   }
 
+  const icons = `
+    const { ICON_NAMES } = await import("@wired-square/icons");
+    const sprite = (await import("node:fs")).readFileSync(new URL(import.meta.resolve("@wired-square/icons/sprite.svg")), "utf8");
+    const glyph = import.meta.resolve("@wired-square/icons/glyphs/check.svg");
+    process.stdout.write(String(ICON_NAMES.includes("check") && sprite.includes('id="icon-check"') && glyph.endsWith("/dist/glyphs/check.svg")));
+  `;
+  if (execFileSync("node", ["--input-type=module", "-e", icons], { cwd: work, encoding: "utf8" }) !== "true") {
+    problems.push("plain node imported @wired-square/icons, but its names, sprite.svg or glyph files are missing");
+  }
+  writeFileSync(join(work, "icons.ts"), `import { ICON_NAMES, type IconName } from "@wired-square/icons";\n    export const typed: IconName = ICON_NAMES[0];\n`);
+  try {
+    execFileSync(join(repo, "node_modules/.bin/tsc"), ["--noEmit", "--strict", "--module", "nodenext", "icons.ts"], { cwd: work, encoding: "utf8" });
+  } catch (error) {
+    problems.push(`the packed icons do not typecheck under NodeNext:\n${error.stdout}`);
+  }
+
   if (withUi) {
     const applianceVite = `
       const { applianceProxy, applianceVite } = await import("@wired-square/appliance-ui/vite");
@@ -217,6 +233,7 @@ try {
     const compiled = [
       ["the kit", "/node_modules/@wired-square/kit/src/Notice.tsx"],
       ["the canvas", "/node_modules/@wired-square/canvas/src/Canvas.tsx"],
+      ["the icons", "/node_modules/@wired-square/icons/src/solid.tsx"],
     ];
     if (withUi) compiled.push(["appliance-ui", "/node_modules/@wired-square/appliance-ui/src/screens/OutboundTrust.tsx"]);
     for (const [owner, url] of compiled) {
@@ -227,7 +244,7 @@ try {
     }
     await server.waitForRequestsIdle();
     const { optimized, discovered } = server.environments.client.depsOptimizer.metadata;
-    for (const name of ["@wired-square/appliance-ui", "@wired-square/canvas"]) {
+    for (const name of ["@wired-square/appliance-ui", "@wired-square/canvas", "@wired-square/icons"]) {
       if ([...Object.keys(optimized), ...Object.keys(discovered)].some((id) => id === name || id.startsWith(`${name}/src`))) {
         problems.push(`the dev server pre-bundles ${name}, outside Solid's transform`);
       }
@@ -291,6 +308,9 @@ try {
   } else if (!app.textContent.includes("Pressed 2 times")) {
     problems.push("the built app's kit components do not react to the app's signal");
   }
+  if (app.querySelector("svg.fixture-check > path")?.namespaceURI !== "http://www.w3.org/2000/svg") {
+    problems.push("the built app did not draw the icons' Solid check as SVG");
+  }
   if (!app.textContent.includes("Refused through core") || !app.textContent.includes("Recognised by core")) {
     problems.push("a Refusal from core and one from the root are not one class in the built app");
   }
@@ -316,6 +336,6 @@ try {
 fail("consumer fixture", problems);
 console.log(
   withUi
-    ? "consumer fixture: built against the packed kit, canvas and appliance-ui; the kit's and canvas's core, canvas/react, tokens, mcp-bridge, appliance-types, chart and appliance-ui/vite imported in plain node"
-    : "consumer fixture: built against the packed kit and canvas, without appliance-ui; the kit's and canvas's core, canvas/react, tokens, mcp-bridge, appliance-types and chart imported in plain node",
+    ? "consumer fixture: built against the packed kit, canvas, icons and appliance-ui; the kit's and canvas's core, canvas/react, tokens, mcp-bridge, appliance-types, chart, icons and appliance-ui/vite imported in plain node"
+    : "consumer fixture: built against the packed kit, canvas and icons, without appliance-ui; the kit's and canvas's core, canvas/react, tokens, mcp-bridge, appliance-types, chart and icons imported in plain node",
 );

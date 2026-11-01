@@ -517,6 +517,11 @@ select.app-field__input {
   padding: 0.25rem 0.5rem;
 }
 
+/* A 1em glyph alone keeps the trigger as tall as a line of text would. */
+.app-menu__trigger > svg {
+  margin-block: calc((var(--app-control-line-height) - 1) * 0.5em);
+}
+
 .app-menu__trigger[aria-expanded="true"] {
   background: var(--app-surface-sunken);
   color: var(--app-text);
