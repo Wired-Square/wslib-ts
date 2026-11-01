@@ -1,4 +1,4 @@
-import { For, Match, Show, Switch, createSignal, onCleanup } from "solid-js";
+import { For, Match, Show, Switch, createComputed, createSignal, on, onCleanup } from "solid-js";
 import type { JSX } from "solid-js";
 import { Button, Notice, Select } from "@wired-square/kit";
 
@@ -8,20 +8,36 @@ import { BAUDS, DEFAULT_BAUD, keyBytes, openLink, serialUrl } from "./link";
 import type { ConsolePort, Link, LinkState, ShownEvent } from "./link";
 import type { ConsoleUser, MonitorState, RefusalReason } from "./wire";
 
-export type SerialConsoleProps = ({ url: string } | { port: ConsolePort; baud?: number }) & {
+export type SerialConsoleProps = (
+  | { url: string }
+  | {
+      port: ConsolePort;
+      baud?: number;
+      /** Told each baud the viewer picks; with `baud`, the host keeps it. */
+      onBaud?: (baud: number) => void;
+    }
+) & {
   /** Names the port, in the heading and the console's accessible name. */
   label: string;
   readOnly?: boolean;
   /** A short caution above the console, such as that opening the port may reset the board. */
   warning?: JSX.Element;
+  /** Names, in the attached list, how someone not on this box reaches the port; "relayed" by default. */
+  viaLabel?: (via: string) => string;
+  /** Why this session may watch but not type, completing "Read-only: …" and "Not sent: …". */
+  watchOnlyReason?: string;
 };
+
+const WATCH_ONLY = "this session can watch but not type";
 
 /**
  * A shared `/ws/serial` console, opened on mount and closed on unmount. Given a
  * port rather than a URL it offers the bauds, and a new baud reopens it.
  */
 export function SerialConsole(props: SerialConsoleProps) {
-  const [baud, setBaud] = createSignal(("port" in props && props.baud) || DEFAULT_BAUD);
+  const given = () => ("port" in props && props.baud) || DEFAULT_BAUD;
+  const [baud, setBaud] = createSignal(given());
+  createComputed(on(given, setBaud, { defer: true }));
   const url = () => ("url" in props ? props.url : serialUrl(props.port, baud()));
 
   return (
@@ -36,7 +52,10 @@ export function SerialConsole(props: SerialConsoleProps) {
             "Changing it reopens the console. The first to open the port sets its baud; ESP32 boot messages are at 74880."
           }
           value={String(baud())}
-          onValue={(v) => setBaud(Number(v))}
+          onValue={(v) => {
+            setBaud(Number(v));
+            if ("port" in props) props.onBaud?.(baud());
+          }}
         >
           <For each={BAUDS}>{(b) => <option value={b}>{b}</option>}</For>
         </Select>
@@ -48,6 +67,8 @@ export function SerialConsole(props: SerialConsoleProps) {
             label={props.label}
             requested={"port" in props ? baud() : undefined}
             readOnly={Boolean(props.readOnly)}
+            viaLabel={props.viaLabel ?? (() => "relayed")}
+            watchOnlyReason={props.watchOnlyReason ?? WATCH_ONLY}
           />
         )}
       </Show>
@@ -55,7 +76,14 @@ export function SerialConsole(props: SerialConsoleProps) {
   );
 }
 
-function Pane(props: { url: string; label: string; requested: number | undefined; readOnly: boolean }) {
+function Pane(props: {
+  url: string;
+  label: string;
+  requested: number | undefined;
+  readOnly: boolean;
+  viaLabel: (via: string) => string;
+  watchOnlyReason: string;
+}) {
   const screen = new Scrollback();
   const encoder = new TextEncoder();
   const [lines, setLines] = createSignal<readonly Line[]>([[]]);
@@ -195,7 +223,7 @@ function Pane(props: { url: string; label: string; requested: number | undefined
               <li class={`app-console__who--${who.colour}`}>
                 {who.name}
                 <span class="app-muted">
-                  {who.via === "local" ? (who.name === me()?.name ? " (you)" : "") : " (relayed)"}
+                  {who.via === "local" ? (who.name === me()?.name ? " (you)" : "") : ` (${props.viaLabel(who.via)})`}
                 </span>
               </li>
             )}
@@ -210,7 +238,7 @@ function Pane(props: { url: string; label: string; requested: number | undefined
         >
           <Match when={link().is !== "open"}>Input is off until the console connects.</Match>
           <Match when={props.readOnly}>Read-only.</Match>
-          <Match when={!me()?.writes}>Read-only: this session can watch but not type.</Match>
+          <Match when={!me()?.writes}>Read-only: {props.watchOnlyReason}.</Match>
           <Match when={paused()}>
             Input is off while the port is paused, as for a flash. It comes back when the pause ends.
           </Match>
@@ -251,7 +279,7 @@ function Pane(props: { url: string; label: string; requested: number | undefined
       <Show when={refused()}>
         {(refusal) => (
           <p class="app-console__refusal" role="status">
-            {REFUSALS[refusal().reason] ?? "Not sent."}
+            {refusals(props.watchOnlyReason)[refusal().reason] ?? "Not sent."}
             <Show when={refusal().detail}>{(detail) => <> <small class="app-muted">{detail()}</small></>}</Show>
           </p>
         )}
@@ -260,8 +288,8 @@ function Pane(props: { url: string; label: string; requested: number | undefined
   );
 }
 
-const REFUSALS: Record<RefusalReason, string> = {
+const refusals = (watchOnlyReason: string): Record<RefusalReason, string> => ({
   paused: "Not sent while the port is paused.",
   no_active_reader: "Not sent: nothing is reading this port, so input can't be sent.",
-  not_permitted: "Not sent: this session can watch but not type.",
-};
+  not_permitted: `Not sent: ${watchOnlyReason}.`,
+});

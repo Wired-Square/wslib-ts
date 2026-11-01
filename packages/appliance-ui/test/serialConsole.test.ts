@@ -96,6 +96,16 @@ test("Input is off until the session may write and the viewer turns it on, then 
   assert.deepEqual(c.buttons(), ["Type"]);
 });
 
+test("The host says why a session can watch but not type, on the read-only line and in a refusal", async () => {
+  const c = await opened({ ...URL_PROPS, watchOnlyReason: "typing needs the Operator role" });
+  c.socket().open();
+  await c.say({ type: "attached", name: "olive", writes: false });
+  assert.match(c.shown(), /Read-only: typing needs the Operator role\./);
+  await c.say({ type: "refused", reason: "not_permitted" });
+  assert.match(c.shown(), /Not sent: typing needs the Operator role\./);
+  assert.doesNotMatch(c.shown(), /can watch but not type/);
+});
+
 test("The read-only flag keeps a writer from typing", async () => {
   const c = await opened({ ...URL_PROPS, readOnly: true });
   c.socket().open();
@@ -196,6 +206,22 @@ test("Echoes and markers are drawn as their writer's, and the roster names who i
   );
 });
 
+test("The host names how someone not on this box reaches the port", async () => {
+  const c = await opened({ ...URL_PROPS, viaLabel: (via) => `via the ${via}` });
+  c.socket().open();
+  await c.say({ type: "attached", name: "olive", writes: true });
+  await c.say({
+    type: "participants",
+    participants: [
+      { name: "olive", via: "local", colour: 0 },
+      { name: "alex", via: "controller", colour: 3 },
+    ],
+  });
+  assert.match(c.shown(), /olive \(you\)/);
+  assert.match(c.shown(), /alex \(via the controller\)/);
+  assert.doesNotMatch(c.shown(), /relayed/);
+});
+
 test("A console that never opens offers to try again, and trying dials once more", async () => {
   const c = await opened(URL_PROPS);
   c.socket().drop();
@@ -257,4 +283,36 @@ test("Given a URL, the heading is the label until the port's baud is known", asy
   assert.doesNotMatch(c.shown(), /baud/);
   await c.say({ type: "attached", name: "olive", writes: false, baud: 74880 });
   assert.match(c.shown(), /Board \(74880 baud\)/);
+});
+
+test("A baud the viewer picks is told to the host, and a baud the host passes reopens the console at it", async (t) => {
+  const page = globalThis.document;
+  t.after(() => Object.assign(globalThis, { document: page }));
+  Object.assign(globalThis, { document: { baseURI: "https://box.local/apps/hello/" } });
+  const { createSignal } = await load<typeof import("solid-js")>("solid-js");
+  const [baud, setBaud] = createSignal(74880);
+  const told: number[] = [];
+  const c = await opened({
+    port: { path: "/dev/ttyUSB0", serialNumber: null },
+    label: "Board",
+    get baud() {
+      return baud();
+    },
+    onBaud: (picked) => told.push(picked),
+  });
+  const dialled = () => new URL(c.socket().url).searchParams.get("baud");
+  assert.equal(dialled(), "74880");
+
+  const field = find(c.root, (n) => n.props.class === "app-field");
+  (field.props.onChange as (e: unknown) => void)({ target: { value: "9600" } });
+  await settled();
+  assert.deepEqual(told, [9600]);
+  assert.equal(dialled(), "9600");
+
+  setBaud(57600);
+  await settled();
+  assert.equal(Dialled.all.length, 3);
+  assert.equal(dialled(), "57600");
+  assert.match(c.shown(), /Board \(requested 57600 baud\)/);
+  assert.deepEqual(told, [9600], "a baud the host passes isn't told back to it");
 });

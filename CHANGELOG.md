@@ -151,6 +151,15 @@ and `constants` are exported from the root. No dependencies and no peers.
 
 ## `@wired-square/appliance-ui`
 
+### 0.5.0
+
+- `SerialConsole` takes `viaLabel(via)`, the word the attached list shows in brackets for someone not on this box,
+  "relayed" by default.
+- `SerialConsole` takes `watchOnlyReason`, why a session may watch but not type, in its read-only line and its
+  `not_permitted` refusal; "this session can watch but not type" by default.
+- Given a port, `SerialConsole` takes `onBaud(baud)`, told each baud the viewer picks, and follows `baud` when it
+  changes, reopening at it; the two keep the baud with the host, such as in the URL.
+
 ### 0.4.2
 
 - At an app's root rendered without its trailing slash, `Chrome`'s switcher marks that app as current, not the
