@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 
 import { fail, repoFiles } from "./files.mjs";
 
@@ -31,7 +31,7 @@ const TOKENS = "packages/tokens/src/tokens.ts";
 const withoutValues = (text) => text.replace(/\b(light|dark): ("[^"]*"|'[^']*')/g, "$1: ''");
 
 const hits = repoFiles()
-  .filter((file) => /^packages\/(kit|tokens|appliance-ui|canvas|chart|icons)\/src\/.*\.(tsx?|css)$|^packages\/icons\/.*\.svg$/.test(file) && file !== "packages/kit/src/theme.css")
+  .filter((file) => /^packages\/(kit|tokens|appliance-ui|canvas|chart|icons)\/src\/.*\.(tsx?|css)$|^packages\/icons\/.*\.svg$/.test(file) && file !== "packages/kit/src/theme.css" && existsSync(file))
   .flatMap((file) => {
     const css = file.endsWith(".css");
     const text = readFileSync(file, "utf8");
