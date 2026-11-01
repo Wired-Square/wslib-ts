@@ -330,3 +330,15 @@ local calendar from 5 minutes to 12 months and three to five y ticks; a fixed `y
 `now` marker; and a readout of each series' value on hover or tap. Colours
 are CSS custom properties: each series names its own, and the axes use the kit's `--app-*` tokens. No dependencies
 and no peers.
+
+## `@wired-square/icons`
+
+### 0.1.0
+
+Twenty-one glyphs, one plain SVG each on a 24 grid with a 2 stroke in `currentColor` and round caps and joins:
+alert, bang, check, chevron, clear, cloud, copy, database, info, lock, moon, more, overcast, pencil, plus,
+scheme-system, sun, timer, trash, unlock and x. `./sprite.svg` holds each as a `<symbol id="icon-<name>">` that draws
+with no CSS, and `./glyphs/<name>.svg` each alone. `.` exports `ICON_NAMES` and `IconName`; `./solid` one function
+per glyph, in camelCase, behind the `solid` export condition, with `solid-js` an optional peer. `--icon-stroke` sets
+the stroke's width; `--icon-sun` and `--icon-cloud` colour the sun and cloud parts. Some glyphs derive from Feather
+(MIT) and Lucide (ISC), whose notices are in `LICENSE`.

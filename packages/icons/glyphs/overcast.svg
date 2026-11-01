@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width: var(--icon-stroke, 2)" stroke-linecap="round" stroke-linejoin="round">
+  <path style="stroke: var(--icon-sun, currentColor)" d="M6.12 10.99A3.5 3.5 0 0 1 11.78 6.88"/>
+  <path style="stroke: var(--icon-sun, currentColor)" d="M9 2v1.5M2 9h1.5M4.05 4.05l1.06 1.06M13.95 4.05l-1.06 1.06M3.75 13.65l1.06-1.06"/>
+  <path style="stroke: var(--icon-cloud, currentColor)" d="M8.5 21a3.5 3.5 0 0 1-.5-6.96A4.75 4.75 0 0 1 17.2 12.5a4.25 4.25 0 0 1 .3 8.5z"/>
+</svg>
