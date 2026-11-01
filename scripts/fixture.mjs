@@ -53,7 +53,7 @@ try {
   mkdirSync(join(modules, "@types"));
   for (const dep of ["react", "react-dom", "@types/react", "@types/react-dom"]) fromDeps(dep);
 
-  const packed = ["@wired-square/kit", "@wired-square/tokens", "@wired-square/mcp-bridge", "@wired-square/appliance-types", "@wired-square/canvas", "@wired-square/chart", "@wired-square/icons"];
+  const packed = ["@wired-square/kit", "@wired-square/tokens", "@wired-square/mcp-bridge", "@wired-square/appliance-types", "@wired-square/canvas", "@wired-square/chart", "@wired-square/icons", "@wired-square/store"];
   for (const name of withUi ? [...packed, "@wired-square/appliance-ui"] : packed) {
     const tarball = execFileSync("npm", ["pack", "--silent", "--pack-destination", work, "-w", name], {
       cwd: repo,
@@ -183,6 +183,41 @@ try {
     execFileSync(join(repo, "node_modules/.bin/tsc"), ["--noEmit", "--strict", "--module", "nodenext", "icons.ts"], { cwd: work, encoding: "utf8" });
   } catch (error) {
     problems.push(`the packed icons do not typecheck under NodeNext:\n${error.stdout}`);
+  }
+
+  const store = `
+    const { createStore, shallow } = await import("@wired-square/store");
+    const store = createStore(() => ({ count: 0, label: "a" }));
+    const seen = [];
+    store.subscribe((state, prev) => seen.push(prev.count, state.count));
+    store.setState((s) => ({ count: s.count + 1 }));
+    process.stdout.write(String(seen.join() === "0,1" && store.getState().label === "a" && shallow([1], [1])));
+  `;
+  cpSync(join(modules, "@wired-square/store"), join(bare, "node_modules/@wired-square/store"), { recursive: true });
+  if (execFileSync("node", ["--input-type=module", "-e", store], { cwd: bare, encoding: "utf8" }) !== "true") {
+    problems.push("plain node imported @wired-square/store alone, but its store misbehaved");
+  }
+  const bindings = `
+    const { fromStore } = await import("@wired-square/store/solid");
+    const { create, useShallow, useStore } = await import("@wired-square/store/react");
+    process.stdout.write(String([fromStore, create, useShallow, useStore].every((binding) => typeof binding === "function")));
+  `;
+  if (execFileSync("node", ["--input-type=module", "-e", bindings], { cwd: work, encoding: "utf8" }) !== "true") {
+    problems.push("plain node imported @wired-square/store's Solid and React bindings, but they lack their functions");
+  }
+  writeFileSync(
+    join(work, "store.ts"),
+    `import { createStore, type Store } from "@wired-square/store";
+    import { fromStore } from "@wired-square/store/solid";
+    import { create, useShallow, type StoreHook } from "@wired-square/store/react";
+    const store: Store<{ count: number }> = createStore(() => ({ count: 0 }));
+    const hook: StoreHook<{ count: number }> = create(() => ({ count: 0 }));
+    export const typed = [fromStore(store, (s) => s.count), hook.getState().count, useShallow((s: { count: number }) => [s.count])] as const;\n`,
+  );
+  try {
+    execFileSync(join(repo, "node_modules/.bin/tsc"), ["--noEmit", "--strict", "--module", "nodenext", "store.ts"], { cwd: work, encoding: "utf8" });
+  } catch (error) {
+    problems.push(`the packed store does not typecheck under NodeNext:\n${error.stdout}`);
   }
 
   if (withUi) {
@@ -336,6 +371,6 @@ try {
 fail("consumer fixture", problems);
 console.log(
   withUi
-    ? "consumer fixture: built against the packed kit, canvas, icons and appliance-ui; the kit's and canvas's core, canvas/react, tokens, mcp-bridge, appliance-types, chart, icons and appliance-ui/vite imported in plain node"
-    : "consumer fixture: built against the packed kit, canvas and icons, without appliance-ui; the kit's and canvas's core, canvas/react, tokens, mcp-bridge, appliance-types, chart and icons imported in plain node",
+    ? "consumer fixture: built against the packed kit, canvas, icons and appliance-ui; the kit's and canvas's core, canvas/react, tokens, mcp-bridge, appliance-types, chart, icons, store and appliance-ui/vite imported in plain node"
+    : "consumer fixture: built against the packed kit, canvas and icons, without appliance-ui; the kit's and canvas's core, canvas/react, tokens, mcp-bridge, appliance-types, chart, icons and store imported in plain node",
 );
