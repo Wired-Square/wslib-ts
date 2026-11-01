@@ -232,9 +232,9 @@ export function createChart(container: HTMLElement, initial: ChartOptions): Char
     // Above every series, each on a box in the surface colour, so no series' line runs through a mark's digits.
     const peakMarks = draw(plot, "g", { class: "app-chart-peaks" });
     for (const { series, text, at, half, row } of marks) {
-      const baseline = top + 11 + row * 13;
-      draw(peakMarks, "rect", { class: "app-chart-peak-box", x: at - half, y: baseline - 10, width: 2 * half, height: 13 }, { fill: "var(--app-surface)" });
-      draw(peakMarks, "text", { class: "app-chart-peak", "data-series": series.id, x: at, y: baseline, "text-anchor": "middle" }, {
+      const rowTop = top + row * 13;
+      draw(peakMarks, "rect", { class: "app-chart-peak-box", x: at - half, y: rowTop, width: 2 * half, height: 13 }, { fill: "var(--app-surface)" });
+      draw(peakMarks, "text", { class: "app-chart-peak", "data-series": series.id, x: at, y: rowTop + 11, "text-anchor": "middle" }, {
         fill: `var(${series.colour})`,
         stroke: "var(--app-surface)",
         "stroke-width": "3",

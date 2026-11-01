@@ -385,6 +385,8 @@ describe("createChart", () => {
     createChart(container, options({ series: [spiky, echo], yCap: 25 }));
     const marks = container.querySelector(".app-chart-peaks")!;
     expect(marks.previousElementSibling).toBe(series("q"));
+    const tops = [...marks.querySelectorAll(".app-chart-peak-box")].map((box) => Number(box.getAttribute("y")));
+    expect(Math.min(...tops)).toBe(Number(marks.parentElement!.getAttribute("y")));
     expect([...marks.children].map((node) => node.getAttribute("class"))).toEqual(
       Array.from({ length: 4 }, () => ["app-chart-peak-box", "app-chart-peak"]).flat(),
     );
