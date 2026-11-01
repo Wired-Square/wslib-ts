@@ -36,6 +36,10 @@ import { startHarnessBridge } from "@wired-square/mcp-bridge/tauri-bridge";
 await startHarnessBridge({ navigate: ({ path }) => router.navigate(String(path)) });
 ```
 
+`startHarnessBridge(appOps?)` answers each `harness:request` `{ id, op, args }` with a `harness:reply` `{ id, ok }` or
+`{ id, error }`, trying the app's own ops before the DOM ops. Over another transport, hand each request to
+`answer(request, appOps?)`, or to `runDomOp(op, args)` from `./dom-ops`.
+
 ## Peers
 
 - `@tauri-apps/api` ^2.0.0, optional, for `./tauri-bridge` only

@@ -2,7 +2,7 @@
 
 Shared TypeScript packages for Wired Square projects, published to the
 Forgejo npm registry under `@wired-square` (never npmjs.org). `README.md`
-covers using and publishing them.
+covers using them, and `CONTRIBUTING.md` working on and publishing them.
 
 ## Layout
 

@@ -34,6 +34,26 @@ with `vite-plugin-solid` ^2.11.10, passed to `applianceVite({ plugins: [solid()]
 import, once and in this order, `@wired-square/kit/theme.css`, the app's own token overrides,
 `@wired-square/kit/kit.css`, `./shell.css` (only if the app mounts `Shell` or `Chrome`) and `./appliance.css`.
 
+## Vite
+
+`applianceVite` sets `base: "./"` for the daemon's `<base href>` and writes a `.gz` beside each compressible file;
+the app passes Solid's plugin. `applianceProxy(target?)` proxies `/api`, `/healthz` and `/ws`, its sockets included,
+to a development stand-in for the console, `http://127.0.0.1:8080` by default:
+
+```ts
+import { applianceProxy, applianceVite } from "@wired-square/appliance-ui/vite";
+import { defineConfig } from "vite";
+import solid from "vite-plugin-solid";
+
+export default defineConfig(applianceVite({ plugins: [solid()], server: { proxy: applianceProxy() } }));
+```
+
+## The app switcher
+
+`Chrome` reads `GET /api/switcher` at the origin root, whatever the app's base, and given two or more `AppLink`s
+shows a menu beside the hostname, named for the app whose `href` is the longest prefix of the page's path. Choosing
+another loads its `href`. Any failure, a 401 included, leaves the masthead without one and signs nobody out.
+
 ## Peers
 
 - `@wired-square/kit` ^0.3.5
