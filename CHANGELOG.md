@@ -350,3 +350,15 @@ trash, unlock and x. `./sprite.svg` holds each as a `<symbol id="icon-<name>">` 
 `./glyphs/<name>.svg` each alone. `.` exports `ICON_NAMES` and `IconName`; `./solid` one function per glyph, in
 camelCase, behind the `solid` export condition, with `solid-js` an optional peer. `--icon-stroke` sets the stroke's
 width; `--icon-sun` and `--icon-cloud` colour the sun and cloud parts.
+
+## `@wired-square/store`
+
+### 0.1.0
+
+A framework-free store with zustand vanilla's semantics, without middleware or a replace mode. `.` exports
+`createStore(init)`, whose `setState` drops a result identical to the state and shallow-merges anything else into a new
+state, calling each listener with the new state and the previous one; the `Store` type; and `shallow`. `./solid`
+exports `fromStore(store, selector, equals?)`, a signal of the selection that unsubscribes with its owner. `./react`
+exports `useStore(store, selector?, equals?)` on `useSyncExternalStore`; `create(init)`, a hook that is also its store
+and gives the whole state with no selector; and `useShallow`, compatible with zustand's. All three compile to `dist/`;
+`solid-js` and `react` are optional peers.

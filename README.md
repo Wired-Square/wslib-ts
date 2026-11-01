@@ -11,6 +11,7 @@ Wired Square's shared TypeScript packages, published under `@wired-square`.
 | [`@wired-square/icons`](packages/icons/README.md) | Wired Square's glyphs as plain SVG on a 24 grid, a sprite for apps without a bundler, and Solid components |
 | [`@wired-square/kit`](packages/kit/README.md) | SolidJS components, the `--app-*` tokens they read, and test helpers |
 | [`@wired-square/mcp-bridge`](packages/mcp-bridge/README.md) | The page half of wslib-mcp's `dom` tools, and their bridge over Tauri events |
+| [`@wired-square/store`](packages/store/README.md) | A small framework-free state store, with a Solid signal and React hooks over it |
 | [`@wired-square/tokens`](packages/tokens/README.md) | The `--app-*` tokens' names and defaults, as TypeScript and JSON |
 
 ## Install
