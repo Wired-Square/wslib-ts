@@ -56,6 +56,10 @@
   stroke-dasharray: 6 4;
 }
 
+.app-canvas__edge {
+  pointer-events: visiblePainted;
+}
+
 .app-canvas__labels {
   position: absolute;
 }
@@ -73,6 +77,16 @@
 
 .app-canvas__node.is-dragging {
   cursor: grabbing;
+}
+
+.app-canvas .is-valid-target,
+.app-canvas .is-invalid-target {
+  outline: 2px solid var(--app-good);
+  outline-offset: 1px;
+}
+
+.app-canvas .is-invalid-target {
+  outline-color: var(--app-bad);
 }
 
 .app-canvas__controls,

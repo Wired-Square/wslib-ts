@@ -30,6 +30,18 @@ test("the controls zoom in and out about the centre, and fit", async () => {
   expect(canvas.getViewport().zoom).toBe(2.5);
 });
 
+test("the Fit control and a fitView given no padding use fitPadding", async () => {
+  const { root, canvas, layout } = setup({ viewport: { x: 0, y: 0, zoom: 1 }, controls: true, fitPadding: 1, maxZoom: 10 });
+  canvas.setNodes([node("a", 0, 0)]);
+  layout.settle();
+  root.querySelector<HTMLButtonElement>('.app-canvas__controls [aria-label="Fit view"]')!.click();
+  layout.advance(300);
+  expect(canvas.getViewport().zoom).toBe(4);
+  await canvas.setViewport({ x: 0, y: 0, zoom: 1 });
+  await canvas.fitView();
+  expect(canvas.getViewport().zoom).toBe(4);
+});
+
 test("a press on the controls is not a pane click", () => {
   const onPaneClick = vi.fn();
   const { root } = setup({ viewport: { x: 0, y: 0, zoom: 1 }, controls: true, onPaneClick });

@@ -174,7 +174,7 @@ test("a node re-shown after scrolling out of view keeps its place in the stackin
   const handle = root.querySelector(".canvas-source")!;
   pointer(handle, "pointerdown", 905, 305);
   pointer(handle, "pointerup", 10, 10);
-  expect(onConnect).toHaveBeenCalledWith("c", "b");
+  expect(onConnect).toHaveBeenCalledWith("c", "b", { sourcePort: undefined, targetPort: undefined });
 });
 
 test("a release the content stops from bubbling still ends the drag", () => {

@@ -264,6 +264,38 @@ Moved names:
 
 ## `@wired-square/canvas`
 
+### 0.2.0
+
+- Ports: an element in a node with `data-canvas-port="<id>"`, on the side its `data-canvas-side` names or else its
+  node's side nearest it. A press on one starts a connection, as on `canvas-source`. A drop on another node's port,
+  even where it stands out of the node, reports that port, and a drop elsewhere on a node reports none.
+  `onConnect` takes a third argument, `{ sourcePort, targetPort }`, each `undefined` for a node-level end.
+- `isValidConnection(source, sourcePort, target, targetPort)`: a refused drop is not reported. While a connection is
+  drawn, the port or node under it wears `is-valid-target` or `is-invalid-target`, outlined in `--app-good` or
+  `--app-bad`.
+- `CanvasEdge` takes `sourcePort` and `targetPort`, and its `EdgeGeometry` then carries each port's anchor,
+  `{ x, y, side }` in canvas coordinates at the middle of the port's outer side, once the port is measured. Ports are
+  measured when their node mounts, resizes or its content changes, and when a connection starts; `offset` is the seam for a port's place in its node.
+  An edge without ports is drawn as before.
+- `data-canvas-port-kind="in"` or `"out"` on a port: a connection is reported with its `out` end, or the far end
+  from an `in` port, as the source, whichever end it was drawn from. Two ports of the same kind never connect, are
+  marked invalid, and are not put to `isValidConnection`.
+- `connectionRadius`, in screen pixels: a connection's end that near a port lands on the nearest one, and the
+  validity marks follow it. 0 by default, a hit as before.
+- `bezierPath(source, target, curvature = 0.25)` from `./core`: an SVG path between two anchors whose ends leave
+  along their sides, the curve React Flow draws.
+- The line drawn from a port is `bezierPath` to the pointer, or to the port it would land on. From a
+  `canvas-source` it stays straight.
+- A `fitView` that animates while its nodes are measured lands on their measured bounds, and settles the same
+  promise. It had framed a node just added at `unmeasuredSize`, clipping one taller.
+- The fit at mount, without a `viewport`, refits as the canvas resizes and its nodes are measured, until the canvas
+  is pressed or the camera moved.
+- `fitPadding`: the padding of the mount fit, the Fit control and a `fitView` given none, read when each fit runs; 0.1 by default.
+- `onEdgeClick(edge, event)`, for a click on an edge or its label, not after a drag. Edges take pointer events where
+  they are painted; without `onEdgeClick`, a click on one is still a pane click.
+- `@wired-square/canvas/react`: `Canvas`, `CanvasPanel`, `CanvasScope` and `useCanvas` for React 19, compiled to
+  `dist/`. react and react-dom ^19.0.0 are optional peers beside solid-js.
+
 ### 0.1.0
 
 A board canvas: a pannable, zoomable pane of nodes and edges, with a framework-free core and a Solid binding.
