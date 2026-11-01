@@ -71,6 +71,13 @@ test("create's hook selects, and with no selector gives the whole state", () => 
   expect(element.textContent).toBe("count 1;whole 1a");
 });
 
+test("create<S>()(init), zustand's typed form, makes the same hook", () => {
+  const useCounter = create<Counter>()((set, get) => ({ count: 0, label: "a", bump: () => set({ count: get().count + 1 }) }));
+  const element = render(h(Probe<number>, { read: () => useCounter((s) => s.count), show: String }));
+  act(() => useCounter.getState().bump());
+  expect(element.textContent).toBe("1");
+});
+
 test("create's hook carries the store's getState, setState and subscribe", () => {
   const useCounter = counter();
   const listener = vi.fn();

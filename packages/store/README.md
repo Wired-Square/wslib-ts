@@ -82,7 +82,8 @@ useCounter.getState().bump();
 useStore(otherStore, (s) => s.items, shallow);
 ```
 
-`create` returns a hook that is also its store, with `getState`, `setState` and `subscribe`. The hook, like
+`create` returns a hook that is also its store, with `getState`, `setState` and `subscribe`; zustand's typed form
+`create<State>()(init)` works too. The hook, like
 `useStore`, re-renders only when its selection changes, by `Object.is` or the equality given, and with no selector
 returns the whole state. `useShallow` wraps a selector so that a fresh object or array equal by `shallow` to the last
 keeps the last. A selector that builds a fresh object each call still settles without `useShallow`, but re-renders on

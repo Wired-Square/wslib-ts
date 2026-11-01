@@ -27,8 +27,13 @@ export function useStore<S, T = S>(
   return useSyncExternalStore(store.subscribe, select, select);
 }
 
-/** A store and a hook reading it in one: `useCounter((s) => s.count)`, `useCounter.getState()`. */
-export function create<S extends object>(init: Parameters<typeof createStore<S>>[0]): StoreHook<S> {
+type Init<S extends object> = Parameters<typeof createStore<S>>[0];
+
+/** A store and a hook reading it in one: `useCounter((s) => s.count)`, `useCounter.getState()`; `create<S>()(init)` too. */
+export function create<S extends object>(init: Init<S>): StoreHook<S>;
+export function create<S extends object>(): (init: Init<S>) => StoreHook<S>;
+export function create<S extends object>(init?: Init<S>): StoreHook<S> | ((init: Init<S>) => StoreHook<S>) {
+  if (!init) return create;
   const store = createStore(init);
   return Object.assign(<T = S>(selector?: (state: S) => T, equals?: (a: T, b: T) => boolean) => useStore(store, selector, equals), store);
 }
