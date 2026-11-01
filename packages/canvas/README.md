@@ -1,8 +1,9 @@
 # @wired-square/canvas
 
 A board canvas: a pannable, zoomable pane of nodes and edges, with connecting, a dot background, controls, a minimap
-and corner panels. The core is framework-free compiled JavaScript, and a Solid binding ships as TSX. The app owns the
-document and the selection; the canvas mounts what it is given and reports what happens.
+and corner panels. The core is framework-free compiled JavaScript, a Solid binding ships as TSX, and a React binding as
+compiled JavaScript. The app owns the document and the selection; the canvas mounts what it is given and reports what
+happens.
 
 ## Install
 
@@ -23,12 +24,14 @@ npm install @wired-square/canvas
 |---|---|
 | `./core` | Compiled JavaScript with types: `createCanvas`, `floatingAnchors`, and the types |
 | `.` | `Canvas`, `CanvasPanel`, `CanvasScope` and `useCanvas`, as TSX behind the `solid` export condition |
+| `./react` | The same four for React 19, compiled JavaScript with types |
 | `./canvas.css` | The canvas's styles, in the cascade layer `canvas` |
 
 Import `@wired-square/kit/theme.css`, which defines the `--app-canvas-*` tokens, then `canvas.css`, once, in the entry
 module. Every colour the canvas draws is one of those tokens. `canvas.css` reads `--app-canvas-bg`, `-dot`,
 `-connection`, `-chrome`, `-chrome-text`, `-chrome-hover`, `-chrome-border`, `-minimap-node`, `-minimap-mask` and
-`-minimap-view`, and kit's `--app-radius`, `--app-shadow` and `--app-focus`, with no fallbacks.
+`-minimap-view`, and kit's `--app-radius`, `--app-shadow`, `--app-focus`, `--app-good` and `--app-bad`, with no
+fallbacks.
 
 ## The core
 
@@ -47,11 +50,13 @@ const canvas = createCanvas(element, {
   mountEdge: (path, label, edge) => ({ draw: (edge, { source, target }) => drawString(path, label, floatingAnchors(source, target)) }),
   onNodeClick: (node) => select(node.id),
   onNodeDragEnd: (node, position) => commit(node.id, position),
-  onConnect: (source, target) => link(source, target),
+  onEdgeClick: (edge) => select(edge.id),
+  isValidConnection: (source, sourcePort, target, targetPort) => source !== target && targetPort !== undefined,
+  onConnect: (source, target, { sourcePort, targetPort }) => link(source, sourcePort, target, targetPort),
   onMoveEnd: (viewport) => save(viewport),
 });
 canvas.setNodes(nodes); // { id, x, y, data, className? }
-canvas.setEdges(edges); // { id, source, target, data, className? }
+canvas.setEdges(edges); // { id, source, target, sourcePort?, targetPort?, data, className? }
 ```
 
 - **Nodes.** Only the nodes in view are mounted, each in a `.app-canvas__node` wearing its `className`. `setNodes`
@@ -67,11 +72,20 @@ canvas.setEdges(edges); // { id, source, target, data, className? }
   passes again mid-drag keeps the drag's position.
 - **Edges** mount when the span of their two nodes is in view. `draw` runs with the two nodes' rectangles whenever
   either moves or resizes, or the edge changes; `floatingAnchors(source, target)` gives where the line between their
-  centres crosses each border, and the side. `label` is an HTML element in canvas space for a tag; labels take pointer
-  events, and a press on one pans the canvas.
-- **Connecting** starts on a press on an element with the class `canvas-source` inside a node. The canvas wears
-  `is-connecting` while the line is drawn, and a drop on any other node calls `onConnect(source, target)`. A drop on
-  the empty pane does nothing.
+  centres crosses each border, and the side. An edge naming a port also gets `sourcePort` or `targetPort` in its
+  geometry once the port is measured: `{ x, y, side }` in canvas coordinates, at the middle of the port's outer side.
+  `label` is an HTML element in canvas space for a tag. Edges take pointer events where they are painted, and labels
+  everywhere; a click on either calls `onEdgeClick(edge, event)`, or `onPaneClick` without one, and a press on either
+  pans the canvas.
+- **Ports** are elements in a node's content with `data-canvas-port="<id>"`, unique within the node. A port's side is
+  its `data-canvas-side` (`top`, `right`, `bottom` or `left`), or else the side of its node nearest it. Ports are
+  measured when their node mounts or resizes and when its content changes, and kept after it scrolls away.
+- **Connecting** starts on a press on a port or on an element with the class `canvas-source` inside a node. The canvas
+  wears `is-connecting` while the line is drawn, and a drop on any other node calls
+  `onConnect(source, target, { sourcePort, targetPort })`, each port `undefined` for a node-level end. A drop on a
+  port, even where it stands out of its node, reports it; a drop elsewhere on a node reports none, and one on the
+  empty pane does nothing. `isValidConnection(source, sourcePort, target, targetPort)` refuses a drop; while the line
+  is drawn, the port or node under it wears `is-valid-target` or `is-invalid-target`.
 - **The camera.** Drag the pane to pan; the wheel, a two-finger touch pinch and a WebKit trackpad pinch zoom about the
   pointer. `fitView({ ids, padding, maxZoom, duration })` leaves the camera put when none of `ids` is on the canvas.
   `setCentre`, `setViewport` and `fitView` return a promise that settles when the move lands or is interrupted, and
@@ -83,8 +97,9 @@ canvas.setEdges(edges); // { id, source, target, data, className? }
   `bottom-left`, `bottom-right`) of its nearest positioned ancestor, inside the canvas or beside it. Panels sit at
   `z-index: 3`, above the pane and the minimap; an app may override it.
 
-`measure`, `observe` and `frame` are seams for tests: jsdom lays nothing out, observes no sizes and has no animation
-frames, so a test gives each element a size, says when it changes, and runs the frames.
+`measure`, `offset`, `observe` and `frame` are seams for tests: jsdom lays nothing out, observes no sizes and has no
+animation frames, so a test gives each element a size and each port its top-left within its node, says when they
+change, and runs the frames.
 Synthetic pointer events must set `buttons`, since a `pointermove` with `buttons: 0` ends a drag; testing-library's
 events and `new PointerEvent` default it to 0.
 
@@ -106,6 +121,27 @@ classes, and `.app-canvas` fills its parent's height. `node` and `edge` render o
 that follow the node, the edge and the geometry. `useCanvas()` gives an accessor to the handle of the `Canvas` in the
 nearest `CanvasScope`, or of the `Canvas` around it.
 
+## React
+
+```tsx
+import { Canvas, CanvasPanel, CanvasScope, useCanvas } from "@wired-square/canvas/react";
+
+<CanvasScope>
+  <Canvas nodes={nodes} edges={edges} node={(node) => <Card card={node.data} />} edge={(edge, geometry) => <Wire geometry={geometry} />}
+    onNodeClick={(node) => select(node.id)} />
+  <Drawer /> {/* useCanvas()?.setCentre(x, y, { zoom: 1, duration: 400 }) */}
+</CanvasScope>
+```
+
+The same four as the Solid binding, with React's idioms. `Canvas` reads its settings at mount and its callbacks when
+they fire, so new closures on each render neither remount it nor go stale; remount it, through a `key`, to start a new
+camera. `nodes` and `edges` are passed on whenever they change. `node`, `edge` and `edgeLabel` render through portals
+into the mounted elements with the current node or edge and its geometry. `className` and `style` go on the canvas
+element beside its own classes. `useCanvas()` gives the handle itself, `undefined` until the canvas mounts.
+
 ## Peers
 
-- `solid-js` ^1.9.11, optional: `./core` needs nothing.
+- `solid-js` ^1.9.11, optional, for `.`.
+- `react` and `react-dom` ^19.0.0, optional, for `./react`.
+
+`./core` needs none of them.

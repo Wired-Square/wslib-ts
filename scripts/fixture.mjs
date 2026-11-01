@@ -21,6 +21,8 @@ const deps = process.env.KIT_MODULES ?? join(repo, "node_modules");
 const { build, createServer } = await import(pathToFileURL(join(deps, "vite/dist/node/index.js")).href);
 // Real path: vite 6 refuses to serve a file whose resolved path lies outside a symlinked root, as macOS's tmpdir is.
 const work = realpathSync(mkdtempSync(join(tmpdir(), "kit-consumer-")));
+// Apart from `work`, so that node finds no solid-js or react up the tree from the canvas's core.
+const bare = mkdtempSync(join(tmpdir(), "canvas-core-"));
 const problems = [];
 const withUi = !process.env.FIXTURE_KIT_ONLY;
 
@@ -46,7 +48,10 @@ try {
   }
   mkdirSync(join(modules, "@tauri-apps"));
   symlinkSync(join(repo, "node_modules/@tauri-apps/api"), join(modules, "@tauri-apps/api"), "dir");
-  if (withUi) symlinkSync(join(existsSync(join(deps, "uqr")) ? deps : join(repo, "node_modules"), "uqr"), join(modules, "uqr"), "dir");
+  const fromDeps = (dep) => symlinkSync(join(existsSync(join(deps, dep)) ? deps : join(repo, "node_modules"), dep), join(modules, dep), "dir");
+  if (withUi) fromDeps("uqr");
+  mkdirSync(join(modules, "@types"));
+  for (const dep of ["react", "react-dom", "@types/react", "@types/react-dom"]) fromDeps(dep);
 
   const packed = ["@wired-square/kit", "@wired-square/tokens", "@wired-square/mcp-bridge", "@wired-square/appliance-types", "@wired-square/canvas", "@wired-square/chart"];
   for (const name of withUi ? [...packed, "@wired-square/appliance-ui"] : packed) {
@@ -99,6 +104,33 @@ try {
     problems.push("plain node imported @wired-square/canvas/core, but its floatingAnchors misbehaved");
   }
   if (!existsSync(join(modules, "@wired-square/canvas/dist/core.d.ts"))) problems.push("the packed canvas's core carries no types");
+  cpSync(join(modules, "@wired-square/canvas"), join(bare, "node_modules/@wired-square/canvas"), { recursive: true });
+  if (execFileSync("node", ["--input-type=module", "-e", canvasCore], { cwd: bare, encoding: "utf8" }) !== "true") {
+    problems.push("@wired-square/canvas/core needs a package beside it, where it should need neither solid-js nor react");
+  }
+
+  const canvasReact = `
+    const react = await import("@wired-square/canvas/react");
+    process.stdout.write(String(["Canvas", "CanvasPanel", "CanvasScope", "useCanvas"].every((name) => typeof react[name] === "function")));
+  `;
+  if (execFileSync("node", ["--input-type=module", "-e", canvasReact], { cwd: work, encoding: "utf8" }) !== "true") {
+    problems.push("plain node imported @wired-square/canvas/react, but it lacks its components");
+  }
+  if (!/from "@wired-square\/canvas\/core"/.test(readFileSync(join(modules, "@wired-square/canvas/dist/react.js"), "utf8"))) {
+    problems.push("the canvas's React binding does not import its core as @wired-square/canvas/core");
+  }
+  writeFileSync(
+    join(work, "canvas-react.ts"),
+    `import { Canvas, type CanvasProps } from "@wired-square/canvas/react";
+    import { createElement } from "react";
+    const props: CanvasProps<{ title: string }, never> = { nodes: [], node: (node) => node.data.title, onConnect: (_s, _t, { sourcePort }) => void sourcePort };
+    export const typed = createElement(Canvas<{ title: string }, never>, props);\n`,
+  );
+  try {
+    execFileSync(join(repo, "node_modules/.bin/tsc"), ["--noEmit", "--strict", "--module", "nodenext", "canvas-react.ts"], { cwd: work, encoding: "utf8" });
+  } catch (error) {
+    problems.push(`the packed canvas's React binding does not typecheck under NodeNext:\n${error.stdout}`);
+  }
 
   const constants = `
     const { ROLE_LADDER, TOKEN_PREFIX } = await import("@wired-square/appliance-types");
@@ -278,11 +310,12 @@ try {
   }
 } finally {
   rmSync(work, { recursive: true, force: true });
+  rmSync(bare, { recursive: true, force: true });
 }
 
 fail("consumer fixture", problems);
 console.log(
   withUi
-    ? "consumer fixture: built against the packed kit, canvas and appliance-ui; the kit's and canvas's core, tokens, mcp-bridge, appliance-types, chart and appliance-ui/vite imported in plain node"
-    : "consumer fixture: built against the packed kit and canvas, without appliance-ui; the kit's and canvas's core, tokens, mcp-bridge, appliance-types and chart imported in plain node",
+    ? "consumer fixture: built against the packed kit, canvas and appliance-ui; the kit's and canvas's core, canvas/react, tokens, mcp-bridge, appliance-types, chart and appliance-ui/vite imported in plain node"
+    : "consumer fixture: built against the packed kit and canvas, without appliance-ui; the kit's and canvas's core, canvas/react, tokens, mcp-bridge, appliance-types and chart imported in plain node",
 );

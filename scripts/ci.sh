@@ -22,13 +22,13 @@ step "No other repository is named in a commit message"
 step "No reference to the project dossier"
 ! git grep -nIE --untracked '\[\[[A-Za-z][^]]*\]\]' -- ':!scripts/ci.sh' || die "the dossier is cited; state the constraint here"
 
-step "The packages have no runtime dependencies but appliance-ui's uqr, tokens, appliance-types and chart no peers, and mcp-bridge and canvas one optional peer each"
+step "The packages have no runtime dependencies but appliance-ui's uqr, tokens, appliance-types and chart no peers, and mcp-bridge's and canvas's peers optional"
 node -e 'const [kit, tokens, bridge, types, ui, canvas, chart] = ["kit", "tokens", "mcp-bridge", "appliance-types", "appliance-ui", "canvas", "chart"].map((name) => require(`./packages/${name}/package.json`));
 const declared = { ...kit.dependencies, ...tokens.dependencies, ...tokens.peerDependencies, ...bridge.dependencies, ...types.dependencies, ...types.peerDependencies, ...canvas.dependencies, ...chart.dependencies, ...chart.peerDependencies };
-const onlyOptional = (pkg, peer) => Object.keys(pkg.peerDependencies).join() === peer && pkg.peerDependenciesMeta[peer].optional;
+const onlyOptional = (pkg, peers) => Object.keys(pkg.peerDependencies).join() === peers && peers.split(",").every((peer) => pkg.peerDependenciesMeta[peer].optional);
 const uqrOnly = Object.keys(ui.dependencies).join() === "uqr";
-process.exit(Object.keys(declared).length || !onlyOptional(bridge, "@tauri-apps/api") || !onlyOptional(canvas, "solid-js") || !uqrOnly ? 1 : 0)' \
-  || die "a package declares dependencies beyond appliance-ui's uqr, tokens, appliance-types or chart declares peers, or mcp-bridge or canvas a peer beyond optional @tauri-apps/api or solid-js"
+process.exit(Object.keys(declared).length || !onlyOptional(bridge, "@tauri-apps/api") || !onlyOptional(canvas, "react,react-dom,solid-js") || !uqrOnly ? 1 : 0)' \
+  || die "a package declares dependencies beyond appliance-ui's uqr, tokens, appliance-types or chart declares peers, or mcp-bridge a peer beyond an optional @tauri-apps/api, or canvas one beyond optional react, react-dom and solid-js"
 
 step "Build, gates, typecheck, tests and the consumer fixture"
 npm run check

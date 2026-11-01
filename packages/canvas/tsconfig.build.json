@@ -4,7 +4,8 @@
     "noEmit": false,
     "declaration": true,
     "rootDir": "src",
-    "outDir": "dist"
+    "outDir": "dist",
+    "paths": { "@wired-square/canvas/core": ["./src/core.ts"] }
   },
-  "files": ["src/core.ts"]
+  "files": ["src/core.ts", "src/react.ts"]
 }
