@@ -1,4 +1,4 @@
-export { floatingAnchors } from "./anchors.js";
+export { bezierPath, floatingAnchors } from "./anchors.js";
 export type { Anchor, Side } from "./anchors.js";
 export { createCanvas } from "./createCanvas.js";
 export type {

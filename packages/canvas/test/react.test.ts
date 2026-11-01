@@ -141,6 +141,36 @@ test("ports, validation and edge clicks pass through, and an edge's geometry car
   expect(onEdgeClick).toHaveBeenCalledWith(edges[0], expect.any(PointerEvent));
 });
 
+test("port kinds and connectionRadius pass through: a drag from an in port dropped near an out port reports the out end first", () => {
+  const { fake, seams } = layout();
+  const onConnect = vi.fn();
+  const port = (node: CanvasNode<Card>) =>
+    h("span", {
+      "data-canvas-port": node.id === "a" ? "out" : "in",
+      "data-canvas-port-kind": node.id === "a" ? "out" : "in",
+      ref: (element: HTMLElement | null) => element && fake.place(element, node.id === "a" ? { x: 95, y: 20 } : { x: -5, y: 20 }),
+    });
+  const { element } = render(
+    board({ ...seams, nodes: [card("a", 0, "First"), card("b", 300, "Second")], node: port, connectionRadius: 20, onConnect }),
+  );
+  act(() => fake.settle());
+  const input = element.querySelector('[data-canvas-port="in"]')!;
+  act(() => {
+    pointer(input, "pointerdown", 300, 25);
+    pointer(input, "pointerup", 115, 25);
+  });
+  expect(onConnect).toHaveBeenCalledWith("a", "b", { sourcePort: "out", targetPort: "in" });
+});
+
+test("without a viewport, Canvas fits its nodes at mount with fitPadding", () => {
+  const { fake, seams } = layout();
+  const { element } = render(
+    h(Canvas<Card, string>, { ...seams, fitPadding: 1, maxZoom: 10, nodes: [card("a", 0, "First")], node: (node) => node.data.title }),
+  );
+  act(() => fake.settle());
+  expect(element.querySelector<HTMLElement>(".app-canvas__pane")!.style.transform).toBe("translate(200px, 200px) scale(4)");
+});
+
 test("useCanvas outside any canvas says what it needs", () => {
   function Lost() {
     useCanvas();

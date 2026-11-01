@@ -1,5 +1,6 @@
 import { expect, test, vi } from "vitest";
 
+import type { CanvasHandle } from "../src/createCanvas";
 import { drag, fakeLayout, node, pointer, setup, transform } from "./harness";
 
 test("the pane wears the viewport given at mount", () => {
@@ -8,7 +9,7 @@ test("the pane wears the viewport given at mount", () => {
   expect(canvas.getViewport()).toEqual({ x: 10, y: 20, zoom: 1.5 });
 });
 
-test("without a viewport the camera fits the first nodes, and again once they are measured, without reporting a move", () => {
+test("without a viewport the camera fits the first nodes, and again as they are measured, without reporting a move", () => {
   const onMoveEnd = vi.fn();
   const { canvas, layout } = setup({ onMoveEnd, maxZoom: 10, unmeasuredSize: { width: 100, height: 50 } });
   canvas.setNodes([node("a", 0, 0), node("b", 300, 0)]);
@@ -17,17 +18,38 @@ test("without a viewport the camera fits the first nodes, and again once they ar
   layout.resize("b", { width: 500, height: 50 });
   expect(canvas.getViewport().zoom).toBeCloseTo(800 / (800 * 1.1));
   layout.resize("a", { width: 100, height: 1000 });
-  expect(canvas.getViewport().zoom).toBeCloseTo(800 / (800 * 1.1));
+  expect(canvas.getViewport().zoom).toBeCloseTo(600 / (1000 * 1.1));
   expect(onMoveEnd).not.toHaveBeenCalled();
 });
 
-test("the mount fit is dropped once the camera has been moved", () => {
-  const { root, canvas, layout } = setup();
-  canvas.setNodes([node("a", 0, 0)]);
+test("the mount fit refits as the canvas resizes, with fitPadding, until the user moves the camera", () => {
+  const { root, canvas, layout } = setup({ fitPadding: 0.5, maxZoom: 10 });
+  canvas.setNodes([node("a", 0, 0), node("b", 300, 0)]);
+  layout.settle();
+  expect(canvas.getViewport().zoom).toBeCloseTo(800 / (400 * 1.5));
+  layout.resize(root, { width: 1200, height: 600 });
+  expect(canvas.getViewport()).toEqual({ x: 600 - 200 * 2, y: 300 - 25 * 2, zoom: 2 });
+
   drag(root, [100, 100], 50, 0);
   const moved = canvas.getViewport();
+  layout.resize(root, { width: 800, height: 600 });
   layout.resize("a", { width: 300, height: 300 });
   expect(canvas.getViewport()).toEqual(moved);
+});
+
+test.each([
+  ["setViewport", (canvas: CanvasHandle) => canvas.setViewport({ x: 7, y: 8, zoom: 1 })],
+  ["setCentre", (canvas: CanvasHandle) => canvas.setCentre(0, 0)],
+  ["fitView", (canvas: CanvasHandle) => canvas.fitView({ duration: 100 })],
+])("the mount fit stops following resizes once the app moves the camera with %s", async (_, move) => {
+  const { root, canvas, layout } = setup();
+  canvas.setNodes([node("a", 0, 0)]);
+  const moved = move(canvas);
+  layout.advance(200);
+  await moved;
+  const held = canvas.getViewport();
+  layout.resize(root, { width: 400, height: 300 });
+  expect(canvas.getViewport()).toEqual(held);
 });
 
 test("dragging the empty pane pans, reports the move once, and is not a pane click", () => {
@@ -120,6 +142,25 @@ test("fitView animates to frame the chosen nodes, honouring maxZoom, and resolve
   expect(landed).toBe(true);
   expect(canvas.getViewport()).toEqual({ x: 400 - 50 * 1.2, y: 300 - 25 * 1.2, zoom: 1.2 });
   expect(onMoveEnd).toHaveBeenCalledOnce();
+});
+
+test("a fitView under way when its nodes are measured lands on their measured bounds, and settles once", async () => {
+  const onMoveEnd = vi.fn();
+  const { canvas, layout } = setup({ viewport: { x: 0, y: 0, zoom: 1 }, onMoveEnd });
+  canvas.setNodes([node("a", 0, 0), node("b", 200, 0)]);
+  let settled = 0;
+  void canvas.fitView({ ids: ["a"], padding: 0, duration: 200 }).then(() => settled++);
+  layout.advance(48);
+  layout.resize("a", { width: 100, height: 400 });
+  layout.resize("b", { width: 900, height: 900 });
+  layout.advance(400);
+  await Promise.resolve();
+  expect(canvas.getViewport()).toEqual({ x: 400 - 50 * 1.5, y: 0, zoom: 1.5 });
+  expect(settled).toBe(1);
+  expect(onMoveEnd).toHaveBeenCalledOnce();
+
+  layout.resize("a", { width: 100, height: 50 });
+  expect(canvas.getViewport()).toEqual({ x: 400 - 50 * 1.5, y: 0, zoom: 1.5 });
 });
 
 test("fitView over ids none of which are on the canvas leaves the camera where it is", async () => {

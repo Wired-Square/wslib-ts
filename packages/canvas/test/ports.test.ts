@@ -9,14 +9,14 @@ const ports: Record<string, string> = {
 };
 
 /** Node `a` at the origin with port `out` on its right edge, `b` at (300, 0) with `in` on its left and `spare` below it. */
-function board(options: Partial<CanvasOptions<undefined, string>> = {}) {
+function board(options: Partial<CanvasOptions<undefined, string>> = {}, content = ports) {
   const layout = fakeLayout();
   const draws: EdgeGeometry[] = [];
   const view = setup<undefined, string>(
     {
       viewport: { x: 0, y: 0, zoom: 1 },
       mount(element, { id }) {
-        element.innerHTML = ports[id] ?? "";
+        element.innerHTML = content[id] ?? "";
         for (const port of element.querySelectorAll("[data-canvas-port]")) {
           const name = port.getAttribute("data-canvas-port");
           layout.place(port, name === "out" ? { x: 95, y: 20 } : name === "in" ? { x: -5, y: 20 } : { x: 20, y: 40 });
@@ -42,7 +42,7 @@ test("a press on a port starts a connection from its anchor, and a drop on anoth
   pointer(port("a", "out"), "pointerdown", 100, 25);
   expect(root.classList.contains("is-connecting")).toBe(true);
   pointer(port("a", "out"), "pointermove", 200, 25);
-  expect(root.querySelector(".app-canvas__connection-line")!.getAttribute("d")).toBe("M105,25L200,25");
+  expect(root.querySelector(".app-canvas__connection-line")!.getAttribute("d")).toBe("M105,25C152.5,25 152.5,25 200,25");
   pointer(port("a", "out"), "pointerup", 297, 25);
   expect(onConnect).toHaveBeenCalledWith("a", "b", { sourcePort: "out", targetPort: "in" });
 });
@@ -79,6 +79,81 @@ test("while drawing, the hovered port or node is marked valid or invalid, and a 
   pointer(port("a", "out"), "pointerup", 325, 45);
   expect(onConnect).not.toHaveBeenCalled();
   expect(root.querySelectorAll(".is-valid-target, .is-invalid-target")).toHaveLength(0);
+});
+
+test("the line from a port curves to the pointer, facing back at it, or to the anchor of the port it would land on", () => {
+  const { root, port } = board({ connectionRadius: 20 });
+  const line = () => root.querySelector(".app-canvas__connection-line")!.getAttribute("d");
+  pointer(port("a", "out"), "pointerdown", 100, 25);
+  pointer(port("a", "out"), "pointermove", 205, 125);
+  expect(line()).toBe("M105,25C155,25 155,125 205,125");
+  pointer(port("a", "out"), "pointermove", 285, 30);
+  expect(line()).toBe("M105,25C200,25 200,25 295,25");
+  pointer(port("a", "out"), "pointerup", 285, 30);
+});
+
+test("the line from a canvas-source stays straight", () => {
+  const { root } = board({}, { a: `<span class="canvas-source"></span>` });
+  const source = root.querySelector('[data-id="a"] .canvas-source')!;
+  pointer(source, "pointerdown", 50, 25);
+  pointer(source, "pointermove", 200, 100);
+  expect(root.querySelector(".app-canvas__connection-line")!.getAttribute("d")).toBe("M50,25L200,100");
+  pointer(source, "pointerup", 200, 100);
+});
+
+test("within connectionRadius screen pixels of a port, a hover and a drop land on the nearest port", () => {
+  const onConnect = vi.fn();
+  const { port } = board({ onConnect, connectionRadius: 40, viewport: { x: 0, y: 0, zoom: 2 } });
+  pointer(port("a", "out"), "pointerdown", 210, 50);
+  pointer(port("a", "out"), "pointermove", 575, 50);
+  expect(port("b", "in").classList.contains("is-valid-target")).toBe(true);
+  pointer(port("a", "out"), "pointermove", 540, 50);
+  expect(port("b", "in").classList.contains("is-valid-target")).toBe(false);
+  pointer(port("a", "out"), "pointermove", 620, 70);
+  pointer(port("a", "out"), "pointerup", 620, 70);
+  expect(onConnect).toHaveBeenLastCalledWith("a", "b", { sourcePort: "out", targetPort: "in" });
+});
+
+test("without a connectionRadius, a drop beside a port lands nowhere", () => {
+  const onConnect = vi.fn();
+  const { port } = board({ onConnect });
+  pointer(port("a", "out"), "pointerdown", 100, 25);
+  pointer(port("a", "out"), "pointerup", 290, 25);
+  expect(onConnect).not.toHaveBeenCalled();
+});
+
+const kinded: Record<string, string> = {
+  a: `<span data-canvas-port="out" data-canvas-port-kind="out"></span><span data-canvas-port="in" data-canvas-port-kind="in"></span>`,
+  b: `<span data-canvas-port="in" data-canvas-port-kind="in"></span><span data-canvas-port="spare" data-canvas-port-kind="out"></span>`,
+};
+
+test("a connection drawn from an in port is reported from the out end", () => {
+  const onConnect = vi.fn();
+  const isValidConnection = vi.fn(() => true);
+  const { port } = board({ onConnect, isValidConnection }, kinded);
+  pointer(port("b", "in"), "pointerdown", 300, 25);
+  pointer(port("b", "in"), "pointermove", 100, 25);
+  expect(isValidConnection).toHaveBeenLastCalledWith("a", "out", "b", "in");
+  pointer(port("b", "in"), "pointerup", 100, 25);
+  expect(onConnect).toHaveBeenLastCalledWith("a", "b", { sourcePort: "out", targetPort: "in" });
+
+  pointer(port("b", "in"), "pointerdown", 300, 25);
+  pointer(port("b", "in"), "pointerup", 50, 10);
+  expect(onConnect).toHaveBeenLastCalledWith("a", "b", { sourcePort: undefined, targetPort: "in" });
+});
+
+test("two ends of the same kind are refused without asking isValidConnection", () => {
+  const onConnect = vi.fn();
+  const isValidConnection = vi.fn(() => true);
+  const { port } = board({ onConnect, isValidConnection }, kinded);
+  pointer(port("a", "in"), "pointerdown", 0, 25);
+  pointer(port("a", "in"), "pointermove", 300, 25);
+  expect(port("b", "in").classList.contains("is-invalid-target")).toBe(true);
+  pointer(port("a", "in"), "pointerup", 300, 25);
+  pointer(port("a", "out"), "pointerdown", 100, 25);
+  pointer(port("a", "out"), "pointerup", 325, 45);
+  expect(isValidConnection).not.toHaveBeenCalled();
+  expect(onConnect).not.toHaveBeenCalled();
 });
 
 test("an edge naming ports is drawn with each port's anchor, explicit or inferred side, and follows a drag", () => {

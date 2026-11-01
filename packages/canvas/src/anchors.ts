@@ -51,3 +51,25 @@ export function portAnchor(node: Rect, port: Rect, side = nearestSide(port, node
     side,
   };
 }
+
+const controlOffset = (distance: number, curvature: number) => (distance >= 0 ? distance / 2 : curvature * 25 * Math.sqrt(-distance));
+
+function control({ x, y, side }: Anchor, towards: Point, curvature: number): Point {
+  switch (side) {
+    case "left":
+      return { x: x - controlOffset(x - towards.x, curvature), y };
+    case "right":
+      return { x: x + controlOffset(towards.x - x, curvature), y };
+    case "top":
+      return { x, y: y - controlOffset(y - towards.y, curvature) };
+    case "bottom":
+      return { x, y: y + controlOffset(towards.y - y, curvature) };
+  }
+}
+
+/** An SVG path from `source` to `target` whose ends leave along their sides; `curvature` bows an end that faces away from the other. */
+export function bezierPath(source: Anchor, target: Anchor, curvature = 0.25): string {
+  const a = control(source, target, curvature);
+  const b = control(target, source, curvature);
+  return `M${source.x},${source.y}C${a.x},${a.y} ${b.x},${b.y} ${target.x},${target.y}`;
+}

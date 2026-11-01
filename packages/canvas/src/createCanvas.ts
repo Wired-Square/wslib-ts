@@ -1,4 +1,4 @@
-import { portAnchor } from "./anchors.js";
+import { bezierPath, portAnchor } from "./anchors.js";
 import type { Anchor, Side } from "./anchors.js";
 import { controls, dots, minimap } from "./chrome.js";
 import type { ChromeHost } from "./chrome.js";
@@ -78,8 +78,12 @@ export interface CanvasOptions<D = unknown, E = unknown> {
   /** Puts a node's content into `element`, returning what takes it down. */
   mount(element: HTMLElement, node: CanvasNode<D>): () => void;
   mountEdge?(path: SVGGElement, label: HTMLElement, edge: CanvasEdge<E>): EdgeView<E>;
-  /** The camera at mount; without one, the camera fits the first nodes given. */
+  /** The camera at mount; without one, the camera fits the nodes, and refits as they and the canvas resize until the camera moves. */
   viewport?: Viewport;
+  /** The padding of the mount fit, the Fit control and a `fitView` given none; 0.1 by default. */
+  fitPadding?: number;
+  /** How near a port, in screen pixels, a connection's end must come to land on it; 0, a hit, by default. */
+  connectionRadius?: number;
   minZoom?: number;
   maxZoom?: number;
   /** The size assumed for a node not yet measured, for culling and fitting; 200 by 100 by default. */
@@ -96,7 +100,7 @@ export interface CanvasOptions<D = unknown, E = unknown> {
   onNodeDragEnd?(node: CanvasNode<D>, position: Point): void;
   onNodeMeasured?(node: CanvasNode<D>, size: Size): void;
   onEdgeClick?(edge: CanvasEdge<E>, event: PointerEvent): void;
-  /** Each port is `undefined` for a connection that starts or ends on a node rather than a port. */
+  /** Each port is `undefined` for a connection that starts or ends on a node rather than a port; an `out` port is always the source. */
   onConnect?(source: string, target: string, ports: { sourcePort: string | undefined; targetPort: string | undefined }): void;
   /** Whether a connection may be made; one refused is marked while drawn and not reported to `onConnect`. */
   isValidConnection?(source: string, sourcePort: string | undefined, target: string, targetPort: string | undefined): boolean;
@@ -133,16 +137,24 @@ interface NodeRecord<D> {
   ports: Map<string, Port>;
 }
 
-/** A port's rectangle within its node, and its side when the port names one. */
+type PortKind = "in" | "out";
+
+/** A port's rectangle within its node, and its side and kind when the port names them. */
 interface Port {
   element: HTMLElement;
   rect: Rect;
   side: Side | undefined;
+  kind: PortKind | undefined;
 }
 
 interface Target<D> {
   record: NodeRecord<D>;
   port: string | undefined;
+}
+
+interface Ends<D> {
+  source: Target<D>;
+  target: Target<D>;
 }
 
 interface Over<D> extends Target<D> {
@@ -163,7 +175,7 @@ type Gesture<D, E> =
       pointer: number;
       record: NodeRecord<D>;
       port: string | undefined;
-      from: Point;
+      from: Anchor | Point;
       line: SVGPathElement;
       over: Over<D> | undefined;
     };
@@ -172,8 +184,12 @@ const CLICK_SLOP = 3;
 const OVERSCAN = 200;
 const WHEEL_SETTLE = 150;
 
+const opposite: Record<Side, Side> = { left: "right", right: "left", top: "bottom", bottom: "top" };
+
 const classes = (...names: (string | false | undefined)[]) => names.filter(Boolean).join(" ");
 const distance = (a: Point, b: Point) => Math.hypot(a.x - b.x, a.y - b.y);
+const gapTo = (rect: Rect, point: Point) =>
+  Math.hypot(Math.max(rect.x - point.x, 0, point.x - rect.x - rect.width), Math.max(rect.y - point.y, 0, point.y - rect.y - rect.height));
 const midpoint = (a: Point, b: Point) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
 const client = (event: MouseEvent) => ({ x: event.clientX, y: event.clientY });
 const sameRect = (a: Rect, b: Rect) => a.x === b.x && a.y === b.y && a.width === b.width && a.height === b.height;
@@ -219,8 +235,9 @@ export function createCanvas<D = unknown, E = unknown>(root: HTMLElement, option
   let aim: Viewport | undefined;
   let wheelTimer: ReturnType<typeof setTimeout> | undefined;
   let mapDirty = true;
-  // "pending" until the first nodes arrive, then "estimated" until they are measured, when it fits once more.
-  let mountFit: "pending" | "estimated" | "done" = options.viewport ? "done" : "pending";
+  const fitPadding = options.fitPadding ?? 0.1;
+  // The fit that follows sizes as they land: the mount fit until the camera moves, or a `fitView` while it animates.
+  let following: FitOptions | undefined = options.viewport ? undefined : {};
   let connectionLayer: SVGSVGElement | undefined;
 
   const rectOf = (record: NodeRecord<D>): Rect => ({ x: record.x, y: record.y, ...(record.size ?? unmeasured) });
@@ -238,7 +255,12 @@ export function createCanvas<D = unknown, E = unknown>(root: HTMLElement, option
     record.ports = new Map(
       [...record.element.querySelectorAll<HTMLElement>("[data-canvas-port]")].map((element) => [
         element.dataset.canvasPort!,
-        { element, rect: { ...offset(element, record.element), ...measure(element) }, side: element.dataset.canvasSide as Side | undefined },
+        {
+          element,
+          rect: { ...offset(element, record.element), ...measure(element) },
+          side: element.dataset.canvasSide as Side | undefined,
+          kind: element.dataset.canvasPortKind as PortKind | undefined,
+        },
       ]),
     );
   }
@@ -280,7 +302,7 @@ export function createCanvas<D = unknown, E = unknown>(root: HTMLElement, option
       mapDirty = true;
       options.onNodeMeasured?.(record.node, next);
     }
-    if (mountFit !== "done") fitOnMount(mountFit === "pending" ? "estimated" : "done");
+    refit();
     sync();
   });
   observer.observe(root);
@@ -320,7 +342,7 @@ export function createCanvas<D = unknown, E = unknown>(root: HTMLElement, option
       record.dispose = options.mount(record.element, record.node);
       measurePorts(record);
       observer.observe(record.element);
-      content.observe(record.element, { subtree: true, childList: true, attributes: true, attributeFilter: ["class", "style", "data-canvas-port", "data-canvas-side"] });
+      content.observe(record.element, { subtree: true, childList: true, attributes: true, attributeFilter: ["class", "style", "data-canvas-port", "data-canvas-side", "data-canvas-port-kind"] });
     } else {
       leave(record);
       observer.unobserve(record.element);
@@ -403,7 +425,7 @@ export function createCanvas<D = unknown, E = unknown>(root: HTMLElement, option
   function interrupt() {
     animation++;
     aim = undefined;
-    mountFit = "done";
+    following = undefined;
   }
 
   /** Interrupts, and a wheel zoom still waiting to settle reports now. */
@@ -429,9 +451,10 @@ export function createCanvas<D = unknown, E = unknown>(root: HTMLElement, option
         if (run !== animation) return resolve();
         start ??= now;
         const t = Math.min(1, (now - start) / duration);
-        apply(between(from, target, t));
+        apply(between(from, aim!, t));
         if (t < 1) return frame(step);
         aim = undefined;
+        following = undefined;
         settle();
         resolve();
       };
@@ -439,18 +462,18 @@ export function createCanvas<D = unknown, E = unknown>(root: HTMLElement, option
     });
   }
 
-  function fitTarget({ ids, padding = 0.1, maxZoom = limits.maxZoom }: FitOptions): Viewport | undefined {
+  function fitTarget({ ids, padding = fitPadding, maxZoom = limits.maxZoom }: FitOptions): Viewport | undefined {
     const chosen = ids ? ids.flatMap((id) => nodes.get(id) ?? []) : [...nodes.values()];
     const bounds = boundsOf(chosen.map(rectOf));
     if (!bounds || !size.width || !size.height) return undefined;
     return fitBounds(bounds, size, padding, { minZoom: limits.minZoom, maxZoom: Math.min(maxZoom, limits.maxZoom) });
   }
 
-  function fitOnMount(next: "estimated" | "done") {
-    const target = fitTarget({});
+  function refit() {
+    const target = following && fitTarget(following);
     if (!target) return;
-    mountFit = next;
-    apply(target);
+    if (aim) aim = target;
+    else apply(target);
   }
 
   const local = (point: Point) => {
@@ -487,21 +510,42 @@ export function createCanvas<D = unknown, E = unknown>(root: HTMLElement, option
   if (map) observer.observe(map.frame);
   const created = [...root.children].filter((element) => !existing.has(element));
 
-  /** The topmost node under `point` other than `except`, and its port there; a port standing out of its node still counts. */
+  /** The port nearest `point` within `connectionRadius`, else the topmost node under it, other than `except`; a node hides the ports beneath it. */
   function targetAt(point: Point, except: NodeRecord<D>): Target<D> | undefined {
+    const reach = (options.connectionRadius ?? 0) / viewport.zoom;
+    let nearest: { target: Target<D>; gap: number } | undefined;
     for (const record of [...nodes.values()].reverse()) {
       if (record === except) continue;
       const { x, y } = rectOf(record);
       for (const [port, { rect }] of record.ports) {
-        if (contains({ ...rect, x: x + rect.x, y: y + rect.y }, point)) return { record, port };
+        const gap = gapTo({ ...rect, x: x + rect.x, y: y + rect.y }, point);
+        if (gap <= reach && (!nearest || gap < nearest.gap)) nearest = { target: { record, port }, gap };
       }
-      if (contains(rectOf(record), point)) return { record, port: undefined };
+      if (contains(rectOf(record), point)) return nearest?.target ?? { record, port: undefined };
     }
-    return undefined;
+    return nearest?.target;
   }
 
-  function validTarget(source: NodeRecord<D>, sourcePort: string | undefined, { record, port }: Target<D>) {
-    return options.isValidConnection?.(source.node.id, sourcePort, record.node.id, port) ?? true;
+  /** The connection's ends, its `out` end first; `undefined` for two ends of the same kind, which never connect. */
+  function endsOf(from: Target<D>, to: Target<D>): Ends<D> | undefined {
+    const kindOf = ({ record, port }: Target<D>) => (port === undefined ? undefined : record.ports.get(port)?.kind);
+    const [a, b] = [kindOf(from), kindOf(to)];
+    if (a && a === b) return undefined;
+    return a === "in" || b === "out" ? { source: to, target: from } : { source: from, target: to };
+  }
+
+  function validEnds(ends: Ends<D> | undefined): ends is Ends<D> {
+    if (!ends) return false;
+    const { source, target } = ends;
+    return options.isValidConnection?.(source.record.node.id, source.port, target.record.node.id, target.port) ?? true;
+  }
+
+  function drawConnection(line: SVGPathElement, from: Anchor | Point, to: Point, over: Target<D> | undefined) {
+    const d =
+      "side" in from
+        ? bezierPath(from, (over && portAt(over.record, over.port)) ?? { ...to, side: opposite[from.side] })
+        : `M${from.x},${from.y}L${to.x},${to.y}`;
+    line.setAttribute("d", d);
   }
 
   function endGesture() {
@@ -563,11 +607,11 @@ export function createCanvas<D = unknown, E = unknown>(root: HTMLElement, option
       }
       case "connect": {
         const to = handle.screenToCanvas(at);
-        gesture.line.setAttribute("d", `M${gesture.from.x},${gesture.from.y}L${to.x},${to.y}`);
         const target = targetAt(to, gesture.record);
+        drawConnection(gesture.line, gesture.from, to, target);
         const { over } = gesture;
         if (over?.record === target?.record && over?.port === target?.port) return;
-        gesture.over = target && { ...target, valid: validTarget(gesture.record, gesture.port, target) };
+        gesture.over = target && { ...target, valid: validEnds(endsOf(gesture, target)) };
         markTarget(over, false);
         markTarget(gesture.over, true);
         return;
@@ -625,8 +669,10 @@ export function createCanvas<D = unknown, E = unknown>(root: HTMLElement, option
       }
       case "connect": {
         const target = cancelled ? undefined : targetAt(handle.screenToCanvas(client(event)), ended.record);
-        if (!target || !validTarget(ended.record, ended.port, target)) return;
-        options.onConnect?.(ended.record.node.id, target.record.node.id, { sourcePort: ended.port, targetPort: target.port });
+        const ends = target && endsOf(ended, target);
+        if (!validEnds(ends)) return;
+        const { source, target: to } = ends;
+        options.onConnect?.(source.record.node.id, to.record.node.id, { sourcePort: source.port, targetPort: to.port });
       }
     }
   }
@@ -691,6 +737,7 @@ export function createCanvas<D = unknown, E = unknown>(root: HTMLElement, option
 
   const handle: CanvasHandle<D, E> = {
     setNodes(next) {
+      const first = nodes.size === 0;
       const ids = new Set(next.map((node) => node.id));
       for (const [id, record] of nodes) {
         if (ids.has(id)) continue;
@@ -711,7 +758,7 @@ export function createCanvas<D = unknown, E = unknown>(root: HTMLElement, option
         place(record);
       }
       mapDirty = true;
-      if (mountFit === "pending") fitOnMount("estimated");
+      if (first) refit();
       sync();
     },
     setEdges(next) {
@@ -743,7 +790,10 @@ export function createCanvas<D = unknown, E = unknown>(root: HTMLElement, option
       moveTo(centreOn({ x, y }, clamp(zoom, limits.minZoom, limits.maxZoom), size), duration),
     fitView(fit = {}) {
       const target = fitTarget(fit);
-      return target ? moveTo(target, fit.duration) : Promise.resolve();
+      if (!target) return Promise.resolve();
+      const moved = moveTo(target, fit.duration);
+      if (aim) following = fit;
+      return moved;
     },
     screenToCanvas: (point) => toCanvas(viewport, local(point)),
     destroy() {

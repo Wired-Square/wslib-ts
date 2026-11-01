@@ -22,7 +22,7 @@ npm install @wired-square/canvas
 
 | Subpath | What |
 |---|---|
-| `./core` | Compiled JavaScript with types: `createCanvas`, `floatingAnchors`, and the types |
+| `./core` | Compiled JavaScript with types: `createCanvas`, `floatingAnchors`, `bezierPath`, and the types |
 | `.` | `Canvas`, `CanvasPanel`, `CanvasScope` and `useCanvas`, as TSX behind the `solid` export condition |
 | `./react` | The same four for React 19, compiled JavaScript with types |
 | `./canvas.css` | The canvas's styles, in the cascade layer `canvas` |
@@ -36,15 +36,17 @@ fallbacks.
 ## The core
 
 ```ts
-import { createCanvas, floatingAnchors } from "@wired-square/canvas/core";
+import { bezierPath, createCanvas, floatingAnchors } from "@wired-square/canvas/core";
 
 const canvas = createCanvas(element, {
   minZoom: 0.2,
   maxZoom: 2.5,
-  viewport: saved, // without one, it fits the first nodes given
+  viewport: saved, // without one, it fits the nodes, and refits as sizes land until the camera moves
+  fitPadding: 0.2, // the mount fit's and the Fit control's; 0.1 by default
   unmeasuredSize: { width: 220, height: 160 }, // 200 by 100 by default
   background: { gap: 28, size: 1.5 },
   controls: true,
+  connectionRadius: 20, // screen pixels within which a connection's end lands on a port; 0 by default
   minimap: { nodeColour: (node) => node.data.colour },
   mount: (element, node) => renderInto(element, node.id), // returns what takes it down
   mountEdge: (path, label, edge) => ({ draw: (edge, { source, target }) => drawString(path, label, floatingAnchors(source, target)) }),
@@ -72,22 +74,35 @@ canvas.setEdges(edges); // { id, source, target, sourcePort?, targetPort?, data,
   passes again mid-drag keeps the drag's position.
 - **Edges** mount when the span of their two nodes is in view. `draw` runs with the two nodes' rectangles whenever
   either moves or resizes, or the edge changes; `floatingAnchors(source, target)` gives where the line between their
-  centres crosses each border, and the side. An edge naming a port also gets `sourcePort` or `targetPort` in its
-  geometry once the port is measured: `{ x, y, side }` in canvas coordinates, at the middle of the port's outer side.
+  centres crosses each border, and the side, and `bezierPath(source, target, curvature = 0.25)` gives an SVG path
+  between two such anchors whose ends leave along their sides, bowing by `curvature` where an end faces away. An
+  edge naming a port also gets `sourcePort` or `targetPort` in its geometry once the port is measured: `{ x, y, side }`
+  in canvas coordinates, at the middle of the port's outer side.
   `label` is an HTML element in canvas space for a tag. Edges take pointer events where they are painted, and labels
   everywhere; a click on either calls `onEdgeClick(edge, event)`, or `onPaneClick` without one, and a press on either
   pans the canvas.
 - **Ports** are elements in a node's content with `data-canvas-port="<id>"`, unique within the node. A port's side is
-  its `data-canvas-side` (`top`, `right`, `bottom` or `left`), or else the side of its node nearest it. Ports are
-  measured when their node mounts or resizes and when its content changes, and kept after it scrolls away.
+  its `data-canvas-side` (`top`, `right`, `bottom` or `left`), or else the side of its node nearest it. An edge or a
+  connection meets a port at the middle of that side of the port, its outer rim, not at its centre.
+  `data-canvas-port-kind="in"` or `"out"` marks a port as an input or an output. Ports are measured when their node
+  mounts or resizes and when its content changes, and kept after it scrolls away.
 - **Connecting** starts on a press on a port or on an element with the class `canvas-source` inside a node. The canvas
   wears `is-connecting` while the line is drawn, and a drop on any other node calls
   `onConnect(source, target, { sourcePort, targetPort })`, each port `undefined` for a node-level end. A drop on a
   port, even where it stands out of its node, reports it; a drop elsewhere on a node reports none, and one on the
   empty pane does nothing. `isValidConnection(source, sourcePort, target, targetPort)` refuses a drop; while the line
   is drawn, the port or node under it wears `is-valid-target` or `is-invalid-target`.
+  An end within `connectionRadius` screen pixels of a port lands on the nearest such port, and the marks follow it.
+  The end with an `out` port, or the other end of an `in` port, is always reported as the source, whichever end the
+  drag began at; two `in` ports or two `out` ports never connect, are marked invalid, and are not put to
+  `isValidConnection`. The line from a port is `bezierPath` to the pointer, its pointer end on the side opposite the
+  port's, or to the anchor of the port it would land on; the line from a `canvas-source` is straight.
 - **The camera.** Drag the pane to pan; the wheel, a two-finger touch pinch and a WebKit trackpad pinch zoom about the
-  pointer. `fitView({ ids, padding, maxZoom, duration })` leaves the camera put when none of `ids` is on the canvas.
+  pointer. `fitView({ ids, padding, maxZoom, duration })` leaves the camera put when none of `ids` is on the canvas,
+  and its `padding` is `fitPadding` when not given. While a `fitView` animates, a size that lands re-aims it at the
+  measured bounds, settling the same promise; a node never mounted counts at `unmeasuredSize`. The fit at mount
+  refits as nodes are measured and the canvas resizes, until the canvas is pressed or the camera moved by the user or
+  the app.
   `setCentre`, `setViewport` and `fitView` return a promise that settles when the move lands or is interrupted, and
   every move but the mount fit ends with `onMoveEnd`.
 - **Opting out.** An element with the class `nopan` neither pans nor starts a drag or a click, and one with `nowheel`

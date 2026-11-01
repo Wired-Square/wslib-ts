@@ -1,7 +1,8 @@
 // @vitest-environment node
 import { expect, test } from "vitest";
 
-import { floatingAnchors } from "../src/anchors";
+import { bezierPath, floatingAnchors } from "../src/anchors";
+import type { Side } from "../src/anchors";
 import { between, boundsOf, fitBounds, toCanvas, visibleRect, wheelFactor, zoomTo } from "../src/viewport";
 
 const limits = { minZoom: 0.2, maxZoom: 2.5 };
@@ -85,4 +86,30 @@ test("rectangles sharing a centre anchor there rather than at NaN", () => {
 test("an empty rectangle's anchor stays on the line between the centres", () => {
   const point = { x: 10, y: 10, width: 0, height: 0 };
   expect(floatingAnchors(point, { ...point, x: 100 }).source).toMatchObject({ y: 10, side: "right" });
+});
+
+const sides: Side[] = ["top", "right", "bottom", "left"];
+const outward: Record<Side, [number, number]> = { top: [0, -1], right: [1, 0], bottom: [0, 1], left: [-1, 0] };
+
+test.each(sides.flatMap((source) => sides.map((target) => [source, target] as const)))(
+  "a bezier from a %s side to a %s side leaves each end outward along its side",
+  (sourceSide, targetSide) => {
+    const source = { x: 0, y: 0, side: sourceSide };
+    const target = { x: 100, y: 60, side: targetSide };
+    const [, ...numbers] = bezierPath(source, target).match(/^M(\S+),(\S+)C(\S+),(\S+) (\S+),(\S+) (\S+),(\S+)$/)!;
+    const [sx, sy, ax, ay, bx, by, tx, ty] = numbers.map(Number) as [number, number, number, number, number, number, number, number];
+    expect([sx, sy, tx, ty]).toEqual([0, 0, 100, 60]);
+    const along = ([dx, dy]: [number, number], [ux, uy]: [number, number]) => {
+      expect(dx * uy - dy * ux).toBeCloseTo(0);
+      expect(dx * ux + dy * uy).toBeGreaterThan(0);
+    };
+    along([ax - sx, ay - sy], outward[sourceSide]);
+    along([bx - tx, by - ty], outward[targetSide]);
+  },
+);
+
+test("a bezier's ends reach half the gap toward each other, and bow by the curvature when facing away", () => {
+  expect(bezierPath({ x: 0, y: 0, side: "right" }, { x: 200, y: 50, side: "left" })).toBe("M0,0C100,0 100,50 200,50");
+  expect(bezierPath({ x: 0, y: 0, side: "left" }, { x: 100, y: 0, side: "right" })).toBe("M0,0C-62.5,0 162.5,0 100,0");
+  expect(bezierPath({ x: 0, y: 0, side: "left" }, { x: 100, y: 0, side: "right" }, 0.4)).toBe("M0,0C-100,0 200,0 100,0");
 });

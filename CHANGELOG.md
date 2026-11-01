@@ -277,6 +277,20 @@ Moved names:
   `{ x, y, side }` in canvas coordinates at the middle of the port's outer side, once the port is measured. Ports are
   measured when their node mounts, resizes or its content changes; `offset` is the seam for a port's place in its node.
   An edge without ports is drawn as before.
+- `data-canvas-port-kind="in"` or `"out"` on a port: a connection is reported with its `out` end, or the far end
+  from an `in` port, as the source, whichever end it was drawn from. Two ports of the same kind never connect, are
+  marked invalid, and are not put to `isValidConnection`.
+- `connectionRadius`, in screen pixels: a connection's end that near a port lands on the nearest one, and the
+  validity marks follow it. 0 by default, a hit as before.
+- `bezierPath(source, target, curvature = 0.25)` from `./core`: an SVG path between two anchors whose ends leave
+  along their sides, the curve React Flow draws.
+- The line drawn from a port is `bezierPath` to the pointer, or to the port it would land on. From a
+  `canvas-source` it stays straight.
+- A `fitView` that animates while its nodes are measured lands on their measured bounds, and settles the same
+  promise. It had framed a node just added at `unmeasuredSize`, clipping one taller.
+- The fit at mount, without a `viewport`, refits as the canvas resizes and its nodes are measured, until the canvas
+  is pressed or the camera moved.
+- `fitPadding`: the padding of the mount fit, the Fit control and a `fitView` given none; 0.1 by default.
 - `onEdgeClick(edge, event)`, for a click on an edge or its label, not after a drag. Edges take pointer events where
   they are painted; without `onEdgeClick`, a click on one is still a pane click.
 - `@wired-square/canvas/react`: `Canvas`, `CanvasPanel`, `CanvasScope` and `useCanvas` for React 19, compiled to
