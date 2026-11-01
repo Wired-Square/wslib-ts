@@ -2,6 +2,14 @@
 
 ## `@wired-square/kit`
 
+### 0.3.7
+
+- The default glyphs other than `NothingYet`'s picture are written from `@wired-square/icons`' sources, which kit does
+  not depend on. `Menu`'s default trigger is now an svg of three dots in place of the text "⋮", sized 1em and as
+  tall as a line of text. `copy` is redrawn on a 24 grid with stroke 2, its back square cut behind the front;
+  `schemeLight` and `schemeDark` take the set's `sun` and `moon`. Each reads `--icon-stroke` for its width, 2 by
+  default.
+
 ### 0.3.6
 
 - `theme.css` defines tokens 0.4.0's ten canvas tokens, which `@wired-square/canvas` draws with.

@@ -211,7 +211,8 @@ test("an IconSet replaces the glyphs it names below it, keeping the outer set's 
   expect(root.querySelector(".app-nothing-yet")!.innerHTML).toMatch(/^<b>inner<\/b>/);
 
   const plain = mount(() => <Menu aria-label="Actions">{null}</Menu>);
-  expect(plain.querySelector(".app-menu__trigger")!.textContent).toBe("⋮");
+  expect(plain.querySelector('.app-menu__trigger > svg[viewBox="0 0 24 24"] > circle')!.namespaceURI).toBe("http://www.w3.org/2000/svg");
+  expect(rule(read("kit.css"), ".app-menu__trigger > svg")).toMatch(/margin-block: calc\(\(var\(--app-control-line-height\) - 1\) \* 0\.5em\);/);
 });
 
 test("a Menu given chevron draws IconSet's chevron after its face, out of its name, and one without draws none", () => {

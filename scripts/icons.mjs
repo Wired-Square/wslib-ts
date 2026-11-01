@@ -1,5 +1,5 @@
-// Writes the icons' names, their Solid glyphs and preview.svg from
-// packages/icons/glyphs; --check fails when a checked-in file
+// Writes the icons' names, their Solid glyphs, preview.svg and kit's default
+// glyphs from packages/icons/glyphs; --check fails when a checked-in file
 // differs from what it would write, and --dist builds the sprite and the glyph
 // files into packages/icons/dist.
 import { cpSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
@@ -49,6 +49,25 @@ ${indent(body, 4)}
   .join("\n")}
 `;
 
+const KIT = { schemeSystem: "scheme-system", schemeLight: "sun", schemeDark: "moon", copy: "copy", clear: "clear", chevron: "chevron", more: "more" };
+const kit = `${banner}import type { JSX } from "solid-js";
+
+const glyph = (children: JSX.Element) => (
+  <svg aria-hidden="true" ${SVG_PROPS}>
+    {children}
+  </svg>
+);
+
+export const glyphs = {
+${Object.entries(KIT)
+  .map(([slot, name]) => {
+    const { body } = glyphs.find((glyph) => glyph.name === name);
+    return body.length === 1 ? `  ${slot}: () => glyph(${body[0]}),` : `  ${slot}: () =>\n    glyph(\n      <>\n${indent(body, 8)}\n      </>,\n    ),`;
+  })
+  .join("\n")}
+};
+`;
+
 const COLUMNS = 7;
 const CELL = { width: 96, height: 80 };
 const rows = Math.ceil(glyphs.length / COLUMNS);
@@ -77,6 +96,7 @@ const generated = {
   "packages/icons/src/index.ts": names,
   "packages/icons/src/solid.tsx": solid,
   "packages/icons/preview.svg": preview,
+  "packages/kit/src/glyphs.tsx": kit,
 };
 
 if (process.argv.includes("--dist")) {
