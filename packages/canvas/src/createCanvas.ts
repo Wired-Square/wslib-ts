@@ -1,3 +1,5 @@
+import { portAnchor } from "./anchors.js";
+import type { Anchor, Side } from "./anchors.js";
 import { controls, dots, minimap } from "./chrome.js";
 import type { ChromeHost } from "./chrome.js";
 import { html, svg, within } from "./dom.js";
@@ -28,6 +30,9 @@ export interface CanvasEdge<E = unknown> {
   id: string;
   source: string;
   target: string;
+  /** The `data-canvas-port` the edge leaves its source by, if any; `targetPort` likewise. */
+  sourcePort?: string;
+  targetPort?: string;
   data: E;
   className?: string;
 }
@@ -37,10 +42,12 @@ export interface MeasuredNode<D = unknown> extends CanvasNode<D> {
   size: Size | undefined;
 }
 
-/** The rectangles of an edge's two nodes, in canvas coordinates. */
+/** The rectangles of an edge's two nodes, and where it meets each port it names once that is measured, in canvas coordinates. */
 export interface EdgeGeometry {
   source: Rect;
   target: Rect;
+  sourcePort?: Anchor;
+  targetPort?: Anchor;
 }
 
 /** An edge's drawing: `draw` runs when it mounts and whenever its edge or geometry changes. */
@@ -88,10 +95,15 @@ export interface CanvasOptions<D = unknown, E = unknown> {
   /** A drag let go: the position to commit. */
   onNodeDragEnd?(node: CanvasNode<D>, position: Point): void;
   onNodeMeasured?(node: CanvasNode<D>, size: Size): void;
-  onConnect?(source: string, target: string): void;
+  onEdgeClick?(edge: CanvasEdge<E>, event: PointerEvent): void;
+  /** Each port is `undefined` for a connection that starts or ends on a node rather than a port. */
+  onConnect?(source: string, target: string, ports: { sourcePort: string | undefined; targetPort: string | undefined }): void;
+  /** Whether a connection may be made; one refused is marked while drawn and not reported to `onConnect`. */
+  isValidConnection?(source: string, sourcePort: string | undefined, target: string, targetPort: string | undefined): boolean;
   onMoveEnd?(viewport: Viewport): void;
-  /** Seams for tests: an element's layout size, a resize observer, and an animation frame. */
+  /** Seams for tests: an element's layout size, a port's top-left within its node, a resize observer, and an animation frame. */
   measure?(element: HTMLElement): Size;
+  offset?(port: HTMLElement, node: HTMLElement): Point;
   observe?(onResize: (elements: readonly Element[]) => void): SizeObserver;
   frame?(step: (now: number) => void): void;
 }
@@ -117,6 +129,24 @@ interface NodeRecord<D> {
   size: Size | undefined;
   element: HTMLElement;
   dispose: (() => void) | undefined;
+  /** Kept after the node unmounts, as its size is, so an edge to it still meets its port. */
+  ports: Map<string, Port>;
+}
+
+/** A port's rectangle within its node, and its side when the port names one. */
+interface Port {
+  element: HTMLElement;
+  rect: Rect;
+  side: Side | undefined;
+}
+
+interface Target<D> {
+  record: NodeRecord<D>;
+  port: string | undefined;
+}
+
+interface Over<D> extends Target<D> {
+  valid: boolean;
 }
 
 interface EdgeRecord<E> {
@@ -124,11 +154,19 @@ interface EdgeRecord<E> {
   view: { path: SVGGElement; label: HTMLElement; drawing: EdgeView<E>; drawn: EdgeGeometry | undefined } | undefined;
 }
 
-type Gesture<D> =
-  | { kind: "pane"; pointer: number; from: Point; last: Point; moved: boolean }
+type Gesture<D, E> =
+  | { kind: "pane"; pointer: number; edge: EdgeRecord<E> | undefined; from: Point; last: Point; moved: boolean }
   | { kind: "pinch"; last: [Point, Point] }
   | { kind: "node"; pointer: number; record: NodeRecord<D>; from: Point; last: Point; moved: boolean }
-  | { kind: "connect"; pointer: number; record: NodeRecord<D>; from: Point; line: SVGPathElement };
+  | {
+      kind: "connect";
+      pointer: number;
+      record: NodeRecord<D>;
+      port: string | undefined;
+      from: Point;
+      line: SVGPathElement;
+      over: Over<D> | undefined;
+    };
 
 const CLICK_SLOP = 3;
 const OVERSCAN = 200;
@@ -139,6 +177,13 @@ const distance = (a: Point, b: Point) => Math.hypot(a.x - b.x, a.y - b.y);
 const midpoint = (a: Point, b: Point) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
 const client = (event: MouseEvent) => ({ x: event.clientX, y: event.clientY });
 const sameRect = (a: Rect, b: Rect) => a.x === b.x && a.y === b.y && a.width === b.width && a.height === b.height;
+const sameAnchor = (a: Anchor | undefined, b: Anchor | undefined) =>
+  a === b || (a !== undefined && b !== undefined && a.x === b.x && a.y === b.y && a.side === b.side);
+const sameGeometry = (a: EdgeGeometry, b: EdgeGeometry) =>
+  sameRect(a.source, b.source) &&
+  sameRect(a.target, b.target) &&
+  sameAnchor(a.sourcePort, b.sourcePort) &&
+  sameAnchor(a.targetPort, b.targetPort);
 
 const layoutSize = (element: HTMLElement): Size => ({ width: element.offsetWidth, height: element.offsetHeight });
 
@@ -164,10 +209,11 @@ export function createCanvas<D = unknown, E = unknown>(root: HTMLElement, option
   const nodes = new Map<string, NodeRecord<D>>();
   const byElement = new WeakMap<Element, NodeRecord<D>>();
   const edges = new Map<string, EdgeRecord<E>>();
+  const byEdgeElement = new WeakMap<Element, EdgeRecord<E>>();
   const pointers = new Map<number, Point>();
   let viewport = clampZoom(options.viewport ?? { x: 0, y: 0, zoom: 1 });
   let size = measure(root);
-  let gesture: Gesture<D> | undefined;
+  let gesture: Gesture<D, E> | undefined;
   let hovered: NodeRecord<D> | undefined;
   let animation = 0;
   let aim: Viewport | undefined;
@@ -180,6 +226,40 @@ export function createCanvas<D = unknown, E = unknown>(root: HTMLElement, option
   const rectOf = (record: NodeRecord<D>): Rect => ({ x: record.x, y: record.y, ...(record.size ?? unmeasured) });
   const placed = (record: NodeRecord<D>): MeasuredNode<D> => ({ ...record.node, x: record.x, y: record.y, size: record.size });
   const dragged = () => (gesture?.kind === "node" && gesture.moved ? gesture.record : undefined);
+  const offset =
+    options.offset ??
+    ((port: HTMLElement, node: HTMLElement) => {
+      const from = node.getBoundingClientRect();
+      const to = port.getBoundingClientRect();
+      return { x: (to.left - from.left) / viewport.zoom, y: (to.top - from.top) / viewport.zoom };
+    });
+
+  function measurePorts(record: NodeRecord<D>) {
+    record.ports = new Map(
+      [...record.element.querySelectorAll<HTMLElement>("[data-canvas-port]")].map((element) => [
+        element.dataset.canvasPort!,
+        { element, rect: { ...offset(element, record.element), ...measure(element) }, side: element.dataset.canvasSide as Side | undefined },
+      ]),
+    );
+  }
+
+  const portAt = (record: NodeRecord<D>, id: string | undefined): Anchor | undefined => {
+    const port = id === undefined ? undefined : record.ports.get(id);
+    return port && portAnchor(rectOf(record), port.rect, port.side);
+  };
+
+  // Content that re-renders can move a port without resizing its node.
+  const content = new MutationObserver((mutations) => {
+    const touched = new Set<NodeRecord<D>>();
+    for (const { type, target } of mutations) {
+      const element = within(target, ".app-canvas__node", nodeLayer);
+      if (!element || (type === "attributes" && element === target)) continue;
+      const record = byElement.get(element);
+      if (record?.dispose) touched.add(record);
+    }
+    for (const record of touched) measurePorts(record);
+    if (touched.size) sync();
+  });
 
   const observer = (options.observe ?? resizeObserver)((elements) => {
     for (const element of elements) {
@@ -193,6 +273,7 @@ export function createCanvas<D = unknown, E = unknown>(root: HTMLElement, option
       }
       const record = byElement.get(element);
       if (!record?.dispose) continue;
+      measurePorts(record);
       const next = measure(record.element);
       if (record.size && record.size.width === next.width && record.size.height === next.height) continue;
       record.size = next;
@@ -205,7 +286,21 @@ export function createCanvas<D = unknown, E = unknown>(root: HTMLElement, option
   observer.observe(root);
 
   function setNodeClass(record: NodeRecord<D>) {
-    record.element.className = classes("app-canvas__node", record.node.className, dragged() === record && "is-dragging");
+    const over = gesture?.kind === "connect" ? gesture.over : undefined;
+    record.element.className = classes(
+      "app-canvas__node",
+      record.node.className,
+      dragged() === record && "is-dragging",
+      over?.record === record && over.port === undefined && targetClass(over.valid),
+    );
+  }
+
+  const targetClass = (valid: boolean) => (valid ? "is-valid-target" : "is-invalid-target");
+
+  function markTarget(over: Over<D> | undefined, on: boolean) {
+    if (!over) return;
+    const element = over.port === undefined ? over.record.element : over.record.ports.get(over.port)?.element;
+    element?.classList.toggle(targetClass(over.valid), on);
   }
 
   function place(record: NodeRecord<D>) {
@@ -223,7 +318,9 @@ export function createCanvas<D = unknown, E = unknown>(root: HTMLElement, option
     if (visible) {
       nodeLayer.insertBefore(record.element, before);
       record.dispose = options.mount(record.element, record.node);
+      measurePorts(record);
       observer.observe(record.element);
+      content.observe(record.element, { subtree: true, childList: true, attributes: true, attributeFilter: ["class", "style", "data-canvas-port", "data-canvas-side"] });
     } else {
       leave(record);
       observer.unobserve(record.element);
@@ -245,13 +342,24 @@ export function createCanvas<D = unknown, E = unknown>(root: HTMLElement, option
     if (!record.view) {
       const path = svg("g", "", edgeLayer);
       const label = html("div", "app-canvas__label", labelLayer);
+      byEdgeElement.set(path, record);
+      byEdgeElement.set(label, record);
       record.view = { path, label, drawing: options.mountEdge!(path, label, record.edge), drawn: undefined };
     }
     const { view } = record;
     view.path.setAttribute("class", classes("app-canvas__edge", record.edge.className));
-    if (view.drawn && sameRect(view.drawn.source, geometry.source) && sameRect(view.drawn.target, geometry.target)) return;
+    if (view.drawn && sameGeometry(view.drawn, geometry)) return;
     view.drawn = geometry;
     view.drawing.draw(record.edge, geometry);
+  }
+
+  function edgeGeometry(edge: CanvasEdge<E>, source: NodeRecord<D>, target: NodeRecord<D>): EdgeGeometry {
+    const geometry: EdgeGeometry = { source: rectOf(source), target: rectOf(target) };
+    const sourcePort = portAt(source, edge.sourcePort);
+    const targetPort = portAt(target, edge.targetPort);
+    if (sourcePort) geometry.sourcePort = sourcePort;
+    if (targetPort) geometry.targetPort = targetPort;
+    return geometry;
   }
 
   function sync() {
@@ -268,7 +376,7 @@ export function createCanvas<D = unknown, E = unknown>(root: HTMLElement, option
     for (const record of edges.values()) {
       const source = nodes.get(record.edge.source);
       const target = nodes.get(record.edge.target);
-      const geometry = source && target ? { source: rectOf(source), target: rectOf(target) } : undefined;
+      const geometry = source && target ? edgeGeometry(record.edge, source, target) : undefined;
       showEdge(record, geometry && visible(boundsOf([geometry.source, geometry.target])!) ? geometry : undefined);
     }
     if (map && mapDirty) {
@@ -379,19 +487,37 @@ export function createCanvas<D = unknown, E = unknown>(root: HTMLElement, option
   if (map) observer.observe(map.frame);
   const created = [...root.children].filter((element) => !existing.has(element));
 
-  function nodeUnder(point: Point, except: NodeRecord<D>) {
-    return [...nodes.values()].reverse().find((record) => record !== except && contains(rectOf(record), point));
+  /** The topmost node under `point` other than `except`, and its port there; a port standing out of its node still counts. */
+  function targetAt(point: Point, except: NodeRecord<D>): Target<D> | undefined {
+    for (const record of [...nodes.values()].reverse()) {
+      if (record === except) continue;
+      const { x, y } = rectOf(record);
+      for (const [port, { rect }] of record.ports) {
+        if (contains({ ...rect, x: x + rect.x, y: y + rect.y }, point)) return { record, port };
+      }
+      if (contains(rectOf(record), point)) return { record, port: undefined };
+    }
+    return undefined;
+  }
+
+  function validTarget(source: NodeRecord<D>, sourcePort: string | undefined, { record, port }: Target<D>) {
+    return options.isValidConnection?.(source.node.id, sourcePort, record.node.id, port) ?? true;
   }
 
   function endGesture() {
-    if (gesture?.kind === "connect") gesture.line.remove();
+    if (gesture?.kind === "connect") {
+      gesture.line.remove();
+      const { over } = gesture;
+      gesture.over = undefined;
+      markTarget(over, false);
+    }
     gesture = undefined;
     pointers.clear();
     root.classList.remove("is-connecting");
   }
 
   function onPointerDown(event: PointerEvent) {
-    if (event.button !== 0 || within(event.target, "nopan", root)) return;
+    if (event.button !== 0 || within(event.target, ".nopan", root)) return;
     pointers.set(event.pointerId, client(event));
     if (gesture?.kind === "pane" && pointers.size === 2) {
       const [a, b] = [...pointers.values()] as [Point, Point];
@@ -400,18 +526,22 @@ export function createCanvas<D = unknown, E = unknown>(root: HTMLElement, option
     }
     if (gesture) return;
     takeCamera();
-    const element = within(event.target, "app-canvas__node", root);
+    const element = within(event.target, ".app-canvas__node", root);
     const record = element && byElement.get(element);
     const from = client(event);
-    if (record && within(event.target, "canvas-source", root)) {
+    const source = record && within(event.target, ".canvas-source, [data-canvas-port]", root);
+    if (record && source) {
       connectionLayer ??= svg("svg", "app-canvas__connection", pane);
       const line = svg("path", "app-canvas__connection-line", connectionLayer);
-      gesture = { kind: "connect", pointer: event.pointerId, record, from: handle.screenToCanvas(from), line };
+      const port = (source as HTMLElement).dataset.canvasPort;
+      const start = portAt(record, port) ?? handle.screenToCanvas(from);
+      gesture = { kind: "connect", pointer: event.pointerId, record, port, from: start, line, over: undefined };
       root.classList.add("is-connecting");
     } else if (record) {
       gesture = { kind: "node", pointer: event.pointerId, record, from, last: from, moved: false };
     } else {
-      gesture = { kind: "pane", pointer: event.pointerId, from, last: from, moved: false };
+      const edge = within(event.target, ".app-canvas__edge, .app-canvas__label", root);
+      gesture = { kind: "pane", pointer: event.pointerId, edge: edge ? byEdgeElement.get(edge) : undefined, from, last: from, moved: false };
     }
   }
 
@@ -434,6 +564,12 @@ export function createCanvas<D = unknown, E = unknown>(root: HTMLElement, option
       case "connect": {
         const to = handle.screenToCanvas(at);
         gesture.line.setAttribute("d", `M${gesture.from.x},${gesture.from.y}L${to.x},${to.y}`);
+        const target = targetAt(to, gesture.record);
+        const { over } = gesture;
+        if (over?.record === target?.record && over?.port === target?.port) return;
+        gesture.over = target && { ...target, valid: validTarget(gesture.record, gesture.port, target) };
+        markTarget(over, false);
+        markTarget(gesture.over, true);
         return;
       }
     }
@@ -471,7 +607,9 @@ export function createCanvas<D = unknown, E = unknown>(root: HTMLElement, option
         return settle();
       case "pane":
         if (ended.moved) settle();
-        else if (!cancelled) options.onPaneClick?.(event);
+        else if (cancelled) return;
+        else if (ended.edge && options.onEdgeClick) options.onEdgeClick(ended.edge.edge, event);
+        else options.onPaneClick?.(event);
         return;
       case "node": {
         const { record } = ended;
@@ -486,14 +624,15 @@ export function createCanvas<D = unknown, E = unknown>(root: HTMLElement, option
         return;
       }
       case "connect": {
-        const target = !cancelled && nodeUnder(handle.screenToCanvas(client(event)), ended.record);
-        if (target) options.onConnect?.(ended.record.node.id, target.node.id);
+        const target = cancelled ? undefined : targetAt(handle.screenToCanvas(client(event)), ended.record);
+        if (!target || !validTarget(ended.record, ended.port, target)) return;
+        options.onConnect?.(ended.record.node.id, target.record.node.id, { sourcePort: ended.port, targetPort: target.port });
       }
     }
   }
 
   function onWheel(event: WheelEvent) {
-    if (within(event.target, "nowheel", root)) return;
+    if (within(event.target, ".nowheel", root)) return;
     event.preventDefault();
     wheelZoom(event, local(client(event)));
   }
@@ -501,7 +640,7 @@ export function createCanvas<D = unknown, E = unknown>(root: HTMLElement, option
   // WebKit reports a trackpad pinch as gesture events, not as a ctrl-wheel.
   let gestureZoom: number | undefined;
   const onGestureStart = (event: Event) => {
-    if (within(event.target, "nowheel", root)) return;
+    if (within(event.target, ".nowheel", root)) return;
     event.preventDefault();
     takeCamera();
     gestureZoom = viewport.zoom;
@@ -520,7 +659,7 @@ export function createCanvas<D = unknown, E = unknown>(root: HTMLElement, option
 
   // A native drag of an image or link inside a node would end ours with a pointercancel.
   const onDragStart = (event: DragEvent) => {
-    if (!within(event.target, "nopan", root)) event.preventDefault();
+    if (!within(event.target, ".nopan", root)) event.preventDefault();
   };
 
   const listeners: [EventTarget, string, (event: never) => void, AddEventListenerOptions?][] = [
@@ -539,7 +678,7 @@ export function createCanvas<D = unknown, E = unknown>(root: HTMLElement, option
 
   function createRecord(node: CanvasNode<D>): NodeRecord<D> {
     const element = document.createElement("div");
-    const record: NodeRecord<D> = { node, x: node.x, y: node.y, size: undefined, element, dispose: undefined };
+    const record: NodeRecord<D> = { node, x: node.x, y: node.y, size: undefined, element, dispose: undefined, ports: new Map() };
     element.dataset.id = node.id;
     element.addEventListener("pointerenter", () => {
       hovered = record;
@@ -615,6 +754,7 @@ export function createCanvas<D = unknown, E = unknown>(root: HTMLElement, option
       for (const record of edges.values()) showEdge(record, undefined);
       for (const record of nodes.values()) show(record, false);
       observer.disconnect();
+      content.disconnect();
       map?.destroy();
       for (const element of created) element.remove();
       root.classList.remove("app-canvas", "is-connecting");

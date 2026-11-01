@@ -14,10 +14,10 @@ export function svg<K extends keyof SVGElementTagNameMap>(tag: K, className: str
   return element;
 }
 
-/** The nearest element from `target` up to `root` with `className`, or `null`. */
-export function within(target: EventTarget | null, className: string, root: Element): Element | null {
+/** The nearest element from `target` up to `root` matching `selector`, or `null`. */
+export function within(target: EventTarget | null, selector: string, root: Element): Element | null {
   for (let at = target instanceof Element ? target : null; at && at !== root; at = at.parentElement) {
-    if (at.classList.contains(className)) return at;
+    if (at.matches(selector)) return at;
   }
   return null;
 }

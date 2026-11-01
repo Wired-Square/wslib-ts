@@ -2,11 +2,12 @@ import { afterEach } from "vitest";
 
 import { createCanvas } from "../src/createCanvas";
 import type { CanvasNode, CanvasOptions, SizeObserver } from "../src/createCanvas";
-import type { Size } from "../src/viewport";
+import type { Point, Size } from "../src/viewport";
 
 /** jsdom lays nothing out and observes no sizes, so a test sets them and says when they change. */
 export function fakeLayout(rootSize: Size = { width: 800, height: 600 }) {
   const sizes = new Map<Element | string, Size>();
+  const offsets = new Map<Element, Point>();
   const observed = new Set<Element>();
   let onResize: (elements: readonly Element[]) => void = () => {};
   const frames: ((now: number) => void)[] = [];
@@ -15,6 +16,7 @@ export function fakeLayout(rootSize: Size = { width: 800, height: 600 }) {
     measure(element: Element): Size {
       if (element.classList.contains("app-canvas")) return sizes.get(element) ?? rootSize;
       if (element.classList.contains("app-canvas__minimap")) return { width: 200, height: 150 };
+      if (element.matches("[data-canvas-port]")) return sizes.get(element) ?? { width: 10, height: 10 };
       const id = (element as HTMLElement).dataset.id;
       return sizes.get(id ?? "") ?? { width: 100, height: 50 };
     },
@@ -22,6 +24,7 @@ export function fakeLayout(rootSize: Size = { width: 800, height: 600 }) {
       onResize = callback;
       return { observe: (e) => observed.add(e), unobserve: (e) => observed.delete(e), disconnect: () => observed.clear() };
     },
+    offset: (port: Element): Point => offsets.get(port) ?? { x: 0, y: 0 },
     frame: (step: (now: number) => void) => void frames.push(step),
     observed,
     /** Gives the node with `id`, or the element, a new size and reports it. */
@@ -29,6 +32,10 @@ export function fakeLayout(rootSize: Size = { width: 800, height: 600 }) {
       sizes.set(target, size);
       const element = typeof target === "string" ? [...observed].find((e) => (e as HTMLElement).dataset.id === target) : target;
       if (element && observed.has(element)) onResize([element]);
+    },
+    /** Puts a port at `point` within its node; the canvas sees it at the next resize or change of the node's content. */
+    place(port: Element, point: Point) {
+      offsets.set(port, point);
     },
     /** Reports every observed element, as a resize observer does once each is laid out. */
     settle() {
@@ -64,6 +71,7 @@ export function setup<D = unknown, E = unknown>(options: Partial<CanvasOptions<D
   const mounted = new Map<string, HTMLElement>();
   const canvas = createCanvas<D, E>(root, {
     measure: layout.measure,
+    offset: layout.offset,
     observe: layout.observe,
     frame: layout.frame,
     mount(element, node) {

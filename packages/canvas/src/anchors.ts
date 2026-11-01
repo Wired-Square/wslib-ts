@@ -1,4 +1,4 @@
-import type { Point, Rect } from "./viewport.js";
+import type { Point, Rect, Size } from "./viewport.js";
 
 export type Side = "top" | "right" | "bottom" | "left";
 
@@ -27,3 +27,27 @@ export const floatingAnchors = (source: Rect, target: Rect) => ({
   source: anchor(source, target),
   target: anchor(target, source),
 });
+
+/** The side of a node of `size` nearest the centre of `port`, a rectangle within it. */
+function nearestSide(port: Rect, size: Size): Side {
+  const x = port.x + port.width / 2;
+  const y = port.y + port.height / 2;
+  const gaps: [Side, number][] = [
+    ["left", x],
+    ["right", size.width - x],
+    ["top", y],
+    ["bottom", size.height - y],
+  ];
+  return gaps.reduce((nearest, gap) => (gap[1] < nearest[1] ? gap : nearest))[0];
+}
+
+/** Where an edge meets `port`, a rectangle within `node`: the middle of the port's side facing out, in canvas coordinates. */
+export function portAnchor(node: Rect, port: Rect, side = nearestSide(port, node)): Anchor {
+  const across = (start: number, length: number, low: Side, high: Side) =>
+    start + (side === low ? 0 : side === high ? length : length / 2);
+  return {
+    x: node.x + across(port.x, port.width, "left", "right"),
+    y: node.y + across(port.y, port.height, "top", "bottom"),
+    side,
+  };
+}

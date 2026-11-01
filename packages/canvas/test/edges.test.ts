@@ -93,7 +93,7 @@ test("dragging from a source handle draws a line, marks the canvas connecting, a
   pointer(handle, "pointermove", 200, 20);
   expect(root.querySelector(".app-canvas__connection-line")!.getAttribute("d")).toBe("M95,5L200,20");
   pointer(handle, "pointerup", 320, 20);
-  expect(onConnect).toHaveBeenCalledWith("a", "b");
+  expect(onConnect).toHaveBeenCalledWith("a", "b", { sourcePort: undefined, targetPort: undefined });
   expect(root.classList.contains("is-connecting")).toBe(false);
   expect(root.querySelector(".app-canvas__connection-line")).toBeNull();
   expect(onNodeDrag).not.toHaveBeenCalled();

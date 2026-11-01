@@ -177,3 +177,44 @@ test("Canvas wears the app's class and style beside its own classes, and a blank
   setTall(" ");
   expect([...element.classList]).toEqual(["app-canvas"]);
 });
+
+test("Canvas passes ports, validation, edge clicks and port anchors through", () => {
+  const layout = fakeLayout();
+  const onConnect = vi.fn();
+  const onEdgeClick = vi.fn();
+  const isValidConnection = vi.fn(() => true);
+  const edges: CanvasEdge<string>[] = [{ id: "ab", source: "a", target: "b", sourcePort: "out", targetPort: "in", data: "" }];
+  const root = mount(() => (
+    <Canvas<Card, string>
+      nodes={[card("a", 0, "First"), card("b", 300, "Second")]}
+      edges={edges}
+      viewport={{ x: 0, y: 0, zoom: 1 }}
+      measure={layout.measure}
+      offset={layout.offset}
+      observe={layout.observe}
+      node={(node) => (
+        <span
+          data-canvas-port={node().id === "a" ? "out" : "in"}
+          ref={(port) => layout.place(port, node().id === "a" ? { x: 95, y: 20 } : { x: -5, y: 20 })}
+        />
+      )}
+      edge={(_, geometry) => <path class="wire" data-from={geometry().sourcePort?.x} data-to={geometry().targetPort?.x} />}
+      onConnect={onConnect}
+      isValidConnection={isValidConnection}
+      onEdgeClick={onEdgeClick}
+    />
+  ));
+  layout.settle();
+  const wire = root.querySelector(".wire")!;
+  expect([wire.getAttribute("data-from"), wire.getAttribute("data-to")]).toEqual(["105", "295"]);
+
+  const out = root.querySelector('[data-canvas-port="out"]')!;
+  pointer(out, "pointerdown", 100, 25);
+  pointer(out, "pointerup", 297, 25);
+  expect(isValidConnection).toHaveBeenCalledWith("a", "out", "b", "in");
+  expect(onConnect).toHaveBeenCalledWith("a", "b", { sourcePort: "out", targetPort: "in" });
+
+  pointer(wire, "pointerdown", 200, 25);
+  pointer(wire, "pointerup", 200, 25);
+  expect(onEdgeClick).toHaveBeenCalledWith(edges[0], expect.any(PointerEvent));
+});
