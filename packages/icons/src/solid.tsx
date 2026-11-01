@@ -106,6 +106,14 @@ export const database = (props: IconProps = {}) => (
   </Glyph>
 );
 
+export const gauge = (props: IconProps = {}) => (
+  <Glyph {...props}>
+    <path d="M4.21 18.5A9 9 0 1 1 19.79 18.5"/>
+    <circle cx="12" cy="14" r="1"/>
+    <path d="M12 14l4.25-4.25"/>
+  </Glyph>
+);
+
 export const info = (props: IconProps = {}) => (
   <Glyph {...props}>
     <circle cx="12" cy="12" r="9"/>

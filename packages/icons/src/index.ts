@@ -15,6 +15,7 @@ export const ICON_NAMES = [
   "cloud",
   "copy",
   "database",
+  "gauge",
   "info",
   "lock",
   "moon",

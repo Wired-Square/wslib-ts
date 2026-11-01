@@ -360,6 +360,10 @@ and no peers.
 
 ## `@wired-square/icons`
 
+### 0.1.1
+
+- `gauge`: a dial with a needle, for a dashboard.
+
 ### 0.1.0
 
 Twenty-eight glyphs, one plain SVG each on a 24 grid with a 2 stroke in `currentColor` and round caps and joins:
