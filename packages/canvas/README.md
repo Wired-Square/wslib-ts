@@ -85,7 +85,7 @@ canvas.setEdges(edges); // { id, source, target, sourcePort?, targetPort?, data,
   its `data-canvas-side` (`top`, `right`, `bottom` or `left`), or else the side of its node nearest it. An edge or a
   connection meets a port at the middle of that side of the port, its outer rim, not at its centre.
   `data-canvas-port-kind="in"` or `"out"` marks a port as an input or an output. Ports are measured when their node
-  mounts or resizes and when its content changes, and kept after it scrolls away.
+  mounts or resizes, when its content changes and when a connection starts, and kept after it scrolls away.
 - **Connecting** starts on a press on a port or on an element with the class `canvas-source` inside a node. The canvas
   wears `is-connecting` while the line is drawn, and a drop on any other node calls
   `onConnect(source, target, { sourcePort, targetPort })`, each port `undefined` for a node-level end. A drop on a

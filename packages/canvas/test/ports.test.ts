@@ -31,7 +31,7 @@ function board(options: Partial<CanvasOptions<undefined, string>> = {}, content 
   view.canvas.setNodes([node("a", 0, 0), node("b", 300, 0)]);
   layout.settle();
   const port = (id: string, name: string) => view.root.querySelector(`[data-id="${id}"] [data-canvas-port="${name}"]`)!;
-  return { ...view, draws, port };
+  return { ...view, layout, draws, port };
 }
 
 const edge = (extra: Partial<CanvasEdge<string>> = {}): CanvasEdge<string> => ({ id: "ab", source: "a", target: "b", data: "", ...extra });
@@ -44,6 +44,15 @@ test("a press on a port starts a connection from its anchor, and a drop on anoth
   pointer(port("a", "out"), "pointermove", 200, 25);
   expect(root.querySelector(".app-canvas__connection-line")!.getAttribute("d")).toBe("M105,25C152.5,25 152.5,25 200,25");
   pointer(port("a", "out"), "pointerup", 297, 25);
+  expect(onConnect).toHaveBeenCalledWith("a", "b", { sourcePort: "out", targetPort: "in" });
+});
+
+test("a connection measures the ports afresh, so one laid out since with nothing reported is still found", () => {
+  const onConnect = vi.fn();
+  const { port, layout } = board({ onConnect });
+  layout.place(port("b", "in"), { x: 40, y: 40 });
+  pointer(port("a", "out"), "pointerdown", 100, 25);
+  pointer(port("a", "out"), "pointerup", 345, 45);
   expect(onConnect).toHaveBeenCalledWith("a", "b", { sourcePort: "out", targetPort: "in" });
 });
 

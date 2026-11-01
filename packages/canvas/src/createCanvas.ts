@@ -574,6 +574,8 @@ export function createCanvas<D = unknown, E = unknown>(root: HTMLElement, option
     const from = client(event);
     const source = record && within(event.target, ".canvas-source, [data-canvas-port]", root);
     if (record && source) {
+      // A port laid out since its node mounted, by a stylesheet or a font, reports no mutation or resize.
+      for (const shown of nodes.values()) if (shown.dispose) measurePorts(shown);
       connectionLayer ??= svg("svg", "app-canvas__connection", pane);
       const line = svg("path", "app-canvas__connection-line", connectionLayer);
       const port = (source as HTMLElement).dataset.canvasPort;

@@ -275,7 +275,7 @@ Moved names:
   `--app-bad`.
 - `CanvasEdge` takes `sourcePort` and `targetPort`, and its `EdgeGeometry` then carries each port's anchor,
   `{ x, y, side }` in canvas coordinates at the middle of the port's outer side, once the port is measured. Ports are
-  measured when their node mounts, resizes or its content changes; `offset` is the seam for a port's place in its node.
+  measured when their node mounts, resizes or its content changes, and when a connection starts; `offset` is the seam for a port's place in its node.
   An edge without ports is drawn as before.
 - `data-canvas-port-kind="in"` or `"out"` on a port: a connection is reported with its `out` end, or the far end
   from an `in` port, as the source, whichever end it was drawn from. Two ports of the same kind never connect, are
