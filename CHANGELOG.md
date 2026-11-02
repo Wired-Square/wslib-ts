@@ -9,6 +9,14 @@
   press. After a pointer press, `--app-focus` is transparent on everything but inputs, textareas and selects; rings
   show until then, and forced colours keep theirs. Other engines are left to their own heuristic.
 
+### 0.4.0
+
+- In WebKit, which matches `:focus-visible` on focus moved by script, the kit tracks the input modality as `<html>`'s
+  `data-app-modality`: `keyboard` on a key press other than Escape or a Cmd or Ctrl chord, `pointer` on a pointer
+  press. After a pointer press, `--app-focus` is transparent on everything but inputs, textareas and selects; rings
+  show until then, and forced colours keep theirs. Other engines are left to their own heuristic.
+- `SearchInput`'s box has `appearance: none`, native again under forced colours, so it is a `Field`'s height in WebKit.
+
 ### 0.3.7
 
 - The default glyphs other than `NothingYet`'s picture are written from `@wired-square/icons`' sources, which kit does

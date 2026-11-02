@@ -67,6 +67,8 @@ test("the clear button sits inside the box, which leaves it room and hides WebKi
   expect(rule(css, ".app-search__input")).toMatch(/padding-inline-end: 2rem;/);
   expect(css.indexOf("\n.app-search__input {")).toBeGreaterThan(css.indexOf("\n.app-field__input {"));
   expect(rule(css, ".app-search__input::-webkit-search-cancel-button")).toMatch(/appearance: none;/);
+  expect(rule(css, ".app-search__input")).toMatch(/appearance: none;/);
+  expect(rule(forcedColours(css), ".app-search__input")).toMatch(/appearance: auto;/);
   expect(rule(css, ".app-search__clear")).toMatch(/position: absolute;[^}]*color: var\(--app-text-muted\);/);
   expect(rule(css, ".app-search__clear:focus-visible")).toMatch(/outline: none;\s*box-shadow: var\(--app-focus\);/);
   expect(forcedColours(css)).toMatch(/:is\([^)]*\.app-search__clear\):focus-visible[^{]*\{\s*outline: 2px solid Highlight;/);

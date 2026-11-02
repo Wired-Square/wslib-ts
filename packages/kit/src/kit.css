@@ -844,8 +844,10 @@ select.app-field__input {
   max-width: 100%;
 }
 
-/* Room for the clear button; WebKit's own is hidden, so there is one. */
+/* Undrawn, because WebKit's native search box ignores the padding and is a different height from a field.
+   Room for the clear button; WebKit's own is hidden, so there is one. */
 .app-search__input {
+  appearance: none;
   padding-inline-end: 2rem;
 }
 
@@ -873,6 +875,12 @@ select.app-field__input {
 .app-search__clear:focus-visible {
   outline: none;
   box-shadow: var(--app-focus);
+}
+
+@media (forced-colors: active) {
+  .app-search__input {
+    appearance: auto;
+  }
 }
 
 /* --- tables ------------------------------------------------------------- */
