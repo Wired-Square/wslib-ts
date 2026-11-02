@@ -24,6 +24,8 @@
 - `DialogActions` takes `status`, a polite live region left of the buttons ("1 of 2 selected"), and without `confirm`
   its one button reads Close.
 - `Popover` takes `aria-label`.
+- A `Tab`'s `label` may be a render, for an icon or a count: it is called twice, once drawn and once hidden and bold
+  to hold the selected width, as `data-label` does for words.
 
 ### 0.3.7
 

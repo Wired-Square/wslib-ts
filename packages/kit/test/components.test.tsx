@@ -122,6 +122,18 @@ test("a tab, and a TabButton labelled in words, carry the label that reserves th
   expect([button.dataset.label, button.getAttribute("aria-pressed"), button.textContent]).toEqual(["Errors", "true", "Errors"]);
 });
 
+test("a tab labelled with an element draws it as its name, and again hidden and bold to reserve its selected width", () => {
+  const strip = mount(() => (
+    <Tabs aria-label="Sections" tabs={[{ id: "a", label: () => <>Errors <b>3</b></> }]} selected="a" onChange={() => {}} />
+  ));
+  const tab = strip.querySelector("button")!;
+  expect(tab.hasAttribute("data-label")).toBe(false);
+  expect(tab.innerHTML).toBe(
+    '<span class="app-tab__face">Errors <b>3</b></span><span class="app-tab__face app-tab__sizer" aria-hidden="true">Errors <b>3</b></span>',
+  );
+  expect(rule(read("kit.css"), ".app-tab__sizer")).toMatch(/block-size: 0;\s*overflow: hidden;\s*visibility: hidden;\s*font-weight: 600;/);
+});
+
 test("Tick hangs its label and hint beside a box the kit styles", () => {
   const root = mount(() => <Tick label="Accounts" hint="every password" checked onChange={() => {}} />);
   expect(root.innerHTML).toMatch(
