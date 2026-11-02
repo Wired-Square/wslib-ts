@@ -48,7 +48,7 @@ const sets = [
     name: "appliance-ui",
     floor: { ...solid, vite: "8.0.0", uqr: "0.1.3" },
     tools: ["typescript", "@types/node", "vitest"],
-    siblings: { "@wired-square/kit": "0.3.5", "@wired-square/appliance-types": "0.1.0" },
+    siblings: { "@wired-square/kit": "0.4.0", "@wired-square/appliance-types": "0.1.0" },
     entries: ["src", "test", "tsconfig.json", "tsconfig.build.json"],
     test: ["node", ["--test", "test/*.test.ts"]],
   },
@@ -63,7 +63,7 @@ for (const set of sets) {
   try {
     cpSync(join(repo, "tsconfig.base.json"), join(root, "tsconfig.base.json"));
     for (const entry of set.entries) cpSync(join(repo, "packages", set.name, entry), join(work, entry), { recursive: true });
-    const { name, type, exports, devDependencies } = JSON.parse(readFileSync(join(repo, "packages", set.name, "package.json"), "utf8"));
+    const { name, type, exports, sideEffects, devDependencies } = JSON.parse(readFileSync(join(repo, "packages", set.name, "package.json"), "utf8"));
     const tools = Object.fromEntries(set.tools.map((dep) => [dep, devDependencies[dep]]));
     const siblings = Object.fromEntries(
       Object.entries(set.siblings ?? {}).map(([dep, version]) => {
@@ -73,7 +73,7 @@ for (const set of sets) {
         return [dep, `file:${join(root, tarball)}`];
       }),
     );
-    writeFileSync(join(work, "package.json"), JSON.stringify({ name, type, exports, devDependencies: { ...tools, ...siblings, ...set.floor } }));
+    writeFileSync(join(work, "package.json"), JSON.stringify({ name, type, exports, sideEffects, devDependencies: { ...tools, ...siblings, ...set.floor } }));
 
     // Without --legacy-peer-deps, npm 10 crashes resolving vitest's optional peers.
     run("npm", ["install", "--legacy-peer-deps", "--no-audit", "--no-fund", "--loglevel", "error"], {
