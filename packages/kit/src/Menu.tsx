@@ -5,7 +5,7 @@ import { cx } from "@wired-square/kit/core";
 import type { ButtonTone } from "./Button";
 import { useIcons } from "./icons";
 import { arrowTo } from "./keys";
-import { pinTo } from "./Popover";
+import { pinTo, scrollMoves } from "./Popover";
 
 const MenuClose = createContext<() => void>(() => {});
 
@@ -63,10 +63,11 @@ export function Menu(props: MenuProps) {
   // A fixed panel does not follow the row it was read from.
   createEffect(() => {
     if (!open()) return;
-    window.addEventListener("scroll", dismiss, { capture: true, passive: true });
+    const scrolled = (e: Event) => scrollMoves(e, trigger) && dismiss();
+    window.addEventListener("scroll", scrolled, { capture: true, passive: true });
     window.addEventListener("resize", dismiss);
     onCleanup(() => {
-      window.removeEventListener("scroll", dismiss, { capture: true });
+      window.removeEventListener("scroll", scrolled, { capture: true });
       window.removeEventListener("resize", dismiss);
     });
   });

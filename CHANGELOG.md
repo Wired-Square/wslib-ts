@@ -37,6 +37,8 @@
   optional `check`, the icons' `check` by default. Choosing a `MenuItemRadio` closes the menu, as a `MenuItem` does;
   choosing a `MenuItemCheckbox` leaves it open, so several can be ticked.
 - `Menu` takes `align`, `start` or `end` (the default), the trigger's edge the panel lines up with.
+- An open `Menu` or `Popover` closes on a scroll of the document or of an element around its trigger or anchor, and
+  no longer on a scroll elsewhere, such as a strip beside it.
 - `Tick` has no `<p>` around it: its root is its `<label>`, an inline grid, so it can sit in a line or a flex row.
 - `.app-field` has no margin of its own; its container spaces it. `Form`'s `<form>`, now `.app-form`, and a
   `Confirm`, now `.app-confirm`, and its body keep the 1rem below a field directly inside them; a `Dialog`'s own

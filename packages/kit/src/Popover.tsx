@@ -27,10 +27,14 @@ export function pinTo(anchor: Element, panel: HTMLElement, options: PlaceOptions
   });
 }
 
+/** A scroll of the document or of an element around the anchor; the anchor's own, an input's text say, moves nothing. */
+export const scrollMoves = (e: Event, anchor: Element) =>
+  e.target instanceof Node && e.target !== anchor && e.target.contains(anchor);
+
 export interface PopoverProps {
   /** Any element, not necessarily what opened it; a press on it counts as inside. */
   anchor: HTMLElement;
-  /** Called on a press outside, Escape, a scroll outside, or a resize. */
+  /** Called on a press outside, Escape, a scroll that moves the anchor, or a resize. */
   onClose: () => void;
   align?: "start" | "end";
   /** As wide as the anchor. */
@@ -78,7 +82,7 @@ export function Popover(props: PopoverProps) {
     if (props.focusFirstItem) panel.querySelector<HTMLElement>(ITEM)?.focus();
 
     listen("pointerdown", (e) => outside(e) && props.onClose());
-    listen("scroll", (e) => outside(e) && props.onClose());
+    listen("scroll", (e) => scrollMoves(e, props.anchor) && props.onClose());
     listen("resize", () => props.onClose());
     // Default prevented as well: a modal dialog's cancel is Escape's default action, which stopping propagation leaves.
     listen("keydown", (e) => {

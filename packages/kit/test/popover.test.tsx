@@ -85,18 +85,18 @@ test("Escape closes a Popover and goes no further, so a dialog around it stays o
   expect(beyond).not.toHaveBeenCalled();
 });
 
-test("a scroll inside a Popover or its anchor keeps it, and a scroll outside or a resize closes it", () => {
+test("a Popover closes on a scroll that moves its anchor or on a resize, and not on another scroll", () => {
   const p = picker();
   p.open();
-  fire(p.panel()!, "scroll");
-  fire(p.anchor, "scroll");
+  for (const unmoving of [p.panel()!, p.anchor, button("elsewhere")]) fire(unmoving, "scroll");
   expect(p.onClose).not.toHaveBeenCalled();
-  fire(document, "scroll");
-  expect(p.onClose).toHaveBeenCalledOnce();
-
-  p.open();
+  for (const [moving, times] of [[p.anchor.parentElement!, 1], [document, 2]] as const) {
+    fire(moving, "scroll");
+    expect(p.onClose).toHaveBeenCalledTimes(times);
+    p.open();
+  }
   window.dispatchEvent(new Event("resize"));
-  expect(p.onClose).toHaveBeenCalledTimes(2);
+  expect(p.onClose).toHaveBeenCalledTimes(3);
 });
 
 test("a Popover leaves focus on its anchor, and focusFirstItem focuses the first available item", () => {
@@ -283,4 +283,23 @@ test("choosing a MenuItem returns focus to the trigger before the item acts", ()
   trigger.click();
   button("Rename").click();
   expect(focused).toBe(trigger);
+});
+
+test("a Menu closes on a scroll that moves its trigger, and not on a scroll beside it", () => {
+  mount(() => (
+    <>
+      <div class="strip" />
+      <Menu aria-label="Actions">
+        <MenuItem onSelect={() => {}}>Rename</MenuItem>
+      </Menu>
+    </>
+  ));
+  const trigger = document.querySelector<HTMLElement>(".app-menu__trigger")!;
+  for (const moving of [trigger.parentElement!, document]) {
+    trigger.click();
+    fire(document.querySelector(".strip")!, "scroll");
+    expect(trigger.getAttribute("aria-expanded")).toBe("true");
+    fire(moving, "scroll");
+    expect(trigger.getAttribute("aria-expanded")).toBe("false");
+  }
 });
