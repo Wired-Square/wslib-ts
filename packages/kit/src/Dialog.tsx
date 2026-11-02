@@ -3,32 +3,51 @@ import type { JSX } from "solid-js";
 import { cx } from "@wired-square/kit/core";
 
 import { Button } from "./Button";
+import { useIcons } from "./icons";
 
-export interface DialogProps {
+interface DialogBase {
   /** Absent when the content brings its own heading. */
   title?: string;
   "aria-label"?: string;
+  class?: string;
   wide?: boolean;
+  /** A labelled close button in the corner, for a dialog with no Cancel; it is disabled while `pending`. */
+  closeButton?: boolean;
   /** Escape does nothing while true, so an act in flight keeps its refusal. */
   pending?: boolean;
-  /** Called once, whichever way out was taken. */
-  onClose: () => void;
   children: JSX.Element;
 }
+
+export type DialogProps = DialogBase &
+  (
+    | {
+        /** Nothing but the caller closes it: Escape does nothing, and no close button shows. */
+        undismissible: true;
+        onClose?: () => void;
+      }
+    | {
+        undismissible?: false;
+        /** Called once, whichever way out was taken. */
+        onClose: () => void;
+      }
+  );
 
 /**
  * A modal on the native `<dialog>`. Mounted means open: the caller renders it
  * inside the `<Show>` that supplies its content, and drops it on `onClose`.
  */
 export function Dialog(props: DialogProps) {
+  const icons = useIcons();
   const titleId = createUniqueId();
   let dialog: HTMLDialogElement | undefined;
   let told = false;
 
+  const held = () => props.pending || props.undismissible;
+  const showsClose = () => props.closeButton && !props.undismissible;
   const tell = () => {
-    if (told) return;
+    if (told || held()) return;
     told = true;
-    props.onClose();
+    props.onClose?.();
   };
 
   onMount(() => dialog?.showModal());
@@ -43,22 +62,22 @@ export function Dialog(props: DialogProps) {
 
   // A browser honours `preventDefault` on `cancel` only while the page holds
   // user activation, which the first Escape spends, so the second closes the
-  // element outright: reopened while pending, otherwise one more way out.
+  // element outright: reopened while held, otherwise one more way out.
   const closedByPlatform = () => {
     if (told || dialog?.open) return;
-    if (props.pending) dialog?.showModal();
+    if (held()) dialog?.showModal();
     else tell();
   };
 
   return (
     <dialog
       ref={dialog}
-      class={cx("app-dialog", props.wide && "app-dialog--wide")}
+      class={cx("app-dialog", props.wide && "app-dialog--wide", showsClose() && "app-dialog--closable", props.class)}
       aria-labelledby={props.title ? titleId : undefined}
       aria-label={props["aria-label"]}
       onCancel={(event) => {
         event.preventDefault();
-        if (!props.pending) tell();
+        tell();
       }}
       onClose={closedByPlatform}
       onToggle={(event) => {
@@ -73,6 +92,19 @@ export function Dialog(props: DialogProps) {
         )}
       </Show>
       {props.children}
+      {/* Last, so `showModal` never lands focus on it ahead of the content. */}
+      <Show when={showsClose()}>
+        <button
+          type="button"
+          class="app-dialog__close"
+          aria-label="Close"
+          title="Close"
+          disabled={props.pending}
+          onClick={tell}
+        >
+          {icons.clear()}
+        </button>
+      </Show>
     </dialog>
   );
 }

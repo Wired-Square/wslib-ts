@@ -18,6 +18,9 @@
 - A disabled primary button's text is `--app-accent-disabled-contrast`, the accent's contrast by default.
 - `TextArea` takes `variant="prose"`: written words in the body font, with no minimum height.
 - `Button` takes `tone="link"`: underlined, in the text colour and the line's own font, for an action inside prose.
+- `Dialog` takes `class`; `closeButton`, a labelled close button drawn with `IconSet`'s `clear`, last in the dialog so
+  it never takes the opening focus, disabled while `pending`; and `undismissible`, for a first run or a busy wait:
+  Escape and the platform's own close leave it open, no close button shows, and `onClose` is optional.
 
 ### 0.3.7
 
