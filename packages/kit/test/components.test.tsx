@@ -51,7 +51,8 @@ test("under forced colours, disabled, selected and live states keep a system col
   const selected = ':is([aria-selected="true"], [aria-pressed="true"]';
   expect(rule(forced, '.app-btn[aria-disabled="true"]')).toMatch(/color: GrayText;/);
   expect(rule(forced, ".app-field__input:disabled")).toMatch(/color: GrayText;/);
-  expect(rule(forced, '.app-menu__item[aria-disabled="true"]')).toMatch(/color: GrayText;/);
+  expect(rule(forced, '.app-menu__item:is(:disabled, [aria-disabled="true"])')).toMatch(/color: GrayText;/);
+  expect(rule(read("kit.css"), '.app-menu__item:is(:disabled, [aria-disabled="true"])')).toMatch(/color: var\(--app-text-muted\);/);
   expect(rule(forced, `.app-tab${selected}, [aria-current="page"])`)).toMatch(/border-color: Highlight;/);
   expect(rule(forced, `.app-tab:not([aria-selected="true"], [aria-pressed="true"], [aria-current="page"])`)).toMatch(
     /border-block-end-style: none;/,

@@ -584,7 +584,7 @@ select.app-field__input {
   color: var(--app-alert);
 }
 
-.app-menu__item[aria-disabled="true"] {
+.app-menu__item:is(:disabled, [aria-disabled="true"]) {
   color: var(--app-text-muted);
   cursor: not-allowed;
 }
@@ -594,7 +594,7 @@ select.app-field__input {
 }
 
 @media (forced-colors: active) {
-  .app-menu__item[aria-disabled="true"] {
+  .app-menu__item:is(:disabled, [aria-disabled="true"]) {
     color: GrayText;
   }
 
