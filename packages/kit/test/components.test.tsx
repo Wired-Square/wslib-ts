@@ -250,3 +250,9 @@ test("buttons and fields take their padding and font size from the density token
   const height = rem(token("control-text")!) * Number(token("control-line-height")) + 2 * rem(token("control-pad-y")!) + 2;
   expect(height).toBeCloseTo(37.2);
 });
+
+test("a disabled primary button's text reads its own token, the accent's contrast by default", () => {
+  const disabled = rule(read("kit.css"), ".app-btn--primary:disabled,\n.app-btn--primary[aria-disabled=\"true\"]");
+  expect(disabled).toMatch(/color: var\(--app-accent-disabled-contrast\);[^}]*background: var\(--app-accent-disabled\);/);
+  expect(read("theme.css")).toMatch(/:root \{[^}]*--app-accent-disabled-contrast: var\(--app-accent-contrast\);/);
+});

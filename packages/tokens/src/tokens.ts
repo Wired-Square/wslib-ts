@@ -34,6 +34,7 @@ export const groups = [
         light: "color-mix(in srgb, var(--app-accent) 55%, var(--app-surface))",
         note: "Solid, where an opacity would show what is behind a disabled primary button.",
       },
+      "--app-accent-disabled-contrast": { light: "var(--app-accent-contrast)" },
       "--app-accent-edge": { light: "color-mix(in srgb, var(--app-accent-sunken) 50%, var(--app-text))" },
     },
   },

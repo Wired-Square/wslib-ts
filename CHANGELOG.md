@@ -15,6 +15,7 @@
 - Buttons and fields read their padding and font size from `--app-control-pad-y`, `--app-control-pad-x` (a field's
   inline padding; a button's is 0.25rem more) and `--app-control-text`, so an app can make its controls denser. The
   defaults keep today's 37.2px; `0.375rem`, `0.5rem` and `0.8125rem` give 29.6px. Needs tokens 0.5.0.
+- A disabled primary button's text is `--app-accent-disabled-contrast`, the accent's contrast by default.
 
 ### 0.3.7
 
@@ -113,8 +114,9 @@ The component kit from a prior appliance, as its own package.
 
 ### 0.5.0
 
-Three tokens for `@wired-square/kit` 0.4.0, light values only: `--app-control-pad-y`, `--app-control-pad-x` and
-`--app-control-text`, a control's padding and font size. 60 tokens in all.
+Four tokens for `@wired-square/kit` 0.4.0, light values only: `--app-control-pad-y`, `--app-control-pad-x` and
+`--app-control-text`, a control's padding and font size, and `--app-accent-disabled-contrast`, the text on a disabled
+primary button. 61 tokens in all.
 
 ### 0.4.0
 
