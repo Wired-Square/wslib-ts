@@ -35,7 +35,9 @@ test("a Dialog's close button is labelled, drawn from the icon set, last in the 
   ));
   const close = root.querySelector<HTMLButtonElement>(".app-dialog__close")!;
   expect(dialogIn(root).classList).toContain("app-dialog--closable");
+  expect(close.className, "an icon button, so it matches the controls at any density").toBe("app-btn app-btn--plain app-btn--icon app-dialog__close");
   expect(close.getAttribute("aria-label")).toBe("Close");
+  expect(close.title).toBe("Close");
   expect(close.type).toBe("button");
   expect(close.querySelector("[data-glyph=clear]")).not.toBeNull();
   expect(dialogIn(root).lastElementChild, "so showModal never focuses it first").toBe(close);
@@ -123,7 +125,7 @@ test("DialogActions' status is a polite live region beside the buttons", () => {
   expect(status.textContent).toBe("1 of 2 selected");
   setPicked(2);
   expect(status.textContent).toBe("2 of 2 selected");
-  expect(button("Cancel")).toBeTruthy();
+  expect(button("Cancel").className, "plain beside a confirm").toBe("app-btn app-btn--plain");
 });
 
 test("DialogActions without a status has no live region", () => {
@@ -131,11 +133,12 @@ test("DialogActions without a status has no live region", () => {
   expect(root.querySelector("[role=status]")).toBeNull();
 });
 
-test("DialogActions with nothing to confirm is one Close button, disabled while pending", () => {
+test("DialogActions with nothing to confirm is one Close button in the default tone, disabled while pending", () => {
   const onCancel = vi.fn();
   const [pending, setPending] = createSignal(false);
   const root = mount(() => <DialogActions onCancel={onCancel} pending={pending()} />);
   expect([...root.querySelectorAll("button")].map((b) => b.textContent)).toEqual(["Close"]);
+  expect(button("Close").className).toBe("app-btn");
   button("Close").click();
   expect(onCancel).toHaveBeenCalledOnce();
   setPending(true);

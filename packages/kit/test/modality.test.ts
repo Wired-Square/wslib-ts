@@ -34,14 +34,29 @@ test("in WebKit, the kit's entry marks a key press as keyboard and a pointer pre
   stopped.remove();
 });
 
-test("after a pointer press only a field keeps its ring, and forced colours keep every ring", () => {
+test("after a pointer press only a text field keeps its ring, and forced colours keep every ring", () => {
   const css = read("kit.css");
-  const quiet = css.indexOf(
-    '\n:root[data-app-modality="pointer"] :focus-visible:not(input, textarea, select),\n' +
-      ':root[data-app-modality="pointer"] .app-visually-hidden:focus-visible + .app-pick-file__label {\n' +
-      "  --app-focus: 0 0 transparent;\n}",
-  );
-  expect(quiet).toBeGreaterThan(0);
+  const quiet = css.indexOf("{\n  --app-focus: 0 0 transparent;\n}");
+  const selector = css.slice(css.lastIndexOf("}", quiet) + 1, quiet).replaceAll(":focus-visible", "");
+  const quietens = (markup: string) => {
+    document.body.innerHTML = markup;
+    return document.body.firstElementChild!.matches(selector);
+  };
+  html.setAttribute("data-app-modality", "pointer");
+  for (const ringed of ["<input>", '<input type="search">', "<textarea></textarea>", "<select></select>"]) {
+    expect(quietens(ringed), ringed).toBe(false);
+  }
+  for (const quietened of ["<button></button>", '<input type="checkbox">', '<input type="radio">', '<input type="range">']) {
+    expect(quietens(quietened), quietened).toBe(true);
+  }
+  document.body.innerHTML = "";
+  html.removeAttribute("data-app-modality");
   expect(forcedColours(css.slice(quiet))).toMatch(/:focus-visible[^{]*\{\s*outline: 2px solid Highlight;/);
   expect(read("../package.json")).toMatch(/"sideEffects": \[[^\]]*"\.\/src\/modality\.ts"/);
+});
+
+test("after a pointer press a dialog and a tickbox drop the platform's own ring, except under forced colours", () => {
+  expect(read("kit.css")).toMatch(
+    /\n@media \(forced-colors: none\) \{\n {2}:root\[data-app-modality="pointer"\] :is\(\.app-dialog, \.app-tick__box\):focus-visible \{\n {4}outline: none;/,
+  );
 });

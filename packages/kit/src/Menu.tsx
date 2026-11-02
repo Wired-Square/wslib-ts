@@ -55,8 +55,9 @@ export function Menu(props: MenuProps) {
   const place = () => {
     pinTo(trigger, panel, { align: props.align ?? "end", matchWidth: false });
     panel.style.visibility = "";
-    const current = panel.querySelector<HTMLElement>(`${ITEM}[aria-current="page"]`);
-    (current ?? panel.querySelector<HTMLElement>(ITEM))?.focus({ preventScroll: true });
+    const first = (selector: string) => panel.querySelector<HTMLElement>(selector);
+    const chosen = first(`${ITEM}[aria-current="page"]`) ?? first('[role=menuitemradio][aria-checked="true"]');
+    (chosen ?? first(ITEM))?.focus({ preventScroll: true });
   };
 
   // A fixed panel does not follow the row it was read from.
@@ -173,7 +174,7 @@ function Item(props: ItemProps) {
       onClick={() => {
         if (props.disabled) return;
         // Closed first, so a dialog opened from an item is not fighting a popover for the top layer.
-        close();
+        if (props.role !== "menuitemcheckbox") close();
         props.onSelect();
       }}
     >
@@ -201,7 +202,7 @@ function Checkable(props: MenuItemCheckProps & Required<Pick<ItemProps, "role">>
   );
 }
 
-/** A setting the item turns on or off; the caller flips `checked` in `onSelect`. */
+/** A setting the item turns on or off, leaving the menu open; the caller flips `checked` in `onSelect`. */
 export function MenuItemCheckbox(props: MenuItemCheckProps) {
   return <Checkable {...props} role="menuitemcheckbox" />;
 }

@@ -200,7 +200,7 @@
   display: block;
 }
 
-:where(.app-form, .app-dialog) > .app-field {
+:where(.app-form, .app-confirm, .app-confirm > .app-dialog__body) > .app-field {
   margin-block-end: 1rem;
 }
 
@@ -563,7 +563,7 @@ select.app-field__input {
   margin-block: calc((var(--app-control-line-height) - 1) * 0.5em);
 }
 
-.app-btn--plain.app-menu__trigger[aria-expanded="true"] {
+.app-menu__trigger[aria-expanded="true"]:not(.app-btn--primary, .app-btn--danger, .app-btn--link) {
   background: var(--app-surface-sunken);
   color: var(--app-text);
 }
@@ -1031,35 +1031,13 @@ select.app-field__input {
 }
 
 .app-dialog--closable .app-dialog__title {
-  padding-inline-end: 2rem;
+  padding-inline-end: 2.5rem;
 }
 
 .app-dialog__close {
   position: absolute;
-  inset-block-start: 1rem;
-  inset-inline-end: 1rem;
-  display: inline-flex;
-  padding: 0.25rem;
-  border: 1px solid transparent;
-  border-radius: var(--app-radius);
-  background: transparent;
-  color: var(--app-text-muted);
-  cursor: pointer;
-}
-
-.app-dialog__close:hover:not(:disabled) {
-  background: var(--app-surface-sunken);
-  color: var(--app-text);
-}
-
-.app-dialog__close:disabled {
-  cursor: not-allowed;
-  opacity: 0.55;
-}
-
-.app-dialog__close:focus-visible {
-  outline: none;
-  box-shadow: var(--app-focus);
+  inset-block-start: 0.75rem;
+  inset-inline-end: 0.75rem;
 }
 
 .app-dialog::backdrop {
@@ -1107,15 +1085,23 @@ select.app-field__input {
   margin-inline-start: 0.75rem;
 }
 
-/* After a pointer press only a field keeps its ring: WebKit matches `:focus-visible` on focus moved by script. */
-:root[data-app-modality="pointer"] :focus-visible:not(input, textarea, select),
+/* After a pointer press only a text field keeps its ring: WebKit matches `:focus-visible` on focus moved by script. */
+:root[data-app-modality="pointer"]
+  :focus-visible:not(textarea, select, input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="file"])),
 :root[data-app-modality="pointer"] .app-visually-hidden:focus-visible + .app-pick-file__label {
   --app-focus: 0 0 transparent;
 }
 
+/* These draw the platform's own ring rather than `--app-focus`. */
+@media (forced-colors: none) {
+  :root[data-app-modality="pointer"] :is(.app-dialog, .app-tick__box):focus-visible {
+    outline: none;
+  }
+}
+
 /* Forced colours drop the box-shadow ring. Last, to outrank `outline: none`. */
 @media (forced-colors: active) {
-  :is(.app-field__input, .app-btn, .app-tab, .app-menu__item, .app-popover__option, .app-switch, .app-dialog__close, .app-search__clear):focus-visible,
+  :is(.app-field__input, .app-btn, .app-tab, .app-menu__item, .app-popover__option, .app-switch, .app-search__clear):focus-visible,
   .app-visually-hidden:focus-visible + .app-pick-file__label {
     outline: 2px solid Highlight;
   }

@@ -2,7 +2,7 @@ import { Show, createUniqueId, onCleanup, onMount } from "solid-js";
 import type { JSX } from "solid-js";
 import { cx } from "@wired-square/kit/core";
 
-import { Button } from "./Button";
+import { Button, IconButton } from "./Button";
 import { useIcons } from "./icons";
 
 interface DialogBase {
@@ -94,16 +94,9 @@ export function Dialog(props: DialogProps) {
       {props.children}
       {/* Last, so `showModal` never lands focus on it ahead of the content. */}
       <Show when={showsClose()}>
-        <button
-          type="button"
-          class="app-dialog__close"
-          aria-label="Close"
-          title="Close"
-          disabled={props.pending}
-          onClick={tell}
-        >
+        <IconButton label="Close" class="app-dialog__close" disabled={props.pending} onClick={tell}>
           {icons.clear()}
-        </button>
+        </IconButton>
       </Show>
     </dialog>
   );
@@ -111,7 +104,7 @@ export function Dialog(props: DialogProps) {
 
 export interface DialogActionsProps {
   onCancel: () => void;
-  /** Absent for a dialog with nothing to confirm: the one button then reads Close. */
+  /** Absent for a dialog with nothing to confirm: the one button then reads Close, in the default tone. */
   confirm?: JSX.Element;
   /** Cancel is disabled while the confirm is in flight. */
   pending?: boolean;
@@ -133,7 +126,12 @@ export function DialogActions(props: DialogActionsProps) {
         </Show>
       </div>
       <div class="app-actions">
-        <Button tone="plain" disabled={props.pending} autofocus={"destructive" in props} onClick={props.onCancel}>
+        <Button
+          tone={"confirm" in props ? "plain" : "default"}
+          disabled={props.pending}
+          autofocus={"destructive" in props}
+          onClick={props.onCancel}
+        >
           {"confirm" in props ? "Cancel" : "Close"}
         </Button>
         {props.confirm}
