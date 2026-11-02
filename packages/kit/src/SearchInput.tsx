@@ -18,9 +18,25 @@ export function SearchInput(props: SearchInputProps) {
   const [own, rest] = splitProps(props, ["label", "value", "onValue", "class"]);
   let wrap!: HTMLDivElement;
 
+  const input = () => wrap.querySelector("input")!;
+
   const clear = () => {
     own.onValue("");
-    wrap.querySelector("input")!.focus();
+    input().focus();
+  };
+
+  // WebKit keeps Escape in a search box even when it is empty, so the dialog around it never hears `cancel`.
+  const escape = (e: KeyboardEvent) => {
+    if (e.key !== "Escape" || e.target !== input() || e.defaultPrevented || e.isComposing) return;
+    if (own.value) {
+      e.preventDefault();
+      own.onValue("");
+      return;
+    }
+    const dialog = wrap.closest("dialog[open], [popover]");
+    if (!(dialog instanceof HTMLDialogElement)) return;
+    e.preventDefault();
+    if (dialog.dispatchEvent(new Event("cancel", { cancelable: true }))) dialog.close();
   };
 
   return (
@@ -28,6 +44,7 @@ export function SearchInput(props: SearchInputProps) {
       ref={wrap}
       class={cx("app-search", own.class)}
       onInput={(e) => own.onValue((e.target as HTMLInputElement).value)}
+      onKeyDown={escape}
     >
       <input
         {...rest}

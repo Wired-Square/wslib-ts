@@ -8,23 +8,10 @@
   `data-app-modality`: `keyboard` on a key press other than Escape or a Cmd or Ctrl chord, `pointer` on a pointer
   press. After a pointer press, `--app-focus` is transparent on everything but inputs, textareas and selects; rings
   show until then, and forced colours keep theirs. Other engines are left to their own heuristic.
-
-### 0.4.0
-
-- In WebKit, which matches `:focus-visible` on focus moved by script, the kit tracks the input modality as `<html>`'s
-  `data-app-modality`: `keyboard` on a key press other than Escape or a Cmd or Ctrl chord, `pointer` on a pointer
-  press. After a pointer press, `--app-focus` is transparent on everything but inputs, textareas and selects; rings
-  show until then, and forced colours keep theirs. Other engines are left to their own heuristic.
-- `SearchInput`'s box has `appearance: none`, native again under forced colours, so it is a `Field`'s height in WebKit.
-
-### 0.4.0
-
-- In WebKit, which matches `:focus-visible` on focus moved by script, the kit tracks the input modality as `<html>`'s
-  `data-app-modality`: `keyboard` on a key press other than Escape or a Cmd or Ctrl chord, `pointer` on a pointer
-  press. After a pointer press, `--app-focus` is transparent on everything but inputs, textareas and selects; rings
-  show until then, and forced colours keep theirs. Other engines are left to their own heuristic.
 - `SearchInput`'s box has `appearance: none`, native again under forced colours, so it is a `Field`'s height in WebKit.
 - A disabled `.app-menu__item` is dimmed as an `aria-disabled` one is, in forced colours too.
+- Escape in a `SearchInput` with a value clears it, through `onValue("")`. In an empty one inside an open `<dialog>`,
+  it sends the dialog a cancelable `cancel` and closes it unless that is prevented, since WebKit keeps the Escape.
 
 ### 0.3.7
 
