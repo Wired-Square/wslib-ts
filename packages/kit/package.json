@@ -10,7 +10,8 @@
   },
   "type": "module",
   "sideEffects": [
-    "**/*.css"
+    "**/*.css",
+    "./src/modality.ts"
   ],
   "exports": {
     ".": {

@@ -1,3 +1,5 @@
+import "./modality";
+
 export * from "@wired-square/kit/core";
 
 export { createAction } from "./action";

@@ -1010,6 +1010,12 @@ select.app-field__input {
   margin-block-start: 0.25rem;
 }
 
+/* After a pointer press only a field keeps its ring: WebKit matches `:focus-visible` on focus moved by script. */
+:root[data-app-modality="pointer"] :focus-visible:not(input, textarea, select),
+:root[data-app-modality="pointer"] .app-visually-hidden:focus-visible + .app-pick-file__label {
+  --app-focus: 0 0 transparent;
+}
+
 /* Forced colours drop the box-shadow ring. Last, to outrank `outline: none`. */
 @media (forced-colors: active) {
   :is(.app-field__input, .app-btn, .app-tab, .app-menu__item, .app-popover__option, .app-switch, .app-search__clear):focus-visible,
