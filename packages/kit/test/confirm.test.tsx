@@ -13,6 +13,7 @@ test("a Confirm asking a reason waits for a non-blank one and acts on it trimmed
   ));
   expect(field("Reason").placeholder).toBe("For the audit trail");
   expect(field("Reason").required).toBe(true);
+  expect(field("Reason").closest(".app-field")!.parentElement!.matches(".app-dialog"), "so the dialog spaces it").toBe(true);
   expect(button("Revoke").disabled).toBe(true);
   type("Reason", "   ");
   expect(button("Revoke").disabled, "blank is no reason").toBe(true);

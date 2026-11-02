@@ -198,6 +198,9 @@
 
 .app-field {
   display: block;
+}
+
+:where(.app-form, .app-dialog) > .app-field {
   margin-block-end: 1rem;
 }
 

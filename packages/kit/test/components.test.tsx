@@ -1,6 +1,6 @@
 import { expect, test, vi } from "vitest";
 
-import { Button, FeedStatus, IconSet, Menu, MenuItem, MenuItemCheckbox, MenuItemRadio, MenuItemUnavailable, NothingYet, Notice, TabButton, Tabs, TextArea, Tick, Toggle, Views, viewOf } from "../src/index";
+import { Button, FeedStatus, Field, Form, IconSet, Menu, MenuItem, MenuItemCheckbox, MenuItemRadio, MenuItemUnavailable, NothingYet, Notice, TabButton, Tabs, TextArea, Tick, Toggle, Views, viewOf } from "../src/index";
 import { mount } from "../src/testing";
 import { forcedColours, read, rule, sourceFiles } from "./css";
 
@@ -141,6 +141,18 @@ test("Tick is an inline label hanging its hint beside a box the kit styles, with
   );
   expect(root.querySelector("input")!.checked).toBe(true);
   expect(rule(read("kit.css"), ".app-tick__label")).toMatch(/display: inline-grid;/);
+});
+
+test("a field has no margin of its own, and a Form or a Dialog spaces the fields directly inside it", () => {
+  const css = read("kit.css");
+  expect(rule(css, ".app-field")).not.toMatch(/margin/);
+  expect(rule(css, ":where(.app-form, .app-dialog) > .app-field")).toMatch(/margin-block-end: 1rem;/);
+  const root = mount(() => (
+    <Form act={async () => {}}>
+      <Field label="Name" />
+    </Form>
+  ));
+  expect(root.querySelector("form.app-form > .app-field")).not.toBeNull();
 });
 
 test("NothingYet shows its label under a picture a screen reader skips, and a note only when given one", () => {

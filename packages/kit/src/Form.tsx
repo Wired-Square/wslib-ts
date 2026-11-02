@@ -30,7 +30,7 @@ export function Form(props: FormProps) {
   };
 
   return (
-    <form onSubmit={onSubmit} novalidate>
+    <form class="app-form" onSubmit={onSubmit} novalidate>
       <Notice tone="bad">{action.failed()}</Notice>
       <Notice tone="good">{succeeded() && props.done}</Notice>
 
