@@ -551,7 +551,7 @@ select.app-field__input {
 
 /* --- menus -------------------------------------------------------------- */
 
-.app-menu__trigger {
+.app-btn--plain.app-menu__trigger {
   padding: 0.25rem 0.5rem;
 }
 
@@ -560,7 +560,7 @@ select.app-field__input {
   margin-block: calc((var(--app-control-line-height) - 1) * 0.5em);
 }
 
-.app-menu__trigger[aria-expanded="true"] {
+.app-btn--plain.app-menu__trigger[aria-expanded="true"] {
   background: var(--app-surface-sunken);
   color: var(--app-text);
 }
@@ -629,6 +629,13 @@ select.app-field__input {
 
 .app-menu__item[aria-current="page"] {
   font-weight: 600;
+}
+
+.app-menu__check {
+  display: inline-flex;
+  inline-size: 1em;
+  margin-inline-end: 0.5rem;
+  vertical-align: -0.125em;
 }
 
 @media (forced-colors: active) {

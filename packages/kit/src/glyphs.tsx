@@ -41,4 +41,5 @@ export const glyphs = {
         <path d="M12 5.5h.01M12 12h.01M12 18.5h.01"/>
       </>,
     ),
+  check: () => glyph(<path d="M4.5 13 9.5 18 19.5 5.5"/>),
 };

@@ -26,6 +26,12 @@
 - `Popover` takes `aria-label`.
 - A `Tab`'s `label` may be a render, for an icon or a count: it is called twice, once drawn and once hidden and bold
   to hold the selected width, as `data-label` does for words.
+- `Menu` takes `tone`, its trigger's `Button` tone, `plain` by default; only a plain trigger keeps the tight padding
+  and the pressed look while open.
+- ArrowDown on a `Menu`'s trigger opens it, focusing its current item or else its first.
+- `MenuItemCheckbox` and `MenuItemRadio` take `checked`, said with `aria-checked` and marked by `IconSet`'s new
+  optional `check`, the icons' `check` by default. Choosing one closes the menu, as a `MenuItem` does.
+- `Menu` takes `align`, `start` or `end` (the default), the trigger's edge the panel lines up with.
 
 ### 0.3.7
 

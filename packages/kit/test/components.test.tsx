@@ -1,6 +1,6 @@
 import { expect, test, vi } from "vitest";
 
-import { Button, FeedStatus, IconSet, Menu, MenuItem, MenuItemUnavailable, NothingYet, Notice, TabButton, Tabs, TextArea, Tick, Toggle, Views, viewOf } from "../src/index";
+import { Button, FeedStatus, IconSet, Menu, MenuItem, MenuItemCheckbox, MenuItemRadio, MenuItemUnavailable, NothingYet, Notice, TabButton, Tabs, TextArea, Tick, Toggle, Views, viewOf } from "../src/index";
 import { mount } from "../src/testing";
 import { forcedColours, read, rule, sourceFiles } from "./css";
 
@@ -179,6 +179,37 @@ test("an opened Menu focuses its current item, and its first when none is curren
     root.querySelector<HTMLElement>(".app-menu__trigger")!.click();
     expect(document.activeElement!.textContent).toBe(focused);
   }
+});
+
+test("a MenuItemCheckbox and a MenuItemRadio say their role and whether they are checked, marked by IconSet's check", () => {
+  const html = mount(() => (
+    <IconSet icons={{ check: () => "✓" }}>
+      <MenuItemCheckbox checked onSelect={() => {}}>Wrap</MenuItemCheckbox>
+      <MenuItemCheckbox checked={false} onSelect={() => {}}>Numbers</MenuItemCheckbox>
+      <MenuItemRadio checked onSelect={() => {}}>Light</MenuItemRadio>
+      <MenuItemRadio checked={false} onSelect={() => {}}>Dark</MenuItemRadio>
+    </IconSet>
+  )).innerHTML;
+  const mark = (checked: boolean) => `<span class="app-menu__check" aria-hidden="true">${checked ? "✓" : ""}</span>`;
+  const items = [...html.matchAll(/<button [^>]*role="([^"]+)"[^>]*aria-checked="([^"]+)"[^>]*>(.*?)<\/button>/g)].map((m) => m.slice(1));
+  expect(items).toEqual([
+    ["menuitemcheckbox", "true", `${mark(true)}Wrap`],
+    ["menuitemcheckbox", "false", `${mark(false)}Numbers`],
+    ["menuitemradio", "true", `${mark(true)}Light`],
+    ["menuitemradio", "false", `${mark(false)}Dark`],
+  ]);
+  expect(mount(() => <MenuItem onSelect={() => {}}>Plain</MenuItem>).innerHTML).not.toMatch(/aria-checked|app-menu__check/);
+});
+
+test("a Menu's trigger is plain unless given a tone, and only a plain one is drawn pressed and tight while open", () => {
+  const trigger = (props: { tone?: "default" | "primary" }) =>
+    mount(() => <Menu aria-label="Actions" {...props}>{null}</Menu>).querySelector(".app-menu__trigger")!.className;
+  expect(trigger({})).toBe("app-btn app-btn--plain app-menu__trigger");
+  expect(trigger({ tone: "primary" })).toBe("app-btn app-btn--primary app-menu__trigger");
+  expect(trigger({ tone: "default" })).toBe("app-btn app-menu__trigger");
+  const css = read("kit.css");
+  expect(rule(css, '.app-btn--plain.app-menu__trigger[aria-expanded="true"]')).toMatch(/background: var\(--app-surface-sunken\);/);
+  expect(rule(css, ".app-btn--plain.app-menu__trigger")).toMatch(/padding: 0\.25rem 0\.5rem;/);
 });
 
 test("MenuItemUnavailable is a focusable menu item that says why it is unavailable", () => {
