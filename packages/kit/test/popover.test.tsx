@@ -233,6 +233,19 @@ test("checkbox and radio items are reached by the arrows, and choosing one close
   expect(trigger.getAttribute("aria-expanded")).toBe("false");
 });
 
+test("a clicked MenuItemCheckbox takes focus, since WebKit leaves it on the body", () => {
+  mount(() => (
+    <Menu aria-label="View">
+      <MenuItemCheckbox checked={false} onSelect={() => {}}>Wrap</MenuItemCheckbox>
+      <MenuItemCheckbox checked={false} onSelect={() => {}}>Wide</MenuItemCheckbox>
+    </Menu>
+  ));
+  document.querySelector<HTMLElement>(".app-menu__trigger")!.click();
+  button("Wrap").blur();
+  button("Wide").click();
+  expect(document.activeElement).toBe(button("Wide"));
+});
+
 test("a danger MenuItem is drawn in alert, and a disabled one neither closes the menu nor acts", () => {
   const selected = vi.fn();
   mount(() => (

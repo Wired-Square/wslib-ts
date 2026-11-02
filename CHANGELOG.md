@@ -35,7 +35,7 @@
   `MenuItemRadio`, else its first.
 - `MenuItemCheckbox` and `MenuItemRadio` take `checked`, said with `aria-checked` and marked by `IconSet`'s new
   optional `check`, the icons' `check` by default. Choosing a `MenuItemRadio` closes the menu, as a `MenuItem` does;
-  choosing a `MenuItemCheckbox` leaves it open, so several can be ticked.
+  choosing a `MenuItemCheckbox` leaves it open, so several can be ticked, and focuses it, as WebKit does not.
 - `Menu` takes `align`, `start` or `end` (the default), the trigger's edge the panel lines up with.
 - An open `Menu` or `Popover` closes on a scroll of the document or of an element around its trigger or anchor, and
   no longer on a scroll elsewhere, such as a strip beside it.

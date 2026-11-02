@@ -172,10 +172,12 @@ function Item(props: ItemProps) {
       aria-disabled={props.disabled || undefined}
       aria-current={props.current ? "page" : undefined}
       aria-checked={props.checked}
-      onClick={() => {
+      onClick={(e) => {
         if (props.disabled) return;
+        // WebKit does not focus a clicked button, so the arrows would act on the body.
+        if (props.role === "menuitemcheckbox") e.currentTarget.focus({ preventScroll: true });
         // Closed first, so a dialog opened from an item is not fighting a popover for the top layer.
-        if (props.role !== "menuitemcheckbox") close();
+        else close();
         props.onSelect();
       }}
     >
