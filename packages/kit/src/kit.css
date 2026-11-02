@@ -162,6 +162,23 @@
   color: var(--app-text);
 }
 
+.app-btn--link {
+  display: inline;
+  padding: 0;
+  border-color: transparent;
+  background: transparent;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+  text-decoration: underline;
+}
+
+.app-btn--link:hover:not(:disabled, [aria-disabled="true"]) {
+  border-color: transparent;
+  background: transparent;
+  text-decoration-thickness: 2px;
+}
+
 .app-btn--icon {
   justify-content: center;
   padding: var(--app-control-pad-y);

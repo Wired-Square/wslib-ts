@@ -17,6 +17,7 @@
   defaults keep today's 37.2px; `0.375rem`, `0.5rem` and `0.8125rem` give 29.6px. Needs tokens 0.5.0.
 - A disabled primary button's text is `--app-accent-disabled-contrast`, the accent's contrast by default.
 - `TextArea` takes `variant="prose"`: written words in the body font, with no minimum height.
+- `Button` takes `tone="link"`: underlined, in the text colour and the line's own font, for an action inside prose.
 
 ### 0.3.7
 

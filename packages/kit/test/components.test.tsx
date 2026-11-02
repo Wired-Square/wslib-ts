@@ -1,6 +1,6 @@
 import { expect, test, vi } from "vitest";
 
-import { FeedStatus, IconSet, Menu, MenuItem, MenuItemUnavailable, NothingYet, Notice, TabButton, Tabs, TextArea, Tick, Toggle, Views, viewOf } from "../src/index";
+import { Button, FeedStatus, IconSet, Menu, MenuItem, MenuItemUnavailable, NothingYet, Notice, TabButton, Tabs, TextArea, Tick, Toggle, Views, viewOf } from "../src/index";
 import { mount } from "../src/testing";
 import { forcedColours, read, rule, sourceFiles } from "./css";
 
@@ -265,4 +265,17 @@ test("a prose TextArea is in the body font at its own height, and the default on
   const css = read("kit.css");
   expect(rule(css, ".app-field__input--multiline")).toMatch(/min-height: 9rem;[^}]*font-family: var\(--app-font-mono\);/);
   expect(rule(css, ".app-field__input--prose")).not.toMatch(/min-height|font-family|font-size/);
+});
+
+test("a link button is underlined text in the line's own font, with no box even on hover, and keeps the buttons' ring", () => {
+  const button = mount(() => <Button tone="link">resend the code</Button>).querySelector("button")!;
+  expect(button.className).toBe("app-btn app-btn--link");
+  const css = read("kit.css");
+  expect(rule(css, ".app-btn--link")).toMatch(
+    /display: inline;\s*padding: 0;\s*border-color: transparent;\s*background: transparent;\s*font-size: inherit;\s*font-weight: inherit;\s*line-height: inherit;\s*text-decoration: underline;/,
+  );
+  expect(rule(css, ".app-btn--link")).not.toMatch(/color: var/);
+  expect(rule(css, '.app-btn--link:hover:not(:disabled, [aria-disabled="true"])')).toMatch(
+    /border-color: transparent;\s*background: transparent;/,
+  );
 });
