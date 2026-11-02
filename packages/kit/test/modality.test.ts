@@ -52,7 +52,7 @@ test("after a pointer press only a text field keeps its ring, and forced colours
   document.body.innerHTML = "";
   html.removeAttribute("data-app-modality");
   expect(forcedColours(css.slice(quiet))).toMatch(/:focus-visible[^{]*\{\s*outline: 2px solid Highlight;/);
-  expect(read("../package.json")).toMatch(/"sideEffects": \[[^\]]*"\.\/src\/modality\.ts"/);
+  expect(JSON.parse(read("../package.json")).sideEffects).toContain("./src/modality.ts");
 });
 
 test("after a pointer press a dialog and a tickbox drop the platform's own ring, except under forced colours", () => {
