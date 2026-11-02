@@ -230,6 +230,11 @@ select.app-field__input {
   resize: vertical;
 }
 
+.app-field__input--prose {
+  line-height: inherit;
+  resize: vertical;
+}
+
 /* The file input is clipped, not `display: none`, so it keeps its tab stop; the
    ring is drawn on the label, which is what is seen. */
 .app-pick-file__label {

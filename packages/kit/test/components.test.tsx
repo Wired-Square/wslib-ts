@@ -1,6 +1,6 @@
 import { expect, test, vi } from "vitest";
 
-import { FeedStatus, IconSet, Menu, MenuItem, MenuItemUnavailable, NothingYet, Notice, TabButton, Tabs, Tick, Toggle, Views, viewOf } from "../src/index";
+import { FeedStatus, IconSet, Menu, MenuItem, MenuItemUnavailable, NothingYet, Notice, TabButton, Tabs, TextArea, Tick, Toggle, Views, viewOf } from "../src/index";
 import { mount } from "../src/testing";
 import { forcedColours, read, rule, sourceFiles } from "./css";
 
@@ -255,4 +255,14 @@ test("a disabled primary button's text reads its own token, the accent's contras
   const disabled = rule(read("kit.css"), ".app-btn--primary:disabled,\n.app-btn--primary[aria-disabled=\"true\"]");
   expect(disabled).toMatch(/color: var\(--app-accent-disabled-contrast\);[^}]*background: var\(--app-accent-disabled\);/);
   expect(read("theme.css")).toMatch(/:root \{[^}]*--app-accent-disabled-contrast: var\(--app-accent-contrast\);/);
+});
+
+test("a prose TextArea is in the body font at its own height, and the default one stays monospace and tall", () => {
+  const pasted = mount(() => <TextArea label="Key" />).querySelector("textarea")!;
+  const prose = mount(() => <TextArea label="Notes" variant="prose" />).querySelector("textarea")!;
+  expect(pasted.className).toBe("app-field__input app-field__input--multiline");
+  expect(prose.className).toBe("app-field__input app-field__input--prose");
+  const css = read("kit.css");
+  expect(rule(css, ".app-field__input--multiline")).toMatch(/min-height: 9rem;[^}]*font-family: var\(--app-font-mono\);/);
+  expect(rule(css, ".app-field__input--prose")).not.toMatch(/min-height|font-family|font-size/);
 });

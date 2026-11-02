@@ -16,6 +16,7 @@
   inline padding; a button's is 0.25rem more) and `--app-control-text`, so an app can make its controls denser. The
   defaults keep today's 37.2px; `0.375rem`, `0.5rem` and `0.8125rem` give 29.6px. Needs tokens 0.5.0.
 - A disabled primary button's text is `--app-accent-disabled-contrast`, the accent's contrast by default.
+- `TextArea` takes `variant="prose"`: written words in the body font, with no minimum height.
 
 ### 0.3.7
 
