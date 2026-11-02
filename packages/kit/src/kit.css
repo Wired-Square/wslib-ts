@@ -71,9 +71,10 @@
 
 .app-btn {
   font: inherit;
+  font-size: var(--app-control-text);
   font-weight: 500;
   line-height: var(--app-control-line-height);
-  padding: 0.5rem 0.9rem;
+  padding: var(--app-control-pad-y) calc(var(--app-control-pad-x) + 0.25rem);
   border-radius: var(--app-radius);
   border: 1px solid transparent;
   cursor: pointer;
@@ -162,7 +163,7 @@
 
 .app-btn--icon {
   justify-content: center;
-  padding: 0.5rem;
+  padding: var(--app-control-pad-y);
 }
 
 .app-btn--icon svg {
@@ -193,10 +194,11 @@
 .app-field__input {
   box-sizing: border-box;
   font: inherit;
+  font-size: var(--app-control-text);
   line-height: var(--app-control-line-height);
   width: 100%;
   max-width: var(--app-field-max);
-  padding: 0.5rem 0.65rem;
+  padding: var(--app-control-pad-y) var(--app-control-pad-x);
   color: var(--app-text);
   background: var(--app-surface);
   border: 1px solid var(--app-border-strong);

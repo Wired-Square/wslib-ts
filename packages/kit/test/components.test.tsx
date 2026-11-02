@@ -232,3 +232,21 @@ test("a Menu given chevron draws IconSet's chevron after its face, out of its na
   )));
   expect(own.querySelector(".app-menu__chevron")!.textContent).toBe("▾");
 });
+
+test("buttons and fields take their padding and font size from the density tokens, which default to today's 37.2px", () => {
+  const css = read("kit.css");
+  const theme = read("theme.css");
+  expect(rule(css, ".app-btn")).toMatch(
+    /font-size: var\(--app-control-text\);[^}]*padding: var\(--app-control-pad-y\) calc\(var\(--app-control-pad-x\) \+ 0\.25rem\);/,
+  );
+  expect(rule(css, ".app-btn--icon")).toMatch(/padding: var\(--app-control-pad-y\);/);
+  expect(rule(css, ".app-field__input")).toMatch(
+    /font-size: var\(--app-control-text\);[^}]*padding: var\(--app-control-pad-y\) var\(--app-control-pad-x\);/,
+  );
+
+  const token = (name: string) => theme.match(new RegExp(`\\n  --app-${name}: ([^;]+);`))![1];
+  expect([token("control-pad-y"), token("control-pad-x"), token("control-text")]).toEqual(["0.5rem", "0.65rem", "1em"]);
+  const rem = (value: string) => Number(value.replace(/r?em$/, "")) * 16;
+  const height = rem(token("control-text")!) * Number(token("control-line-height")) + 2 * rem(token("control-pad-y")!) + 2;
+  expect(height).toBeCloseTo(37.2);
+});

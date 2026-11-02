@@ -12,6 +12,9 @@
 - A disabled `.app-menu__item` is dimmed as an `aria-disabled` one is, in forced colours too.
 - Escape in a `SearchInput` with a value clears it, through `onValue("")`. In an empty one inside an open `<dialog>`,
   it sends the dialog a cancelable `cancel` and closes it unless that is prevented, since WebKit keeps the Escape.
+- Buttons and fields read their padding and font size from `--app-control-pad-y`, `--app-control-pad-x` (a field's
+  inline padding; a button's is 0.25rem more) and `--app-control-text`, so an app can make its controls denser. The
+  defaults keep today's 37.2px; `0.375rem`, `0.5rem` and `0.8125rem` give 29.6px. Needs tokens 0.5.0.
 
 ### 0.3.7
 
@@ -107,6 +110,11 @@ The component kit from a prior appliance, as its own package.
 - `@wired-square/kit/core`: the modules with no JSX, compiled to JavaScript for plain node.
 
 ## `@wired-square/tokens`
+
+### 0.5.0
+
+Three tokens for `@wired-square/kit` 0.4.0, light values only: `--app-control-pad-y`, `--app-control-pad-x` and
+`--app-control-text`, a control's padding and font size. 60 tokens in all.
 
 ### 0.4.0
 

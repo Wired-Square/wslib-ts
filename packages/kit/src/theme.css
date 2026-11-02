@@ -59,6 +59,11 @@
   --app-field-max: 28rem;
   /* Shared by buttons and fields, so the two are as tall as each other in a row. */
   --app-control-line-height: 1.2;
+  /* Density, shared by buttons and fields: the block padding, a field's inline
+   * padding (a button's is 0.25rem more), and the font size. */
+  --app-control-pad-y: 0.5rem;
+  --app-control-pad-x: 0.65rem;
+  --app-control-text: 1em;
   --app-shadow: 0 1px 2px rgb(0 0 0 / 0.06), 0 1px 3px rgb(0 0 0 / 0.08);
   --app-focus: 0 0 0 3px color-mix(in srgb, var(--app-accent) 35%, transparent);
 
