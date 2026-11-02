@@ -116,13 +116,15 @@ export function chooseSections(props: {
         {(row) => (
           <Show when={row.held(contains())}>
             {(held) => (
-              <Tick
-                label={`${row.label} (${held()})`}
-                hint={row.hint}
-                checked={platform()[row.key]}
-                disabled={row.locked ?? false}
-                onChange={(on) => setPlatform({ ...platform(), [row.key]: on })}
-              />
+              <p>
+                <Tick
+                  label={`${row.label} (${held()})`}
+                  hint={row.hint}
+                  checked={platform()[row.key]}
+                  disabled={row.locked ?? false}
+                  onChange={(on) => setPlatform({ ...platform(), [row.key]: on })}
+                />
+              </p>
             )}
           </Show>
         )}
@@ -132,13 +134,15 @@ export function chooseSections(props: {
           <Show when={held(rowFor(name), n ?? 0)}>
             {(carried) => (
               <>
-                <Tick
-                  label={`${rowFor(name).label} (${carried()})`}
-                  hint={rowFor(name).hint}
-                  checked={app()[name] ?? false}
-                  disabled={blocked(name) !== undefined}
-                  onChange={(on) => setApp({ ...app(), [name]: on })}
-                />
+                <p>
+                  <Tick
+                    label={`${rowFor(name).label} (${carried()})`}
+                    hint={rowFor(name).hint}
+                    checked={app()[name] ?? false}
+                    disabled={blocked(name) !== undefined}
+                    onChange={(on) => setApp({ ...app(), [name]: on })}
+                  />
+                </p>
                 <Show when={blocked(name)}>{(why) => <Notice tone="warn">{why()}</Notice>}</Show>
               </>
             )}

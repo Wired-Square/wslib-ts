@@ -265,14 +265,16 @@ function Take(props: { sections: SectionRow[] }) {
         <Show when={!here().applicationHalf}>
           <For each={optional()}>
             {(row) => (
-              <Tick
-                label={row.label}
-                hint={row.hint}
-                checked={!leftOut().includes(row.name)}
-                onChange={(on) =>
-                  setLeftOut(on ? leftOut().filter((name) => name !== row.name) : [...leftOut(), row.name])
-                }
-              />
+              <p>
+                <Tick
+                  label={row.label}
+                  hint={row.hint}
+                  checked={!leftOut().includes(row.name)}
+                  onChange={(on) =>
+                    setLeftOut(on ? leftOut().filter((name) => name !== row.name) : [...leftOut(), row.name])
+                  }
+                />
+              </p>
             )}
           </For>
           <FactorProofField of={proof} />
@@ -570,12 +572,14 @@ function Schedule() {
                 </Show>
               }
             >
-              <Tick
-                label="Take backups on a schedule"
-                checked={wanted(current()).enabled}
-                disabled={!current().runs}
-                onChange={(enabled) => setTyped({ ...typed(), enabled })}
-              />
+              <p>
+                <Tick
+                  label="Take backups on a schedule"
+                  checked={wanted(current()).enabled}
+                  disabled={!current().runs}
+                  onChange={(enabled) => setTyped({ ...typed(), enabled })}
+                />
+              </p>
               <Field
                 label="Every (hours)"
                 type="number"

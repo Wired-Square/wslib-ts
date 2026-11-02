@@ -32,6 +32,7 @@
 - `MenuItemCheckbox` and `MenuItemRadio` take `checked`, said with `aria-checked` and marked by `IconSet`'s new
   optional `check`, the icons' `check` by default. Choosing one closes the menu, as a `MenuItem` does.
 - `Menu` takes `align`, `start` or `end` (the default), the trigger's edge the panel lines up with.
+- `Tick` has no `<p>` around it: its root is its `<label>`, an inline grid, so it can sit in a line or a flex row.
 
 ### 0.3.7
 

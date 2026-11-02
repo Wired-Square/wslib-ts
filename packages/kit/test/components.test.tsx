@@ -134,12 +134,13 @@ test("a tab labelled with an element draws it as its name, and again hidden and 
   expect(rule(read("kit.css"), ".app-tab__sizer")).toMatch(/block-size: 0;\s*overflow: hidden;\s*visibility: hidden;\s*font-weight: 600;/);
 });
 
-test("Tick hangs its label and hint beside a box the kit styles", () => {
+test("Tick is an inline label hanging its hint beside a box the kit styles, with no paragraph around it", () => {
   const root = mount(() => <Tick label="Accounts" hint="every password" checked onChange={() => {}} />);
   expect(root.innerHTML).toMatch(
-    /^<p><label class="app-tick__label"><input type="checkbox" class="app-tick__box"[^>]*><span>Accounts<small> — every password<\/small><\/span><\/label><\/p>$/,
+    /^<label class="app-tick__label"><input type="checkbox" class="app-tick__box"[^>]*><span>Accounts<small> — every password<\/small><\/span><\/label>$/,
   );
   expect(root.querySelector("input")!.checked).toBe(true);
+  expect(rule(read("kit.css"), ".app-tick__label")).toMatch(/display: inline-grid;/);
 });
 
 test("NothingYet shows its label under a picture a screen reader skips, and a note only when given one", () => {
