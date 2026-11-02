@@ -1,6 +1,6 @@
 {
   "name": "@wired-square/kit",
-  "version": "0.3.7",
+  "version": "0.4.0",
   "description": "SolidJS components, tokens and test helpers for Wired Square's browser apps.",
   "license": "MIT",
   "repository": {

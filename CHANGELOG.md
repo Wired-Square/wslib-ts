@@ -208,7 +208,9 @@ and `constants` are exported from the root. No dependencies and no peers.
 
 ## `@wired-square/appliance-ui`
 
-- For kit 0.4.0: each restore and backup `Tick` sits in a `<p>` of its own, and the log's controls space themselves
+### 0.6.0
+
+- Needs kit 0.4.0 (the peer range is `^0.4.0`): each restore and backup `Tick` sits in a `<p>` of its own, and the log's controls space themselves
   rather than leaning on a field's margin.
 
 ### 0.5.0
