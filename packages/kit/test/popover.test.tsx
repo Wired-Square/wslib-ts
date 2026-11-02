@@ -55,6 +55,12 @@ test("a Popover is a manual popover with its role, pinned under its anchor at th
   expect(p.options()[0]!.getAttribute("aria-selected")).toBe("false");
 });
 
+test("a Popover is named by its aria-label", () => {
+  const p = picker({ "aria-label": "Vaults" });
+  p.open();
+  expect(p.panel()!.getAttribute("aria-label")).toBe("Vaults");
+});
+
 test("a press on the anchor or inside keeps a Popover open, and one anywhere else closes it", () => {
   const p = picker();
   p.open();

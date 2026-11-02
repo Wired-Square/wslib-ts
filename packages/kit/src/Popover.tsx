@@ -38,6 +38,7 @@ export interface PopoverProps {
   /** Otherwise focus stays where it was, on a live input say. */
   focusFirstItem?: boolean;
   role?: JSX.HTMLAttributes<HTMLDivElement>["role"];
+  "aria-label"?: string;
   children: JSX.Element;
 }
 
@@ -95,7 +96,7 @@ export function Popover(props: PopoverProps) {
   });
 
   return (
-    <div ref={panel} popover="manual" class="app-popover" role={props.role} onKeyDown={navigate}>
+    <div ref={panel} popover="manual" class="app-popover" role={props.role} aria-label={props["aria-label"]} onKeyDown={navigate}>
       <div ref={body}>{props.children}</div>
     </div>
   );
