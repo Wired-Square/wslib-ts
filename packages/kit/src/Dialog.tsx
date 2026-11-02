@@ -111,20 +111,30 @@ export function Dialog(props: DialogProps) {
 
 export interface DialogActionsProps {
   onCancel: () => void;
-  confirm: JSX.Element;
+  /** Absent for a dialog with nothing to confirm: the one button then reads Close. */
+  confirm?: JSX.Element;
   /** Cancel is disabled while the confirm is in flight. */
   pending?: boolean;
   /** A secondary delete, far left; Cancel then takes `autofocus`, so the dialog never opens on it. */
   destructive?: JSX.Element;
+  /** A polite live region, left of the buttons: "1 of 2 selected", "Saving…". */
+  status?: JSX.Element;
 }
 
 export function DialogActions(props: DialogActionsProps) {
   return (
     <div class="app-dialog__actions">
-      <div>{props.destructive}</div>
+      <div>
+        {props.destructive}
+        <Show when={"status" in props}>
+          <span class="app-dialog__status" role="status">
+            {props.status}
+          </span>
+        </Show>
+      </div>
       <div class="app-actions">
         <Button tone="plain" disabled={props.pending} autofocus={"destructive" in props} onClick={props.onCancel}>
-          Cancel
+          {"confirm" in props ? "Cancel" : "Close"}
         </Button>
         {props.confirm}
       </div>

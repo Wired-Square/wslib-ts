@@ -1075,6 +1075,15 @@ select.app-field__input {
   margin-block-start: 0.25rem;
 }
 
+.app-dialog__status {
+  color: var(--app-text-muted);
+  font-size: 0.875rem;
+}
+
+* + .app-dialog__status {
+  margin-inline-start: 0.75rem;
+}
+
 /* After a pointer press only a field keeps its ring: WebKit matches `:focus-visible` on focus moved by script. */
 :root[data-app-modality="pointer"] :focus-visible:not(input, textarea, select),
 :root[data-app-modality="pointer"] .app-visually-hidden:focus-visible + .app-pick-file__label {

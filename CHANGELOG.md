@@ -21,6 +21,8 @@
 - `Dialog` takes `class`; `closeButton`, a labelled close button drawn with `IconSet`'s `clear`, last in the dialog so
   it never takes the opening focus, disabled while `pending`; and `undismissible`, for a first run or a busy wait:
   Escape and the platform's own close leave it open, no close button shows, and `onClose` is optional.
+- `DialogActions` takes `status`, a polite live region left of the buttons ("1 of 2 selected"), and without `confirm`
+  its one button reads Close.
 
 ### 0.3.7
 

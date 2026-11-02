@@ -108,3 +108,36 @@ test("Escape in an empty search leaves an undismissible Dialog open", () => {
   expect(e.defaultPrevented).toBe(true);
   expect(dialogIn(root).open).toBe(true);
 });
+
+test("DialogActions' status is a polite live region beside the buttons", () => {
+  const [picked, setPicked] = createSignal(1);
+  const root = mount(() => (
+    <DialogActions
+      onCancel={() => {}}
+      status={`${picked()} of 2 selected`}
+      confirm={<Button tone="primary">Add</Button>}
+    />
+  ));
+  const status = root.querySelector("[role=status]")!;
+  expect(status.className).toBe("app-dialog__status");
+  expect(status.textContent).toBe("1 of 2 selected");
+  setPicked(2);
+  expect(status.textContent).toBe("2 of 2 selected");
+  expect(button("Cancel")).toBeTruthy();
+});
+
+test("DialogActions without a status has no live region", () => {
+  const root = mount(() => <DialogActions onCancel={() => {}} confirm={<Button>Add</Button>} />);
+  expect(root.querySelector("[role=status]")).toBeNull();
+});
+
+test("DialogActions with nothing to confirm is one Close button, disabled while pending", () => {
+  const onCancel = vi.fn();
+  const [pending, setPending] = createSignal(false);
+  const root = mount(() => <DialogActions onCancel={onCancel} pending={pending()} />);
+  expect([...root.querySelectorAll("button")].map((b) => b.textContent)).toEqual(["Close"]);
+  button("Close").click();
+  expect(onCancel).toHaveBeenCalledOnce();
+  setPending(true);
+  expect(button("Close").disabled).toBe(true);
+});
