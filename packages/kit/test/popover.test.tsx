@@ -1,9 +1,9 @@
 import { Show, createSignal } from "solid-js";
 import { expect, test, vi } from "vitest";
 
-import { Menu, MenuItem, Popover, PopoverOption } from "../src/index";
+import { Menu, MenuItem, MenuItemCheckbox, MenuItemRadio, Popover, PopoverOption } from "../src/index";
 import type { PopoverProps } from "../src/index";
-import { button, mount } from "../src/testing";
+import { button, mount, unmountAll } from "../src/testing";
 
 const rect = (top: number, left: number, width: number, height = 28) =>
   ({ top, bottom: top + height, left, right: left + width, width, height }) as DOMRect;
@@ -55,6 +55,12 @@ test("a Popover is a manual popover with its role, pinned under its anchor at th
   expect(p.options()[0]!.getAttribute("aria-selected")).toBe("false");
 });
 
+test("a Popover is named by its aria-label", () => {
+  const p = picker({ "aria-label": "Vaults" });
+  p.open();
+  expect(p.panel()!.getAttribute("aria-label")).toBe("Vaults");
+});
+
 test("a press on the anchor or inside keeps a Popover open, and one anywhere else closes it", () => {
   const p = picker();
   p.open();
@@ -79,18 +85,18 @@ test("Escape closes a Popover and goes no further, so a dialog around it stays o
   expect(beyond).not.toHaveBeenCalled();
 });
 
-test("a scroll inside a Popover or its anchor keeps it, and a scroll outside or a resize closes it", () => {
+test("a Popover closes on a scroll that moves its anchor or on a resize, and not on another scroll", () => {
   const p = picker();
   p.open();
-  fire(p.panel()!, "scroll");
-  fire(p.anchor, "scroll");
+  for (const unmoving of [p.panel()!, p.anchor, button("elsewhere")]) fire(unmoving, "scroll");
   expect(p.onClose).not.toHaveBeenCalled();
-  fire(document, "scroll");
-  expect(p.onClose).toHaveBeenCalledOnce();
-
-  p.open();
+  for (const [moving, times] of [[p.anchor.parentElement!, 1], [document, 2]] as const) {
+    fire(moving, "scroll");
+    expect(p.onClose).toHaveBeenCalledTimes(times);
+    p.open();
+  }
   window.dispatchEvent(new Event("resize"));
-  expect(p.onClose).toHaveBeenCalledTimes(2);
+  expect(p.onClose).toHaveBeenCalledTimes(3);
 });
 
 test("a Popover leaves focus on its anchor, and focusFirstItem focuses the first available item", () => {
@@ -176,6 +182,70 @@ test("a Menu is placed by placePopover: above a trigger near the bottom, right-a
   expect(panel.style.maxHeight).toBe(`${window.innerHeight - 68 - 12}px`);
 });
 
+test("a Menu given align start lines up with its trigger's left edge", () => {
+  vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockReturnValue(120);
+  vi.spyOn(HTMLElement.prototype, "offsetWidth", "get").mockReturnValue(160);
+  mount(() => (
+    <Menu aria-label="Actions" align="start">
+      <MenuItem onSelect={() => {}}>Rename</MenuItem>
+    </Menu>
+  ));
+  const trigger = document.querySelector<HTMLElement>(".app-menu__trigger")!;
+  trigger.getBoundingClientRect = () => rect(100, 400, 28);
+  trigger.click();
+  expect(document.querySelector<HTMLElement>(".app-menu")!.style.left).toBe("400px");
+});
+
+test("ArrowDown on a Menu's trigger opens it on its first item, and on a pending one opens nothing", () => {
+  for (const pending of [false, true]) {
+    mount(() => (
+      <Menu aria-label="Actions" pending={pending}>
+        <MenuItem onSelect={() => {}}>Rename</MenuItem>
+        <MenuItem onSelect={() => {}}>Remove</MenuItem>
+      </Menu>
+    ));
+    const trigger = document.querySelector<HTMLElement>(".app-menu__trigger")!;
+    trigger.focus();
+    const down = new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true, cancelable: true });
+    trigger.dispatchEvent(down);
+    expect(down.defaultPrevented, "the page does not scroll").toBe(true);
+    expect(trigger.getAttribute("aria-expanded")).toBe(String(!pending));
+    expect(document.activeElement).toBe(pending ? trigger : button("Rename"));
+    unmountAll();
+  }
+});
+
+test("checkbox and radio items are reached by the arrows, and choosing one closes the menu and acts", () => {
+  const chosen = vi.fn();
+  mount(() => (
+    <Menu aria-label="View">
+      <MenuItemCheckbox checked onSelect={() => chosen("wrap")}>Wrap</MenuItemCheckbox>
+      <MenuItemRadio checked={false} onSelect={() => chosen("dark")}>Dark</MenuItemRadio>
+    </Menu>
+  ));
+  const trigger = document.querySelector<HTMLElement>(".app-menu__trigger")!;
+  trigger.click();
+  expect(document.activeElement).toBe(button("Wrap"));
+  button("Wrap").dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }));
+  expect(document.activeElement).toBe(button("Dark"));
+  button("Dark").click();
+  expect(chosen).toHaveBeenCalledWith("dark");
+  expect(trigger.getAttribute("aria-expanded")).toBe("false");
+});
+
+test("a clicked MenuItemCheckbox takes focus, since WebKit leaves it on the body", () => {
+  mount(() => (
+    <Menu aria-label="View">
+      <MenuItemCheckbox checked={false} onSelect={() => {}}>Wrap</MenuItemCheckbox>
+      <MenuItemCheckbox checked={false} onSelect={() => {}}>Wide</MenuItemCheckbox>
+    </Menu>
+  ));
+  document.querySelector<HTMLElement>(".app-menu__trigger")!.click();
+  button("Wrap").blur();
+  button("Wide").click();
+  expect(document.activeElement).toBe(button("Wide"));
+});
+
 test("a danger MenuItem is drawn in alert, and a disabled one neither closes the menu nor acts", () => {
   const selected = vi.fn();
   mount(() => (
@@ -226,4 +296,23 @@ test("choosing a MenuItem returns focus to the trigger before the item acts", ()
   trigger.click();
   button("Rename").click();
   expect(focused).toBe(trigger);
+});
+
+test("a Menu closes on a scroll that moves its trigger, and not on a scroll beside it", () => {
+  mount(() => (
+    <>
+      <div class="strip" />
+      <Menu aria-label="Actions">
+        <MenuItem onSelect={() => {}}>Rename</MenuItem>
+      </Menu>
+    </>
+  ));
+  const trigger = document.querySelector<HTMLElement>(".app-menu__trigger")!;
+  for (const moving of [trigger.parentElement!, document]) {
+    trigger.click();
+    fire(document.querySelector(".strip")!, "scroll");
+    expect(trigger.getAttribute("aria-expanded")).toBe("true");
+    fire(moving, "scroll");
+    expect(trigger.getAttribute("aria-expanded")).toBe("false");
+  }
 });

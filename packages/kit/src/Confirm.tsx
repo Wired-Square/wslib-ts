@@ -30,7 +30,7 @@ export function Confirm(props: ConfirmProps) {
   const confirm = () => void action.run(() => props.act(given()), props.onClose);
 
   return (
-    <Dialog title={props.title} pending={action.pending()} onClose={props.onClose}>
+    <Dialog title={props.title} class="app-confirm" pending={action.pending()} onClose={props.onClose}>
       <Notice tone="bad">{action.failed()}</Notice>
       <div class="app-dialog__body">{props.children}</div>
       <Show when={props.reason}>

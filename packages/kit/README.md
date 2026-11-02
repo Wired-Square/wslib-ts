@@ -88,8 +88,9 @@ A token set inline on `<html>`, by `documentElement.style.setProperty` say, beat
 theme that way should switch to `applyTheme`.
 
 **`IconSet`** replaces the glyphs the kit draws: `schemeSystem`, `schemeLight`, `schemeDark`, `empty` (`NothingYet`),
-`more` (`Menu`'s trigger) and `copy` (`CopyButton`). Each is a `() => JSX.Element`, and a nested set merges over the
-outer one.
+`more` (`Menu`'s trigger), `copy` (`CopyButton`), `clear` (`SearchInput`'s clear button and `Dialog`'s close button),
+`chevron` (after a `Menu` trigger given `chevron`) and `check` (a checked `MenuItemCheckbox` or `MenuItemRadio`). Each
+is a `() => JSX.Element`, and a nested set merges over the outer one.
 
 ```tsx
 <IconSet icons={{ schemeDark: () => <MoonIcon /> }}>

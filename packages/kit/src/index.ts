@@ -1,3 +1,5 @@
+import "./modality";
+
 export * from "@wired-square/kit/core";
 
 export { createAction } from "./action";
@@ -34,8 +36,8 @@ export type { KitIcons } from "./icons";
 
 export { Loaded } from "./Loaded";
 
-export { Menu, MenuItem, MenuItemUnavailable } from "./Menu";
-export type { MenuItemProps, MenuItemUnavailableProps, MenuProps } from "./Menu";
+export { Menu, MenuItem, MenuItemCheckbox, MenuItemRadio, MenuItemUnavailable } from "./Menu";
+export type { MenuItemCheckProps, MenuItemProps, MenuItemUnavailableProps, MenuProps } from "./Menu";
 
 export { Notice } from "./Notice";
 export type { NoticeProps, Tone } from "./Notice";

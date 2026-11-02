@@ -71,9 +71,10 @@
 
 .app-btn {
   font: inherit;
+  font-size: var(--app-control-text);
   font-weight: 500;
   line-height: var(--app-control-line-height);
-  padding: 0.5rem 0.9rem;
+  padding: var(--app-control-pad-y) calc(var(--app-control-pad-x) + 0.25rem);
   border-radius: var(--app-radius);
   border: 1px solid transparent;
   cursor: pointer;
@@ -126,6 +127,7 @@
 .app-btn--primary:disabled,
 .app-btn--primary[aria-disabled="true"] {
   opacity: 1;
+  color: var(--app-accent-disabled-contrast);
   background: var(--app-accent-disabled);
   border-color: var(--app-accent-disabled);
 }
@@ -160,9 +162,26 @@
   color: var(--app-text);
 }
 
+.app-btn--link {
+  display: inline;
+  padding: 0;
+  border-color: transparent;
+  background: transparent;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+  text-decoration: underline;
+}
+
+.app-btn--link:hover:not(:disabled, [aria-disabled="true"]) {
+  border-color: transparent;
+  background: transparent;
+  text-decoration-thickness: 2px;
+}
+
 .app-btn--icon {
   justify-content: center;
-  padding: 0.5rem;
+  padding: var(--app-control-pad-y);
 }
 
 .app-btn--icon svg {
@@ -179,6 +198,9 @@
 
 .app-field {
   display: block;
+}
+
+:where(.app-form, .app-confirm, .app-confirm > .app-dialog__body) > .app-field {
   margin-block-end: 1rem;
 }
 
@@ -193,10 +215,11 @@
 .app-field__input {
   box-sizing: border-box;
   font: inherit;
+  font-size: var(--app-control-text);
   line-height: var(--app-control-line-height);
   width: 100%;
   max-width: var(--app-field-max);
-  padding: 0.5rem 0.65rem;
+  padding: var(--app-control-pad-y) var(--app-control-pad-x);
   color: var(--app-text);
   background: var(--app-surface);
   border: 1px solid var(--app-border-strong);
@@ -224,6 +247,11 @@ select.app-field__input {
   line-height: inherit;
   font-family: var(--app-font-mono);
   font-size: 0.85em;
+  resize: vertical;
+}
+
+.app-field__input--prose {
+  line-height: inherit;
   resize: vertical;
 }
 
@@ -373,10 +401,23 @@ select.app-field__input {
 }
 
 /* An invisible bold copy of the label holds the selected width, so choosing a
-   tab does not move the strip. */
+   tab does not move the strip: `data-label`'s, or an element label's second render. */
 .app-tab[data-label]::after {
   content: attr(data-label);
   display: block;
+  block-size: 0;
+  overflow: hidden;
+  visibility: hidden;
+  font-weight: 600;
+}
+
+.app-tab__face {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.app-tab__sizer {
   block-size: 0;
   overflow: hidden;
   visibility: hidden;
@@ -513,7 +554,7 @@ select.app-field__input {
 
 /* --- menus -------------------------------------------------------------- */
 
-.app-menu__trigger {
+.app-btn--plain.app-menu__trigger {
   padding: 0.25rem 0.5rem;
 }
 
@@ -522,7 +563,7 @@ select.app-field__input {
   margin-block: calc((var(--app-control-line-height) - 1) * 0.5em);
 }
 
-.app-menu__trigger[aria-expanded="true"] {
+.app-menu__trigger[aria-expanded="true"]:not(.app-btn--primary, .app-btn--danger, .app-btn--link) {
   background: var(--app-surface-sunken);
   color: var(--app-text);
 }
@@ -584,7 +625,7 @@ select.app-field__input {
   color: var(--app-alert);
 }
 
-.app-menu__item[aria-disabled="true"] {
+.app-menu__item:is(:disabled, [aria-disabled="true"]) {
   color: var(--app-text-muted);
   cursor: not-allowed;
 }
@@ -593,8 +634,15 @@ select.app-field__input {
   font-weight: 600;
 }
 
+.app-menu__check {
+  display: inline-flex;
+  inline-size: 1em;
+  margin-inline-end: 0.5rem;
+  vertical-align: -0.125em;
+}
+
 @media (forced-colors: active) {
-  .app-menu__item[aria-disabled="true"] {
+  .app-menu__item:is(:disabled, [aria-disabled="true"]) {
     color: GrayText;
   }
 
@@ -844,8 +892,10 @@ select.app-field__input {
   max-width: 100%;
 }
 
-/* Room for the clear button; WebKit's own is hidden, so there is one. */
+/* Undrawn, because WebKit's native search box ignores the padding and is a different height from a field.
+   Room for the clear button; WebKit's own is hidden, so there is one. */
 .app-search__input {
+  appearance: none;
   padding-inline-end: 2rem;
 }
 
@@ -873,6 +923,12 @@ select.app-field__input {
 .app-search__clear:focus-visible {
   outline: none;
   box-shadow: var(--app-focus);
+}
+
+@media (forced-colors: active) {
+  .app-search__input {
+    appearance: auto;
+  }
 }
 
 /* --- tables ------------------------------------------------------------- */
@@ -974,6 +1030,16 @@ select.app-field__input {
   max-width: 48rem;
 }
 
+.app-dialog--closable .app-dialog__title {
+  padding-inline-end: 2.5rem;
+}
+
+.app-dialog__close {
+  position: absolute;
+  inset-block-start: 0.75rem;
+  inset-inline-end: 0.75rem;
+}
+
 .app-dialog::backdrop {
   backdrop-filter: blur(2px);
   background: var(--app-neutral-bg);
@@ -1008,6 +1074,29 @@ select.app-field__input {
   justify-content: space-between;
   gap: 0.5rem;
   margin-block-start: 0.25rem;
+}
+
+.app-dialog__status {
+  color: var(--app-text-muted);
+  font-size: 0.875rem;
+}
+
+* + .app-dialog__status {
+  margin-inline-start: 0.75rem;
+}
+
+/* After a pointer press only a text field keeps its ring: WebKit matches `:focus-visible` on focus moved by script. */
+:root[data-app-modality="pointer"]
+  :focus-visible:not(textarea, select, input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="file"])),
+:root[data-app-modality="pointer"] .app-visually-hidden:focus-visible + .app-pick-file__label {
+  --app-focus: 0 0 transparent;
+}
+
+/* These draw the platform's own ring rather than `--app-focus`. */
+@media (forced-colors: none) {
+  :root[data-app-modality="pointer"] :is(.app-dialog, .app-tick__box):focus-visible {
+    outline: none;
+  }
 }
 
 /* Forced colours drop the box-shadow ring. Last, to outrank `outline: none`. */

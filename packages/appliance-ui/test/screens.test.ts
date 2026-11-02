@@ -1085,8 +1085,9 @@ const optional = (offered: () => boolean | Promise<boolean>) => [
   { name: "node", label: "Node", hint: "this box's node", optional: offered },
 ];
 
-const hasTick = (root: Element, label: string) =>
-  [...within(root)].some((n) => n.tag === "label" && textOf(n).trim().startsWith(label));
+const tickLabel = (root: Element, label: string) =>
+  [...within(root)].find((n) => n.tag === "label" && textOf(n).trim().startsWith(label));
+const hasTick = (root: Element, label: string) => tickLabel(root, label) !== undefined;
 
 const PASSPHRASE = "a passphrase long enough to be one";
 
@@ -1116,6 +1117,7 @@ test("An optional section has a tick at take only when the product offers it, an
   ] as const) {
     const { root } = await mount(() => BackupSettings({ sections: optional(said) }), () => undefined);
     assert.equal(hasTick(root, "Node"), shown, String(said));
+    if (shown) assert.equal(tickLabel(root, "Node")!.parent!.tag, "p", "a line of its own");
     assert.doesNotMatch(textOf(root), new RegExp(BOUNDARY));
   }
 
@@ -1183,7 +1185,7 @@ test("A local caller that arrives after Check offers only the application half",
   const [local, setLocal] = createSignal<LocalIdentity>();
   const { root } = await mount(() => BackupSettings({ view: "restore" }), inspected, local);
   await check(root);
-  assert.equal(hasTick(root, "Hostname"), true);
+  assert.equal(tickLabel(root, "Hostname")!.parent!.tag, "p", "a line of its own");
 
   setLocal(localAdmin);
   await settled();

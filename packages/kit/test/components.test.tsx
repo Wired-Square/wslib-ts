@@ -1,6 +1,7 @@
 import { expect, test, vi } from "vitest";
+import { createSignal } from "solid-js";
 
-import { FeedStatus, IconSet, Menu, MenuItem, MenuItemUnavailable, NothingYet, Notice, TabButton, Tabs, Tick, Toggle, Views, viewOf } from "../src/index";
+import { Button, FeedStatus, Field, Form, IconSet, Menu, MenuItem, MenuItemCheckbox, MenuItemRadio, MenuItemUnavailable, NothingYet, Notice, TabButton, Tabs, TextArea, Tick, Toggle, Views, viewOf } from "../src/index";
 import { mount } from "../src/testing";
 import { forcedColours, read, rule, sourceFiles } from "./css";
 
@@ -51,7 +52,8 @@ test("under forced colours, disabled, selected and live states keep a system col
   const selected = ':is([aria-selected="true"], [aria-pressed="true"]';
   expect(rule(forced, '.app-btn[aria-disabled="true"]')).toMatch(/color: GrayText;/);
   expect(rule(forced, ".app-field__input:disabled")).toMatch(/color: GrayText;/);
-  expect(rule(forced, '.app-menu__item[aria-disabled="true"]')).toMatch(/color: GrayText;/);
+  expect(rule(forced, '.app-menu__item:is(:disabled, [aria-disabled="true"])')).toMatch(/color: GrayText;/);
+  expect(rule(read("kit.css"), '.app-menu__item:is(:disabled, [aria-disabled="true"])')).toMatch(/color: var\(--app-text-muted\);/);
   expect(rule(forced, `.app-tab${selected}, [aria-current="page"])`)).toMatch(/border-color: Highlight;/);
   expect(rule(forced, `.app-tab:not([aria-selected="true"], [aria-pressed="true"], [aria-current="page"])`)).toMatch(
     /border-block-end-style: none;/,
@@ -121,12 +123,38 @@ test("a tab, and a TabButton labelled in words, carry the label that reserves th
   expect([button.dataset.label, button.getAttribute("aria-pressed"), button.textContent]).toEqual(["Errors", "true", "Errors"]);
 });
 
-test("Tick hangs its label and hint beside a box the kit styles", () => {
+test("a tab labelled with an element draws it as its name, and again hidden and bold to reserve its selected width", () => {
+  const strip = mount(() => (
+    <Tabs aria-label="Sections" tabs={[{ id: "a", label: () => <>Errors <b>3</b></> }]} selected="a" onChange={() => {}} />
+  ));
+  const tab = strip.querySelector("button")!;
+  expect(tab.hasAttribute("data-label")).toBe(false);
+  expect(tab.innerHTML).toBe(
+    '<span class="app-tab__face">Errors <b>3</b></span><span class="app-tab__face app-tab__sizer" aria-hidden="true">Errors <b>3</b></span>',
+  );
+  expect(rule(read("kit.css"), ".app-tab__sizer")).toMatch(/block-size: 0;\s*overflow: hidden;\s*visibility: hidden;\s*font-weight: 600;/);
+});
+
+test("Tick is an inline label hanging its hint beside a box the kit styles, with no paragraph around it", () => {
   const root = mount(() => <Tick label="Accounts" hint="every password" checked onChange={() => {}} />);
   expect(root.innerHTML).toMatch(
-    /^<p><label class="app-tick__label"><input type="checkbox" class="app-tick__box"[^>]*><span>Accounts<small> — every password<\/small><\/span><\/label><\/p>$/,
+    /^<label class="app-tick__label"><input type="checkbox" class="app-tick__box"[^>]*><span>Accounts<small> — every password<\/small><\/span><\/label>$/,
   );
   expect(root.querySelector("input")!.checked).toBe(true);
+  expect(rule(read("kit.css"), ".app-tick__label")).toMatch(/display: inline-grid;/);
+});
+
+test("a field has no margin of its own, and a Form or a Confirm spaces the fields directly inside it, leaving a Dialog's to its layout", () => {
+  const css = read("kit.css");
+  expect(rule(css, ".app-field")).not.toMatch(/margin/);
+  expect(rule(css, ":where(.app-form, .app-confirm, .app-confirm > .app-dialog__body) > .app-field")).toMatch(/margin-block-end: 1rem;/);
+  expect(css).not.toMatch(/\.app-dialog\) > \.app-field/);
+  const root = mount(() => (
+    <Form act={async () => {}}>
+      <Field label="Name" />
+    </Form>
+  ));
+  expect(root.querySelector("form.app-form > .app-field")).not.toBeNull();
 });
 
 test("NothingYet shows its label under a picture a screen reader skips, and a note only when given one", () => {
@@ -153,6 +181,41 @@ test("a current MenuItem says so on the menu item itself, drawn bold as a select
   expect(rule(read("kit.css"), '.app-menu__item[aria-current="page"]')).toMatch(/font-weight: 600;/);
 });
 
+test("an opened Menu focuses its checked radio item when none is current, and keeps its current item first", () => {
+  const cases: [current: boolean, focused: string][] = [[false, "Dark"], [true, "Settings"]];
+  for (const [current, focused] of cases) {
+    const root = mount(() => (
+      <Menu aria-label="Scheme">
+        <MenuItemRadio checked={false} onSelect={() => {}}>Light</MenuItemRadio>
+        <MenuItemRadio checked onSelect={() => {}}>Dark</MenuItemRadio>
+        <MenuItem current={current} onSelect={() => {}}>Settings</MenuItem>
+      </Menu>
+    ));
+    root.querySelector<HTMLElement>(".app-menu__trigger")!.click();
+    expect(document.activeElement!.textContent).toBe(focused);
+  }
+});
+
+test("choosing a MenuItemCheckbox leaves its Menu open, and choosing a MenuItemRadio closes it", () => {
+  const [wrap, setWrap] = createSignal(false);
+  const chose = vi.fn();
+  const root = mount(() => (
+    <Menu aria-label="View">
+      <MenuItemCheckbox checked={wrap()} onSelect={() => setWrap(!wrap())}>Wrap</MenuItemCheckbox>
+      <MenuItemRadio checked={false} onSelect={chose}>Dark</MenuItemRadio>
+    </Menu>
+  ));
+  const trigger = root.querySelector<HTMLElement>(".app-menu__trigger")!;
+  const item = (name: string) => [...root.querySelectorAll<HTMLElement>("[role^=menuitem]")].find((b) => b.textContent === name)!;
+  trigger.click();
+  item("Wrap").click();
+  expect(trigger.getAttribute("aria-expanded")).toBe("true");
+  expect(item("Wrap").getAttribute("aria-checked")).toBe("true");
+  item("Dark").click();
+  expect(chose).toHaveBeenCalledOnce();
+  expect(trigger.getAttribute("aria-expanded")).toBe("false");
+});
+
 test("an opened Menu focuses its current item, and its first when none is current", () => {
   const cases: [current: number | undefined, focused: string][] = [[1, "Two"], [undefined, "One"]];
   for (const [current, focused] of cases) {
@@ -166,6 +229,39 @@ test("an opened Menu focuses its current item, and its first when none is curren
     root.querySelector<HTMLElement>(".app-menu__trigger")!.click();
     expect(document.activeElement!.textContent).toBe(focused);
   }
+});
+
+test("a MenuItemCheckbox and a MenuItemRadio say their role and whether they are checked, marked by IconSet's check", () => {
+  const html = mount(() => (
+    <IconSet icons={{ check: () => "✓" }}>
+      <MenuItemCheckbox checked onSelect={() => {}}>Wrap</MenuItemCheckbox>
+      <MenuItemCheckbox checked={false} onSelect={() => {}}>Numbers</MenuItemCheckbox>
+      <MenuItemRadio checked onSelect={() => {}}>Light</MenuItemRadio>
+      <MenuItemRadio checked={false} onSelect={() => {}}>Dark</MenuItemRadio>
+    </IconSet>
+  )).innerHTML;
+  const mark = (checked: boolean) => `<span class="app-menu__check" aria-hidden="true">${checked ? "✓" : ""}</span>`;
+  const items = [...html.matchAll(/<button [^>]*role="([^"]+)"[^>]*aria-checked="([^"]+)"[^>]*>(.*?)<\/button>/g)].map((m) => m.slice(1));
+  expect(items).toEqual([
+    ["menuitemcheckbox", "true", `${mark(true)}Wrap`],
+    ["menuitemcheckbox", "false", `${mark(false)}Numbers`],
+    ["menuitemradio", "true", `${mark(true)}Light`],
+    ["menuitemradio", "false", `${mark(false)}Dark`],
+  ]);
+  expect(mount(() => <MenuItem onSelect={() => {}}>Plain</MenuItem>).innerHTML).not.toMatch(/aria-checked|app-menu__check/);
+});
+
+test("a Menu's trigger is plain unless given a tone, a plain or default one is drawn pressed while open, and only a plain one is tight", () => {
+  const trigger = (props: { tone?: "default" | "primary" }) =>
+    mount(() => <Menu aria-label="Actions" {...props}>{null}</Menu>).querySelector(".app-menu__trigger")!.className;
+  expect(trigger({})).toBe("app-btn app-btn--plain app-menu__trigger");
+  expect(trigger({ tone: "primary" })).toBe("app-btn app-btn--primary app-menu__trigger");
+  expect(trigger({ tone: "default" })).toBe("app-btn app-menu__trigger");
+  const css = read("kit.css");
+  expect(rule(css, '.app-menu__trigger[aria-expanded="true"]:not(.app-btn--primary, .app-btn--danger, .app-btn--link)')).toMatch(
+    /background: var\(--app-surface-sunken\);/,
+  );
+  expect(rule(css, ".app-btn--plain.app-menu__trigger")).toMatch(/padding: 0\.25rem 0\.5rem;/);
 });
 
 test("MenuItemUnavailable is a focusable menu item that says why it is unavailable", () => {
@@ -230,4 +326,51 @@ test("a Menu given chevron draws IconSet's chevron after its face, out of its na
     </IconSet>
   )));
   expect(own.querySelector(".app-menu__chevron")!.textContent).toBe("▾");
+});
+
+test("buttons and fields take their padding and font size from the density tokens, which default to today's 37.2px", () => {
+  const css = read("kit.css");
+  const theme = read("theme.css");
+  expect(rule(css, ".app-btn")).toMatch(
+    /font-size: var\(--app-control-text\);[^}]*padding: var\(--app-control-pad-y\) calc\(var\(--app-control-pad-x\) \+ 0\.25rem\);/,
+  );
+  expect(rule(css, ".app-btn--icon")).toMatch(/padding: var\(--app-control-pad-y\);/);
+  expect(rule(css, ".app-field__input")).toMatch(
+    /font-size: var\(--app-control-text\);[^}]*padding: var\(--app-control-pad-y\) var\(--app-control-pad-x\);/,
+  );
+
+  const token = (name: string) => theme.match(new RegExp(`\\n  --app-${name}: ([^;]+);`))![1];
+  expect([token("control-pad-y"), token("control-pad-x"), token("control-text")]).toEqual(["0.5rem", "0.65rem", "1em"]);
+  const rem = (value: string) => Number(value.replace(/r?em$/, "")) * 16;
+  const height = rem(token("control-text")!) * Number(token("control-line-height")) + 2 * rem(token("control-pad-y")!) + 2;
+  expect(height).toBeCloseTo(37.2);
+});
+
+test("a disabled primary button's text reads its own token, the accent's contrast by default", () => {
+  const disabled = rule(read("kit.css"), ".app-btn--primary:disabled,\n.app-btn--primary[aria-disabled=\"true\"]");
+  expect(disabled).toMatch(/color: var\(--app-accent-disabled-contrast\);[^}]*background: var\(--app-accent-disabled\);/);
+  expect(read("theme.css")).toMatch(/:root \{[^}]*--app-accent-disabled-contrast: var\(--app-accent-contrast\);/);
+});
+
+test("a prose TextArea is in the body font at its own height, and the default one stays monospace and tall", () => {
+  const pasted = mount(() => <TextArea label="Key" />).querySelector("textarea")!;
+  const prose = mount(() => <TextArea label="Notes" variant="prose" />).querySelector("textarea")!;
+  expect(pasted.className).toBe("app-field__input app-field__input--multiline");
+  expect(prose.className).toBe("app-field__input app-field__input--prose");
+  const css = read("kit.css");
+  expect(rule(css, ".app-field__input--multiline")).toMatch(/min-height: 9rem;[^}]*font-family: var\(--app-font-mono\);/);
+  expect(rule(css, ".app-field__input--prose")).not.toMatch(/min-height|font-family|font-size/);
+});
+
+test("a link button is underlined text in the line's own font, with no box even on hover, and keeps the buttons' ring", () => {
+  const button = mount(() => <Button tone="link">resend the code</Button>).querySelector("button")!;
+  expect(button.className).toBe("app-btn app-btn--link");
+  const css = read("kit.css");
+  expect(rule(css, ".app-btn--link")).toMatch(
+    /display: inline;\s*padding: 0;\s*border-color: transparent;\s*background: transparent;\s*font-size: inherit;\s*font-weight: inherit;\s*line-height: inherit;\s*text-decoration: underline;/,
+  );
+  expect(rule(css, ".app-btn--link")).not.toMatch(/color: var/);
+  expect(rule(css, '.app-btn--link:hover:not(:disabled, [aria-disabled="true"])')).toMatch(
+    /border-color: transparent;\s*background: transparent;/,
+  );
 });

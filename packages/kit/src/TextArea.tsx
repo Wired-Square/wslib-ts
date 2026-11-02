@@ -4,6 +4,8 @@ import { cx } from "@wired-square/kit/core";
 
 export interface TextAreaProps extends JSX.TextareaHTMLAttributes<HTMLTextAreaElement> {
   label: string;
+  /** Written words in the body font; by default it is monospace and tall, for text pasted rather than typed. */
+  variant?: "prose";
   hint?: string;
   /** Shown instead of the hint. */
   error?: string;
@@ -11,9 +13,9 @@ export interface TextAreaProps extends JSX.TextareaHTMLAttributes<HTMLTextAreaEl
   onValue?: (value: string) => void;
 }
 
-/** `Field` for text pasted rather than typed: a certificate, a key. */
+/** `Field` for text pasted rather than typed, a certificate or a key, or with `variant="prose"` for written words. */
 export function TextArea(props: TextAreaProps) {
-  const [own, rest] = splitProps(props, ["label", "hint", "error", "class", "onValue"]);
+  const [own, rest] = splitProps(props, ["label", "variant", "hint", "error", "class", "onValue"]);
 
   const id = createUniqueId();
   const noteId = `${id}-note`;
@@ -27,7 +29,7 @@ export function TextArea(props: TextAreaProps) {
       <textarea
         {...rest}
         id={id}
-        class="app-field__input app-field__input--multiline"
+        class={`app-field__input app-field__input--${own.variant ?? "multiline"}`}
         aria-invalid={own.error ? "true" : "false"}
         aria-describedby={note() ? noteId : undefined}
       />

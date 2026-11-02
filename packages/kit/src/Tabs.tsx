@@ -6,7 +6,8 @@ import { arrowTo } from "./keys";
 
 export interface Tab<T extends string> {
   id: T;
-  label: string;
+  /** Words, or a render for an icon or a count; a render is called twice, the second copy holding the selected width. */
+  label: string | (() => JSX.Element);
 }
 
 export interface TabsProps<T extends string> {
@@ -21,6 +22,18 @@ export interface TabsProps<T extends string> {
 }
 
 const scoped = (group: string | undefined, id: string) => (group ? `${group}-${id}` : id);
+
+const face = (label: Tab<string>["label"]) =>
+  typeof label === "string" ? (
+    label
+  ) : (
+    <>
+      <span class="app-tab__face">{label()}</span>
+      <span class="app-tab__face app-tab__sizer" aria-hidden="true">
+        {label()}
+      </span>
+    </>
+  );
 
 /**
  * A tab strip. Arrows, Home and End move the selection, and only the selected
@@ -49,14 +62,14 @@ export function Tabs<T extends string>(props: TabsProps<T>) {
             type="button"
             role="tab"
             class="app-tab"
-            data-label={t.label}
+            data-label={typeof t.label === "string" ? t.label : undefined}
             id={`tab-${scoped(props.group, t.id)}`}
             aria-controls={`panel-${scoped(props.group, t.id)}`}
             aria-selected={props.selected === t.id}
             tabindex={props.selected === t.id ? 0 : -1}
             onClick={() => props.onChange(t.id)}
           >
-            {t.label}
+            {face(t.label)}
           </button>
         )}
       </For>

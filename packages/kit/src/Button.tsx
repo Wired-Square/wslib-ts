@@ -2,8 +2,8 @@ import { splitProps } from "solid-js";
 import type { JSX } from "solid-js";
 import { cx } from "@wired-square/kit/core";
 
-/** `danger` is an irreversible act, read from `--app-alert` rather than `--app-bad`. */
-export type ButtonTone = "default" | "primary" | "danger" | "plain";
+/** `danger` is an irreversible act, read from `--app-alert` rather than `--app-bad`; `link` is an action inside prose. */
+export type ButtonTone = "default" | "primary" | "danger" | "plain" | "link";
 
 export interface ButtonProps extends JSX.ButtonHTMLAttributes<HTMLButtonElement> {
   tone?: ButtonTone;

@@ -165,16 +165,13 @@
 .app-log__controls {
   display: flex;
   flex-wrap: wrap;
-  gap: 0 1rem;
+  gap: 1rem;
   align-items: flex-end;
+  margin-block-end: 1rem;
 }
 
 .app-log__controls .app-field {
   flex: 1 1 12rem;
-}
-
-.app-log__controls .app-actions {
-  margin-block-end: 1rem;
 }
 
 /* Its own margin, not a `<p>`'s, which a consumer's reset takes away. */
@@ -267,7 +264,7 @@
   gap: 0.75rem;
 }
 
-.app-serial > :is(.app-notice, .app-field) {
+.app-serial > .app-notice {
   margin: 0;
 }
 

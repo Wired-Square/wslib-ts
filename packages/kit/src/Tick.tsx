@@ -14,27 +14,25 @@ export interface TickProps {
   onChange: (on: boolean) => void;
 }
 
-/** A tickbox with its hint on the same line. */
+/** An inline tickbox with its hint on the same line; a line of its own comes from its container. */
 export function Tick(props: TickProps) {
   return (
-    <p>
-      <label class="app-tick__label">
-        <input
-          type="checkbox"
-          class="app-tick__box"
-          ref={(box) => createRenderEffect(() => (box.indeterminate = !!props.mixed))}
-          checked={props.checked}
-          disabled={props.disabled}
-          aria-disabled={props.unavailable ? "true" : undefined}
-          aria-describedby={props.describedBy}
-          onClick={(e) => props.unavailable && e.preventDefault()}
-          onChange={(e) => props.onChange(e.currentTarget.checked)}
-        />
-        <span>
-          {props.label}
-          <Show when={props.hint}>{(hint) => <small> — {hint()}</small>}</Show>
-        </span>
-      </label>
-    </p>
+    <label class="app-tick__label">
+      <input
+        type="checkbox"
+        class="app-tick__box"
+        ref={(box) => createRenderEffect(() => (box.indeterminate = !!props.mixed))}
+        checked={props.checked}
+        disabled={props.disabled}
+        aria-disabled={props.unavailable ? "true" : undefined}
+        aria-describedby={props.describedBy}
+        onClick={(e) => props.unavailable && e.preventDefault()}
+        onChange={(e) => props.onChange(e.currentTarget.checked)}
+      />
+      <span>
+        {props.label}
+        <Show when={props.hint}>{(hint) => <small> — {hint()}</small>}</Show>
+      </span>
+    </label>
   );
 }

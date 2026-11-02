@@ -156,6 +156,14 @@ test("shell.css stacks a dotted hostname, letting only its domain shorten, and k
   assert.match(css, /\.app-masthead__username \{\n {2}overflow: hidden;\n {2}white-space: nowrap;\n {2}text-overflow: ellipsis;/);
 });
 
+test("appliance.css spaces the log's controls and the serial console from the container, not a field's margin", () => {
+  const css = readFileSync(new URL("../src/appliance.css", import.meta.url), "utf8");
+  assert.match(css, /\.app-log__controls \{[^}]*gap: 1rem;[^}]*margin-block-end: 1rem;/);
+  assert.doesNotMatch(css, /\.app-log__controls \.app-actions/);
+  assert.match(css, /\.app-serial \{[^}]*gap: 0\.75rem;/);
+  assert.match(css, /\.app-serial > \.app-notice \{\n {2}margin: 0;/);
+});
+
 test("shell.css draws the switcher's button as the brand, with icons sized whether or not they load", () => {
   const css = readFileSync(new URL("../src/shell.css", import.meta.url), "utf8");
   assert.match(css, /\.app-switcher \.app-menu__trigger \{[^}]*font-weight: inherit;[^}]*color: var\(--app-text\);/);

@@ -34,6 +34,7 @@ export const groups = [
         light: "color-mix(in srgb, var(--app-accent) 55%, var(--app-surface))",
         note: "Solid, where an opacity would show what is behind a disabled primary button.",
       },
+      "--app-accent-disabled-contrast": { light: "var(--app-accent-contrast)" },
       "--app-accent-edge": { light: "color-mix(in srgb, var(--app-accent-sunken) 50%, var(--app-text))" },
     },
   },
@@ -79,6 +80,12 @@ export const groups = [
         light: "1.2",
         note: "Shared by buttons and fields, so the two are as tall as each other in a row.",
       },
+      "--app-control-pad-y": {
+        light: "0.5rem",
+        note: "Density, shared by buttons and fields: the block padding, a field's inline padding (a button's is 0.25rem more), and the font size.",
+      },
+      "--app-control-pad-x": { light: "0.65rem" },
+      "--app-control-text": { light: "1em" },
       "--app-shadow": {
         light: "0 1px 2px rgb(0 0 0 / 0.06), 0 1px 3px rgb(0 0 0 / 0.08)",
         dark: "0 1px 2px rgb(0 0 0 / 0.4), 0 1px 3px rgb(0 0 0 / 0.5)",

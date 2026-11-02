@@ -13,10 +13,12 @@ export interface KitIcons {
   more: () => JSX.Element;
   /** `CopyButton`'s glyph. */
   copy: () => JSX.Element;
-  /** `SearchInput`'s clear button. */
+  /** `SearchInput`'s clear button and `Dialog`'s close button. */
   clear: () => JSX.Element;
   /** `Menu`'s, after a trigger given `chevron`. Optional, so a set written before it still type-checks. */
   chevron?: () => JSX.Element;
+  /** A checked `MenuItemCheckbox`'s or `MenuItemRadio`'s mark; optional, as `chevron` is. */
+  check?: () => JSX.Element;
 }
 
 const defaults: Required<KitIcons> = {

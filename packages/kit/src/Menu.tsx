@@ -2,11 +2,14 @@ import { Show, createContext, createEffect, createSignal, createUniqueId, onClea
 import type { JSX } from "solid-js";
 
 import { cx } from "@wired-square/kit/core";
+import type { ButtonTone } from "./Button";
 import { useIcons } from "./icons";
 import { arrowTo } from "./keys";
-import { pinTo } from "./Popover";
+import { pinTo, scrollMoves } from "./Popover";
 
 const MenuClose = createContext<() => void>(() => {});
+
+const ITEM = "[role^=menuitem]";
 
 export interface MenuProps {
   /** "Actions for admin". */
@@ -20,6 +23,10 @@ export interface MenuProps {
   trigger?: JSX.Element;
   /** Draws `IconSet`'s chevron after the face, out of the accessible name. */
   chevron?: boolean;
+  /** The trigger's; `plain` by default. */
+  tone?: ButtonTone;
+  /** The trigger's edge the panel lines up with; `end` by default. */
+  align?: "start" | "end";
   children: JSX.Element;
 }
 
@@ -35,8 +42,9 @@ export function Menu(props: MenuProps) {
   let trigger!: HTMLButtonElement;
   let panel!: HTMLDivElement;
   const [open, setOpen] = createSignal(false);
+  const tone = () => props.tone ?? "plain";
 
-  const items = () => [...panel.querySelectorAll<HTMLElement>("[role=menuitem]")];
+  const items = () => [...panel.querySelectorAll<HTMLElement>(ITEM)];
   // Focus would otherwise fall to the body, or to a dialog around the menu.
   const dismiss = () => {
     panel.hidePopover();
@@ -45,19 +53,21 @@ export function Menu(props: MenuProps) {
 
   // Hidden since `beforetoggle`, so nothing paints at the last open's place.
   const place = () => {
-    pinTo(trigger, panel, { align: "end", matchWidth: false });
+    pinTo(trigger, panel, { align: props.align ?? "end", matchWidth: false });
     panel.style.visibility = "";
-    const current = panel.querySelector<HTMLElement>('[role=menuitem][aria-current="page"]');
-    (current ?? panel.querySelector<HTMLElement>("[role=menuitem]"))?.focus({ preventScroll: true });
+    const first = (selector: string) => panel.querySelector<HTMLElement>(selector);
+    const chosen = first(`${ITEM}[aria-current="page"]`) ?? first('[role=menuitemradio][aria-checked="true"]');
+    (chosen ?? first(ITEM))?.focus({ preventScroll: true });
   };
 
   // A fixed panel does not follow the row it was read from.
   createEffect(() => {
     if (!open()) return;
-    window.addEventListener("scroll", dismiss, { capture: true, passive: true });
+    const scrolled = (e: Event) => scrollMoves(e, trigger) && dismiss();
+    window.addEventListener("scroll", scrolled, { capture: true, passive: true });
     window.addEventListener("resize", dismiss);
     onCleanup(() => {
-      window.removeEventListener("scroll", dismiss, { capture: true });
+      window.removeEventListener("scroll", scrolled, { capture: true });
       window.removeEventListener("resize", dismiss);
     });
   });
@@ -88,12 +98,17 @@ export function Menu(props: MenuProps) {
       <button
         ref={trigger}
         type="button"
-        class="app-btn app-btn--plain app-menu__trigger"
+        class={cx("app-btn", tone() !== "default" && `app-btn--${tone()}`, "app-menu__trigger")}
         popovertarget={id}
         aria-label={props["aria-label"]}
         aria-haspopup="menu"
         aria-expanded={open()}
         aria-disabled={props.pending || undefined}
+        onKeyDown={(e) => {
+          if (e.key !== "ArrowDown") return;
+          e.preventDefault();
+          panel.showPopover();
+        }}
       >
         {props.trigger ?? icons.more()}
         <Show when={props.chevron}>
@@ -142,25 +157,62 @@ export interface MenuItemProps {
   children: JSX.Element;
 }
 
-export function MenuItem(props: MenuItemProps) {
+interface ItemProps extends MenuItemProps {
+  role?: "menuitemcheckbox" | "menuitemradio";
+  checked?: boolean;
+}
+
+function Item(props: ItemProps) {
   const close = useContext(MenuClose);
   return (
     <button
       type="button"
-      role="menuitem"
+      role={props.role ?? "menuitem"}
       class={cx("app-menu__item", props.danger && "app-menu__item--danger")}
       aria-disabled={props.disabled || undefined}
       aria-current={props.current ? "page" : undefined}
-      onClick={() => {
+      aria-checked={props.checked}
+      onClick={(e) => {
         if (props.disabled) return;
+        // WebKit does not focus a clicked button, so the arrows would act on the body.
+        if (props.role === "menuitemcheckbox") e.currentTarget.focus({ preventScroll: true });
         // Closed first, so a dialog opened from an item is not fighting a popover for the top layer.
-        close();
+        else close();
         props.onSelect();
       }}
     >
       {props.children}
     </button>
   );
+}
+
+export const MenuItem: (props: MenuItemProps) => JSX.Element = Item;
+
+export interface MenuItemCheckProps extends Pick<MenuItemProps, "onSelect" | "disabled" | "children"> {
+  /** Drawn as `IconSet`'s check before the label. */
+  checked: boolean;
+}
+
+function Checkable(props: MenuItemCheckProps & Required<Pick<ItemProps, "role">>) {
+  const icons = useIcons();
+  return (
+    <Item {...props}>
+      <span class="app-menu__check" aria-hidden="true">
+        <Show when={props.checked}>{icons.check()}</Show>
+      </span>
+      {props.children}
+    </Item>
+  );
+}
+
+/** A setting the item turns on or off, leaving the menu open; the caller flips `checked` in `onSelect`. */
+export function MenuItemCheckbox(props: MenuItemCheckProps) {
+  return <Checkable {...props} role="menuitemcheckbox" />;
+}
+
+/** One of the menu's choices of which only one is `checked`. */
+export function MenuItemRadio(props: MenuItemCheckProps) {
+  return <Checkable {...props} role="menuitemradio" />;
 }
 
 export interface MenuItemUnavailableProps {

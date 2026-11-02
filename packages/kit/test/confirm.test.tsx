@@ -1,6 +1,6 @@
 import { expect, test, vi } from "vitest";
 
-import { Confirm } from "../src/index";
+import { Confirm, Field } from "../src/index";
 import { button, field, mount, type } from "../src/testing";
 
 test("a Confirm asking a reason waits for a non-blank one and acts on it trimmed", async () => {
@@ -13,6 +13,7 @@ test("a Confirm asking a reason waits for a non-blank one and acts on it trimmed
   ));
   expect(field("Reason").placeholder).toBe("For the audit trail");
   expect(field("Reason").required).toBe(true);
+  expect(field("Reason").closest(".app-field")!.parentElement!.matches(".app-dialog.app-confirm"), "so the Confirm spaces it").toBe(true);
   expect(button("Revoke").disabled).toBe(true);
   type("Reason", "   ");
   expect(button("Revoke").disabled, "blank is no reason").toBe(true);
@@ -46,4 +47,14 @@ test("a Confirm's act may still take no argument, and its tone defaults to dange
     </Confirm>
   ));
   expect(button("Power off").className).toBe("app-btn app-btn--danger");
+});
+
+test("a field a Confirm is given sits directly in its body, which spaces it", () => {
+  mount(() => (
+    <Confirm title="Turn off" verb="Turn off" act={() => {}} onClose={() => {}}>
+      <p>Your password alone will sign you in.</p>
+      <Field label="Password" />
+    </Confirm>
+  ));
+  expect(field("Password").closest(".app-field")!.parentElement!.matches(".app-confirm > .app-dialog__body")).toBe(true);
 });
