@@ -2,6 +2,10 @@
 
 ## `@wired-square/kit`
 
+### 0.4.1
+
+- The kit loads where `document` exists but `navigator.vendor` does not, as in a test shim.
+
 ### 0.4.0
 
 - In WebKit, which matches `:focus-visible` on focus moved by script, the kit tracks the input modality as `<html>`'s
