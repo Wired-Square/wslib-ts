@@ -56,7 +56,7 @@ another loads its `href`. Any failure, a 401 included, leaves the masthead witho
 
 ## Peers
 
-- `@wired-square/kit` ^0.3.5
+- `@wired-square/kit` ^0.4.0
 - `@wired-square/appliance-types` ^0.1.0
 - `solid-js` ^1.9.11
 - `vite` ^8.0.0, optional, for `./vite` only
