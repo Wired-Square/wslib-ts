@@ -83,6 +83,7 @@ import {
   Tr,
   Views,
   Warnings,
+  createAction,
   routed,
   size,
   when,
@@ -90,7 +91,7 @@ import {
 import type { Routed } from "@wired-square/kit";
 import { For, Match, Show, Switch, createResource, createSignal } from "solid-js";
 
-import { ApiError, api, download, fromBase, slowAnswer } from "../api";
+import { ApiError, api, download, slowAnswer } from "../api";
 import { BundlePicker, Provenance } from "../parts/BundlePicker";
 import type { ChosenBundle } from "../parts/BundlePicker";
 import { FactorProofField, createFactorProof } from "../parts/FactorProof";
@@ -491,6 +492,7 @@ function Schedule() {
   const asks = () => scheduleAsks(here().applicationHalf, passphrase());
   const [forgetting, setForgetting] = createSignal(false);
   const [removing, setRemoving] = createSignal<BackupFile>();
+  const fetching = createAction();
 
   const wanted = (from: ScheduleView): BackupSchedule => ({
     ...from.schedule,
@@ -647,6 +649,7 @@ function Schedule() {
               )}
             </Show>
 
+            <Notice tone="bad">{fetching.failed()}</Notice>
             <Show when={current().files.length > 0} fallback={<NothingYet label={`No backups on ${here().box} yet`} />}>
               <Table
                 head={
@@ -659,7 +662,18 @@ function Schedule() {
                 }
               >
                 <For each={current().files}>
-                  {(file) => <FileRow file={file} onDelete={() => setRemoving(file)} />}
+                  {(file) => (
+                    <FileRow
+                      file={file}
+                      pending={fetching.pending()}
+                      onDownload={() =>
+                        void fetching.run(() =>
+                          download(`/api/backup/files/${encodeURIComponent(file.name)}`, file.name),
+                        )
+                      }
+                      onDelete={() => setRemoving(file)}
+                    />
+                  )}
                 </For>
               </Table>
             </Show>
@@ -686,15 +700,13 @@ function Schedule() {
   );
 }
 
-function FileRow(props: { file: BackupFile; onDelete: () => void }) {
-  // A plain link: the file is already sealed, so a `GET` with no body serves
-  // it and the browser saves it under its own name.
+function FileRow(props: { file: BackupFile; pending: boolean; onDownload: () => void; onDelete: () => void }) {
   return (
     <Tr>
       <Td>
-        <a href={fromBase(`/api/backup/files/${encodeURIComponent(props.file.name)}`)} download={props.file.name}>
+        <Button tone="link" pending={props.pending} onClick={props.onDownload}>
           {props.file.name}
-        </a>
+        </Button>
       </Td>
       <Td numeric>{when(props.file.taken_at)}</Td>
       <Td right numeric>

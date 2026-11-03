@@ -17,7 +17,7 @@ import type { AppLink } from "@wired-square/appliance-types";
 import { For, Show, children, createSignal, onCleanup, onMount } from "solid-js";
 import type { JSX } from "solid-js";
 
-import { api, fromBase } from "../api";
+import { api, fetchWithSession, fromBase } from "../api";
 import { ROLE_LABELS, RoleBadge } from "../parts/RoleBadge";
 import { Brand, Hostname } from "./Shell";
 import { isStoreAccount, useSession } from "./session";
@@ -52,7 +52,7 @@ export const overhang = (inner: Span, outer: Span): number =>
 // only hides the switcher, and must not sign the caller out.
 async function switcherLinks(): Promise<AppLink[]> {
   try {
-    const response = await fetch(new URL("/api/switcher", location.origin), { credentials: "same-origin" });
+    const response = await fetchWithSession(new URL("/api/switcher", location.origin), { credentials: "same-origin" });
     const links: unknown = response.ok ? await response.json() : [];
     return Array.isArray(links) ? links : [];
   } catch {

@@ -103,6 +103,59 @@ export function fromBase(path: string): string {
   return base ? new URL(path.replace(/^\/+/, ""), base).href : path;
 }
 
+/** The request header the session's second secret travels in, both ways. */
+export const SESSION_HEADER = "appliance-session";
+
+/** The query parameter carrying the secret on a `GET` that can't set a header. */
+export const SESSION_QUERY = "appliance_session";
+
+/** Where the app keeps the session's second secret; `keep(undefined)` forgets it. */
+export interface SessionStore {
+  read(): string | undefined;
+  keep(secret: string | undefined): void;
+}
+
+let session: SessionStore | undefined;
+
+/**
+ * Carry the secret `store` holds on every request to the page base's `api/` and
+ * `ws/`, keeping each one handed back; `undefined` stops carrying one.
+ */
+export function carrySession(store: SessionStore | undefined): void {
+  session = store;
+}
+
+const pageBase = () => new URL("./", globalThis.document?.baseURI ?? "http://localhost/");
+
+function guarded(url: string | URL): boolean {
+  const base = pageBase();
+  const at = new URL(url, base);
+  return at.host === base.host && ["api/", "ws/"].some((under) => at.pathname.startsWith(base.pathname + under));
+}
+
+/** `url` with the secret in its query, for an `EventSource`, a `WebSocket` or a link of the app's own. */
+export function withSession(url: string): string {
+  const secret = session?.read();
+  if (!secret || !guarded(url)) return url;
+  const carrying = new URL(url, pageBase());
+  carrying.searchParams.set(SESSION_QUERY, secret);
+  return carrying.href;
+}
+
+/** `fetch`, carrying the secret to a guarded `url`; a 401 without a new one forgets it. */
+export async function fetchWithSession(url: string | URL, init: RequestInit): Promise<Response> {
+  const store = session;
+  if (!store || !guarded(url)) return fetch(url, init);
+  const headers = new Headers(init.headers);
+  const secret = store.read();
+  if (secret) headers.set(SESSION_HEADER, secret);
+  const response = await fetch(url, { ...init, headers });
+  const handed = response.headers.get(SESSION_HEADER);
+  if (handed) store.keep(handed);
+  else if (response.status === 401) store.keep(undefined);
+  return response;
+}
+
 /**
  * Like `RequestInit`, but `body` is the value to send rather than a string,
  * or a `FormData` sent as it is.
@@ -208,7 +261,7 @@ async function send(path: string, init: ApiInit): Promise<Response> {
 
   let response: Response;
   try {
-    response = await fetch(fromBase(path), request);
+    response = await fetchWithSession(fromBase(path), request);
   } catch {
     // Nothing was refused — nothing was answered. `fetch` rejects only for a
     // transport failure or an abort, so this is the appliance being unreachable

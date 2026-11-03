@@ -216,6 +216,18 @@ and `constants` are exported from the root. No dependencies and no peers.
 
 ## `@wired-square/appliance-ui`
 
+### 0.7.0
+
+- `carrySession(store)` sends the session's second secret, which `store` (`SessionStore`: `read` and `keep`) holds,
+  beside the cookie on every request to the page base's `api/` and `ws/`: in the `appliance-session` header
+  (`SESSION_HEADER`) from `api`, `download`, a feed's status check and `Chrome`'s switcher, and in the
+  `appliance_session` query parameter (`SESSION_QUERY`) from a feed's `EventSource` and `SerialConsole`'s socket,
+  read again at each reconnect. A secret handed back in that header is kept, and a 401 without one forgets it.
+  `withSession(url)` adds the parameter to an `EventSource`, a socket or a link of the app's own. With no store, no
+  request changes.
+- A scheduled backup's file is a link-styled button that fetches it through `download`, its refusal said above the
+  list, rather than a plain link.
+
 ### 0.6.0
 
 - Needs kit 0.4.0 (the peer range is `^0.4.0`): each restore and backup `Tick` sits in a `<p>` of its own, and the log's controls space themselves

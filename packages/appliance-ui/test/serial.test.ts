@@ -27,6 +27,7 @@ test("serialUrl names another baud, and no USB serial for a port without one", a
 async function dialled() {
   const { openLink } = await link();
   const sockets: FakeSocket[] = [];
+  const urls: string[] = [];
   const states: LinkState[] = [];
   const received: [string, readonly EchoSpan[]][] = [];
   const events: ConsoleEvent[] = [];
@@ -37,13 +38,14 @@ async function dialled() {
       output: (b, spans) => received.push([new TextDecoder().decode(b), spans]),
       event: (e) => events.push(e),
     },
-    () => {
+    (url) => {
+      urls.push(url);
       const socket = new FakeSocket();
       sockets.push(socket);
       return socket as unknown as WebSocket;
     },
   );
-  return { sockets, states, received, events, ...opened };
+  return { sockets, urls, states, received, events, ...opened };
 }
 
 afterEach(() => mock.timers.reset());
@@ -111,6 +113,28 @@ test("One that attached and dropped redials, waiting longer each time up to fift
   opened.sockets.at(-1)!.attach();
   opened.sockets.at(-1)!.drop();
   assert.deepEqual(opened.states.at(-1), { is: "retrying", inMs: 1000 }, "attaching resets the wait");
+});
+
+test("Each dial carries the secret held then, and none with no store", async (t) => {
+  const { carrySession } = await load<typeof import("../src/api.ts")>("/src/api.ts");
+  t.after(() => {
+    carrySession(undefined);
+    Reflect.deleteProperty(globalThis, "document");
+  });
+  Object.assign(globalThis, { document: { baseURI: "http://x/" } });
+  const plain = await dialled();
+  plain.close();
+  let secret = "s-1";
+  carrySession({ read: () => secret, keep: () => {} });
+  const opened = await dialled();
+  mock.timers.enable({ apis: ["setTimeout"] });
+  opened.sockets[0]!.attach();
+  secret = "s-2";
+  opened.sockets[0]!.drop();
+  mock.timers.tick(1000);
+  opened.close();
+  assert.deepEqual(plain.urls, ["ws://x/ws/serial"]);
+  assert.deepEqual(opened.urls, ["ws://x/ws/serial?appliance_session=s-1", "ws://x/ws/serial?appliance_session=s-2"]);
 });
 
 test("Bytes are handed on as they arrive, and closing stops the redial", async () => {

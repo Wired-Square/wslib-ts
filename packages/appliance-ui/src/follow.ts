@@ -19,6 +19,8 @@
  * that is gone.
  */
 
+import { fetchWithSession, withSession } from "./api";
+
 /** Where a transport reports one connection. */
 export interface FeedListener {
   /** The connection is open, and the route has subscribed it. */
@@ -126,7 +128,7 @@ export function follow(
 /** The default transport, listening for `names` and the heartbeat. */
 export function eventSource(names: string[]): (url: string, on: Listener) => () => void {
   return (url, on) => {
-    const source = new EventSource(url, { withCredentials: true });
+    const source = new EventSource(withSession(url), { withCredentials: true });
     source.addEventListener("open", () => on.onOpen());
     source.addEventListener("error", () => {
       on.onDrop();
@@ -143,7 +145,7 @@ export function eventSource(names: string[]): (url: string, on: Listener) => () 
 /** What the route answers a plain request, or 0 for no answer. */
 async function statusOf(url: string): Promise<number> {
   try {
-    const response = await fetch(url, { credentials: "same-origin" });
+    const response = await fetchWithSession(url, { credentials: "same-origin" });
     void response.body?.cancel();
     return response.status;
   } catch {
