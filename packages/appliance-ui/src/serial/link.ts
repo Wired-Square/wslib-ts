@@ -42,7 +42,7 @@ export interface LinkEvents {
 export interface Link {
   close: () => void;
   /** False when the console isn't open. */
-  send: (bytes: Uint8Array) => boolean;
+  send: (bytes: Uint8Array<ArrayBuffer>) => boolean;
 }
 
 type Socket = Pick<WebSocket, "binaryType" | "close" | "onopen" | "onmessage" | "onclose" | "send" | "readyState">;
