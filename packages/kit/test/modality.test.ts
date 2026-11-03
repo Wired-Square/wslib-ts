@@ -14,6 +14,13 @@ test("outside WebKit, the kit leaves the input modality to the browser", async (
   expect(html.hasAttribute("data-app-modality")).toBe(false);
 });
 
+test("a shim with a document but no navigator.vendor loads the kit", async () => {
+  vi.resetModules();
+  vi.spyOn(navigator, "vendor", "get").mockReturnValue(undefined as unknown as string);
+  await expect(import("../src/index")).resolves.toBeDefined();
+  vi.restoreAllMocks();
+});
+
 test("in WebKit, the kit's entry marks a key press as keyboard and a pointer press as pointer, ignoring Escape and chords", async () => {
   vi.resetModules();
   await import("../src/index");
