@@ -208,6 +208,11 @@ names unchanged.
 
 ## `@wired-square/appliance-types`
 
+### 0.1.2
+
+Generated from `wslib-appliance-types-v0.1.3`. `EnabledChange` gains the optional `proof`, a `FactorProof`, and
+`AppRoleChange` (`role`, a `Role` or `null`, and the optional `proof`) is new.
+
 ### 0.1.1
 
 Generated from `wslib-appliance-types-v0.1.2`. `AppManifest` gains the optional `devices`, a list of `AppDevice`

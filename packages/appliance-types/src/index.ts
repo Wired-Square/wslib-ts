@@ -11,6 +11,7 @@ export type * from "./generated/AppListener.js";
 export type * from "./generated/AppManifest.js";
 export type * from "./generated/AppNetwork.js";
 export type * from "./generated/AppRole.js";
+export type * from "./generated/AppRoleChange.js";
 export type * from "./generated/AppSockets.js";
 export type * from "./generated/AppVolume.js";
 export type * from "./generated/AssertionCredential.js";
