@@ -28,7 +28,7 @@ function die(message) {
   process.exit(1);
 }
 
-const token = execFileSync("op", ["read", "--account", setting("WSLIB_OP_ACCOUNT"), setting("WSLIB_REGISTRY_TOKEN_REF")], { encoding: "utf8" }).trim();
+const token = setting("WSLIB_REGISTRY_TOKEN");
 async function get(url) {
   const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
   if (!response.ok) die(`${url}: ${response.status}`);

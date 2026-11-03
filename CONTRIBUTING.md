@@ -69,22 +69,50 @@ and appliance-types, chart and the store typechecked under NodeNext.
 ## Releasing a package
 
 Bump the package's `version` and give `CHANGELOG.md` a heading for it in the PR. Once that is merged, on `main`, with
-`.env` filled in from `.env.example`:
+the [release settings](#release-settings) in `.env`:
 
 ```sh
 scripts/release.sh kit --execute
 ```
 
 `scripts/release.sh` releases only the packages named (`scripts/release.sh kit tokens --execute`); with none it lists
-those whose version is not on the registry yet and stops. It reads the `write:package` token from 1Password at
-`WSLIB_REGISTRY_TOKEN_REF` in the account `WSLIB_OP_ACCOUNT` (so it never sits on disk, and no build script sees it),
-runs `scripts/ci.sh --tag` into a log it names, signs a tag `<package>-v<version>` for each package and pushes the tags,
+those whose version is not on the registry yet and stops. It reads the `write:package` token from `.env` (never
+exported, so no build script sees it), runs `scripts/ci.sh --tag` into a log it names, signs a tag `<package>-v<version>` for each package and pushes the tags,
 then publishes each package and runs `scripts/mirror.sh`. Pushing the tags first means every published version has its
 tag on `main`; when a publish fails, the tags of the packages not yet published are withdrawn. Without `--execute` it
 stops before tagging; with `--no-mirror` it stops after publishing. The tag records what was published; consumers pin
 the registry version, not the tag. `scripts/mirror.sh` copies every package on the registry to the mirror, with each
 `dist.tarball` rewritten onto the mirror's host and each tarball checked against its `integrity`; `--dry-run` shows what
 would change.
+
+### Release settings
+
+`release.sh` and `mirror.sh` read `.env` at the repo root, whose keys `.env.example` lists:
+
+| Key                    | Value                                                            |
+| ---------------------- | ---------------------------------------------------------------- |
+| `WSLIB_REGISTRY_TOKEN` | A Forgejo `write:package` token, bare: the scripts add `Bearer ` |
+| `WSLIB_FORGE_URL`      | `https://forge.wiredsquare.com`                                  |
+| `WSLIB_FORGE_OWNER`    | `wired-square`                                                   |
+| `WSLIB_MIRROR_DEST`    | `mirror@miranda.wiredsquare.com:npm/`                            |
+| `WSLIB_NPM_MIRROR_URL` | `https://mirror.wiredsquare.com/npm/`                            |
+
+**From a 1Password Environment**, which keeps the publish token off disk (1Password for Mac or Linux; an owner or
+administrator turns Environments on under **Policies** › **Sharing and permissions** › **Developer permissions**):
+
+1. In the desktop app's main window, select **Developer** in the sidebar, then **View Environments** (**Developer**
+   shows once **Settings** › **Developer** › **Show 1Password Developer experience** is on). Select **New
+   environment**, name it (for example `wslib-ts`) and **Save**.
+2. Select **Edit**, then **New variable** for each key above. Leave **Show value by default** unchecked for
+   `WSLIB_REGISTRY_TOKEN`.
+3. Under **Connect to**, select **Connect** next to **Local .env file**, **Choose file path**, pick `.env` in this
+   checkout, then **Mount .env file**. Remove any plain `.env` there first.
+
+1Password serves the file each time it is read, and asks you to **Authorize** the first read after it unlocks; the
+authorisation lasts until it locks again.
+
+**As a plain file**, copy `.env.example` to `.env`, fill it in and `chmod 600 .env`. The publish token then sits on
+disk in the clear.
 
 ## appliance-types
 
