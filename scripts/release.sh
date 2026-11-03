@@ -1,6 +1,6 @@
 #!/bin/sh
 # Tags packages on main as <package>-v<version> and pushes the tags, then
-# publishes them with the publish token from 1Password and mirrors the registry;
+# publishes them with the publish token from .env and mirrors the registry;
 # reads elsewhere use the read token in ~/.npmrc. Only the packages named are
 # released; with none it lists those whose version the registry lacks. Without
 # --execute it stops before tagging, and with --no-mirror after publishing.
@@ -12,8 +12,7 @@ set -eu
 cd "$(dirname "$0")/.."
 die() { printf 'release: %s\n' "$*" >&2; exit 1; }
 say() { printf 'release: %s\n' "$*"; }
-# shellcheck source=/dev/null
-[ -f .env ] && . ./.env
+[ -e .env ] && eval "$(cat .env)"
 
 execute=false mirror=true names=
 for arg; do
@@ -55,8 +54,7 @@ done
 # Read before the CI run so a wrong setting fails at once. Never exported, so
 # nothing the run starts sees it.
 if $execute; then
-  token=$(op read --account "${WSLIB_OP_ACCOUNT:?set to the 1Password account that holds the publish token}" \
-    "${WSLIB_REGISTRY_TOKEN_REF:?set to the op:// reference of your publish token}") || die "could not read the publish token"
+  token=${WSLIB_REGISTRY_TOKEN:?set in .env}
 fi
 
 stage=$(mktemp -d)
