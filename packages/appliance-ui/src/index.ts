@@ -8,8 +8,20 @@
  * with nothing watching it.
  */
 
-export { ApiError, api, download, fromBase, saveText, slowAnswer, unansweredMeans } from "./api";
-export type { ApiInit } from "./api";
+export {
+  ApiError,
+  SESSION_HEADER,
+  SESSION_QUERY,
+  api,
+  carrySession,
+  download,
+  fromBase,
+  saveText,
+  slowAnswer,
+  unansweredMeans,
+  withSession,
+} from "./api";
+export type { ApiInit, SessionStore } from "./api";
 export { sharedFeed, useFeed } from "./feed";
 export type { FeedHandlers } from "./feed";
 export type { FeedListener, FeedTransport } from "./follow";

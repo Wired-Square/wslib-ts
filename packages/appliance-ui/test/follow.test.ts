@@ -1,8 +1,16 @@
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, mock, test } from "node:test";
 
-import { eventSource, follow } from "../src/follow.ts";
 import type { FeedListener, FeedTransport } from "../src/follow.ts";
+import { load } from "./mount.ts";
+
+let api: typeof import("../src/api.ts");
+let eventSource: typeof import("../src/follow.ts").eventSource;
+let follow: typeof import("../src/follow.ts").follow;
+beforeEach(async () => {
+  api = await load("/src/api.ts");
+  ({ eventSource, follow } = await load<typeof import("../src/follow.ts")>("/src/follow.ts"));
+});
 
 const SILENCE_MS = 45_000;
 const REOPEN_MS = 5_000;
@@ -166,4 +174,43 @@ test("EventSource retrying on its own is only a drop, and a closed one is asked 
 
   stop();
   assert.equal(source.close.mock.callCount(), 0, "it had already closed");
+});
+
+test("each reopen of an EventSource carries the secret held then, and asking its status sends it", async (t) => {
+  t.after(() => {
+    api.carrySession(undefined);
+    Reflect.deleteProperty(globalThis, "document");
+  });
+  Object.assign(globalThis, { document: { baseURI: "https://box.local/" } });
+  let secret = "s-1";
+  api.carrySession({ read: () => secret, keep: () => {} });
+  const sources: { url: string; target: EventTarget }[] = [];
+  class FakeEventSource extends EventTarget {
+    static readonly CLOSED = 2;
+    readyState = 2;
+    close = mock.fn();
+    constructor(url: string) {
+      super();
+      sources.push({ url, target: this });
+    }
+  }
+  Object.assign(globalThis, { EventSource: FakeEventSource });
+  const asked = mock.method(globalThis, "fetch", (_url: string, _init: RequestInit) =>
+    Promise.resolve(new Response(null, { status: 502 })),
+  );
+
+  const { stop } = followed(eventSource([]), []);
+  secret = "s-2";
+  sources[0]!.target.dispatchEvent(new Event("error"));
+  await new Promise((resolve) => setImmediate(resolve));
+  mock.timers.tick(REOPEN_MS);
+  stop();
+
+  assert.deepEqual(
+    sources.map((s) => new URL(s.url).searchParams.get("appliance_session")),
+    ["s-1", "s-2"],
+  );
+  const [url, init] = asked.mock.calls[0]!.arguments;
+  assert.equal(url, "/api/logs/events", "asked without the query");
+  assert.equal(new Headers(init?.headers).get(api.SESSION_HEADER), "s-2");
 });

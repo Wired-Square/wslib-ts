@@ -1107,6 +1107,44 @@ async function submit(root: Element) {
   await settled();
 }
 
+test("A scheduled backup's file is a link-styled button that goes through download, its refusal said above the list", async (t) => {
+  const { BackupSettings } = await backupSettings();
+  const file = { name: "backup 1.json", taken_at: "2026-09-29T00:00:00Z", bytes: 2048 };
+  const view = {
+    schedule: { enabled: true, every_hours: 24, keep: 7 },
+    passphrase_set: true,
+    runs: true,
+    state: { last_run_at: null, file: null, error: null },
+    files: [file],
+  };
+  const FILE = "/api/backup/files/backup%201.json";
+  let fileAnswer = () => Response.json({ error: "that backup has been rotated away" }, { status: 410 });
+  const { root, asked } = await mount(
+    () => BackupSettings({ view: "schedule" }),
+    (path) => (path === "/api/backup/schedule" ? Response.json(view) : path === FILE ? fileAnswer() : undefined),
+  );
+  const button = find(root, (n) => n.tag === "button" && textOf(n) === file.name);
+  assert.match(String(button.props.class), /app-btn--link/);
+  assert.equal([...within(root)].some((n) => n.tag === "a"), false);
+
+  await click(root, file.name);
+  assert.deepEqual(asked.filter((a) => a.path === FILE).map((a) => a.method), ["GET"]);
+  assert.match(textOf(root), /that backup has been rotated away/);
+
+  const saved: string[] = [];
+  const page = globalThis.document;
+  t.after(() => (globalThis.document = page));
+  globalThis.document = {
+    createElement: () => ({ click(this: { download: string }) { saved.push(this.download); } }),
+  } as unknown as Document;
+  t.mock.method(URL, "createObjectURL", () => "blob:backup");
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  fileAnswer = () => new Response("{}");
+  await click(root, file.name);
+  assert.deepEqual(saved, [file.name]);
+  assert.doesNotMatch(textOf(root), /rotated away/);
+});
+
 test("An optional section has a tick at take only when the product offers it, and a local session is never asked, nor for a password", async () => {
   const { BackupSettings } = await backupSettings();
   for (const [said, shown] of [

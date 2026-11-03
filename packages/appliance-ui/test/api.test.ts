@@ -2,7 +2,16 @@ import assert from "node:assert/strict";
 import { afterEach, beforeEach, mock, test } from "node:test";
 import { refusalMessage } from "@wired-square/kit/core";
 
-import { ApiError, api, download, fromBase, onUnauthenticated } from "../src/api.ts";
+import {
+  ApiError,
+  SESSION_HEADER,
+  api,
+  carrySession,
+  download,
+  fromBase,
+  onUnauthenticated,
+  withSession,
+} from "../src/api.ts";
 
 const MINUTE = 60_000;
 const UNANSWERED = "nothing answered — it may be restarting, or unreachable from here";
@@ -28,6 +37,7 @@ beforeEach(() => {
 afterEach(() => {
   mock.timers.reset();
   mock.restoreAll();
+  carrySession(undefined);
 });
 
 const settled = () => new Promise((resolve) => setImmediate(resolve));
@@ -237,4 +247,65 @@ test("a form is sent as the browser frames it, and anything else as JSON", async
   assert.equal(new Headers(asForm.headers).get("content-type"), null);
   assert.equal(asJson.body, '{"a":1}');
   assert.equal(new Headers(asJson.headers).get("content-type"), "application/json");
+});
+
+/** A store holding `secret`, remembering everything it was told to keep. */
+function held(secret: string | undefined) {
+  const kept: (string | undefined)[] = [];
+  carrySession({ read: () => secret, keep: (next) => kept.push((secret = next)) });
+  return kept;
+}
+
+const carried = (init: RequestInit | undefined) => new Headers(init?.headers).get(SESSION_HEADER);
+
+test("with no store, no request carries a secret", async () => {
+  respond = async () => new Response(null, { status: 204, headers: { [SESSION_HEADER]: "s-2" } });
+  await api<null>("/api/session");
+  assert.equal(carried(sent[0]), null);
+  assert.equal(withSession("/api/logs/events"), "/api/logs/events");
+});
+
+test("a held secret is sent, and one handed back is kept for the next request", async () => {
+  const kept = held("s-1");
+  respond = async () => new Response(null, { status: 204, headers: { [SESSION_HEADER]: "s-2" } });
+  await api<null>("/api/session", { method: "POST", body: {} });
+  await download("/api/backup", "backup.tar").catch(() => undefined);
+  assert.deepEqual(sent.map(carried), ["s-1", "s-2"]);
+  assert.deepEqual(kept, ["s-2", "s-2"]);
+});
+
+test("a 401 forgets the secret, and a 401 handing back a new one keeps that", async () => {
+  const kept = held("s-1");
+  respond = async () => new Response(null, { status: 401 });
+  await api("/api/session").catch(() => undefined);
+  assert.deepEqual(kept, [undefined]);
+  respond = async () => new Response(null, { status: 401, headers: { [SESSION_HEADER]: "s-3" } });
+  await api("/api/session").catch(() => undefined);
+  assert.deepEqual(kept, [undefined, "s-3"]);
+});
+
+test("the secret goes in the query only to the page base's api/ and ws/, and only when held", () => {
+  Object.assign(globalThis, { document: { baseURI: "https://box.local/apps/hello/settings" } });
+  try {
+    assert.equal(withSession("api/logs/events"), "api/logs/events", "none held");
+    held("s 1");
+    assert.equal(
+      withSession(fromBase("/api/logs/events")),
+      "https://box.local/apps/hello/api/logs/events?appliance_session=s+1",
+    );
+    assert.equal(
+      withSession("wss://box.local/apps/hello/ws/serial?baud=9600"),
+      "wss://box.local/apps/hello/ws/serial?baud=9600&appliance_session=s+1",
+    );
+    for (const elsewhere of [
+      "https://box.local/api/switcher",
+      "https://box.local/apps/hello/assets/logo.svg",
+      "https://other.local/apps/hello/api/logs/events",
+      "https://box.local/apps/hello/apiary",
+    ]) {
+      assert.equal(withSession(elsewhere), elsewhere);
+    }
+  } finally {
+    Reflect.deleteProperty(globalThis, "document");
+  }
 });

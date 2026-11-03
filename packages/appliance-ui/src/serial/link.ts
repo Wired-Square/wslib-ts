@@ -1,4 +1,4 @@
-import { fromBase } from "../api";
+import { fromBase, withSession } from "../api";
 import type { ConsoleEvent, EchoSpan } from "./wire";
 
 export const DEFAULT_BAUD = 115200;
@@ -67,7 +67,7 @@ export function openLink(
 
   const dial = () => {
     on.state({ is: "connecting" });
-    const ws = socket(url);
+    const ws = socket(withSession(url));
     current = ws;
     ws.binaryType = "arraybuffer";
     let upgraded = false;
