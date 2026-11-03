@@ -24,9 +24,10 @@
  *
  * # A change that grants or strips access asks for your own proof again
  *
- * Creating an account, a role change, a reset, requiring TOTP enrolment and
- * removing a passkey each carry `FactorProofField`'s proof of the acting
- * administrator: while their TOTP is on, a code, a recovery code or a passkey.
+ * Creating, disabling, enabling or deleting an account, a role change here or
+ * in an app, a reset, requiring TOTP enrolment and removing a passkey carry
+ * `FactorProofField`'s proof of the acting administrator: while their TOTP is
+ * on, a code, a recovery code or a passkey.
  *
  * # The last-administrator rule is the daemon's, and is rendered rather than
  * predicted
@@ -59,6 +60,7 @@
 import { MAX_USERNAME_LEN, MIN_PASSWORD_LEN, ROLE_LADDER } from "@wired-square/appliance-types";
 import type {
   AppRole,
+  AppRoleChange,
   EnabledChange,
   FactorProof,
   ListedUser,
@@ -141,26 +143,10 @@ export function AccountSettings(props: Routed & { me: Me; apps?: string[] }) {
       setAppRoles(granted);
     });
 
-  // The refusals a row's actions produce need somewhere to go — one
-  // place, above the table, because the last-administrator message is a
-  // paragraph and a cell is the wrong shape for it. The two dialog actions do
-  // not use this: `Confirm` keeps its own refusal, beside the thing it refused.
-  const rowAction = createAction();
   const [removing, setRemoving] = createSignal<User | undefined>();
   const [resetting, setResetting] = createSignal<User | undefined>();
   const [added, setAdded] = createSignal<string>();
   const [adding, setAdding] = createSignal(false);
-
-  /**
-   * Run a row action, showing its refusal above the table.
-   *
-   * **One flag for the whole table, not one per row.** A per-row flag looks
-   * tidier and is wrong: acting on a second row overwrote it, which re-enabled
-   * the first row's menu while its request was still in flight and let a
-   * second request race the first. Every row's menu goes quiet while any one
-   * of them is working, and a second click starts nothing.
-   */
-  const act = (change: () => Promise<void>) => rowAction.run(change);
 
   /** Set one field on one row; the reconcile leaves every other row alone. */
   const patch = <K extends keyof User>(id: string, key: K, value: User[K]) =>
@@ -169,6 +155,8 @@ export function AccountSettings(props: Routed & { me: Me; apps?: string[] }) {
   const [changing, setChanging] = createSignal<{ user: User; role: Role }>();
   const [requiring, setRequiring] = createSignal<User>();
   const [passkeysOf, setPasskeysOf] = createSignal<User>();
+  const [toggling, setToggling] = createSignal<User>();
+  const [assigning, setAssigning] = createSignal<{ user: User; app: string; role: Role | null }>();
 
   const setRole = async (user: User, role: Role, proof: FactorProof) => {
     await api<null>(`/api/users/${user.id}/role`, {
@@ -178,41 +166,30 @@ export function AccountSettings(props: Routed & { me: Me; apps?: string[] }) {
     patch(user.id, "role", role);
   };
 
-  const setEnabled = (user: User, enabled: boolean) =>
-    act(async () => {
-      await api<null>(`/api/users/${user.id}/enabled`, {
-        method: "PUT",
-        body: { enabled } satisfies EnabledChange,
-      });
-      patch(user.id, "enabled", enabled);
+  const setEnabled = async (user: User, enabled: boolean, proof: FactorProof) => {
+    await api<null>(`/api/users/${user.id}/enabled`, {
+      method: "PUT",
+      body: { enabled, proof } satisfies EnabledChange,
     });
+    patch(user.id, "enabled", enabled);
+  };
 
   const roleIn = (user: User, app: string) =>
     appRoles().find((granted) => granted.user_id === user.id && granted.app === app)?.role ?? "";
 
-  const setAppRole = (user: User, app: string, role: Role | null) =>
-    act(async () => {
-      await api<null>(`/api/users/${user.id}/apps/${encodeURIComponent(app)}`, {
-        method: "PUT",
-        body: { role },
-      });
-      setAppRoles((have) => [
-        ...have.filter((granted) => granted.user_id !== user.id || granted.app !== app),
-        ...(role ? [{ user_id: user.id, app, role }] : []),
-      ]);
+  const setAppRole = async (user: User, app: string, role: Role | null, proof: FactorProof) => {
+    await api<null>(`/api/users/${user.id}/apps/${encodeURIComponent(app)}`, {
+      method: "PUT",
+      body: { role, proof } satisfies AppRoleChange,
     });
+    setAppRoles((have) => [
+      ...have.filter((granted) => granted.user_id !== user.id || granted.app !== app),
+      ...(role ? [{ user_id: user.id, app, role }] : []),
+    ]);
+  };
 
-  /**
-   * Delete an account. **Deliberately not wrapped in [`act`]**: it is confirmed
-   * in a dialog, and `Confirm` closes only when the act resolves. Routed
-   * through `act` it would catch the refusal itself, hand `Confirm` a resolved
-   * promise, and the dialog would close as though the delete had worked — with
-   * the reason appearing in a banner above a table the operator is no longer
-   * looking at. The dialog owns its own pending state, so nothing here needs
-   * `rowAction` either.
-   */
-  const remove = async (user: User) => {
-    await api<null>(`/api/users/${user.id}`, { method: "DELETE" });
+  const remove = async (user: User, proof: FactorProof) => {
+    await api<null>(`/api/users/${user.id}`, { method: "DELETE", body: proof });
     setFetched((have) => have.filter((u) => u.id !== user.id));
   };
 
@@ -232,7 +209,6 @@ export function AccountSettings(props: Routed & { me: Me; apps?: string[] }) {
       }
     >
       <Notice tone="good">{added() && `The account ${added()} was created.`}</Notice>
-      <Notice tone="bad">{rowAction.failed()}</Notice>
       <Notice tone="bad">{listing.failed()}</Notice>
 
       <Table
@@ -280,10 +256,9 @@ export function AccountSettings(props: Routed & { me: Me; apps?: string[] }) {
                           class="app-field__input"
                           aria-label={`${user.username}'s role in ${app}`}
                           value={roleIn(user, app)}
-                          disabled={rowAction.pending()}
-                          onChange={async (e) => {
+                          onChange={(e) => {
                             const select = e.currentTarget;
-                            await setAppRole(user, app, (select.value || null) as Role | null);
+                            setAssigning({ user, app, role: (select.value || null) as Role | null });
                             select.value = roleIn(user, app);
                           }}
                         >
@@ -307,7 +282,7 @@ export function AccountSettings(props: Routed & { me: Me; apps?: string[] }) {
                 </Td>
                 <Td controls>
                   <Show when={mayChange()}>
-                    <Menu aria-label={`Actions for ${user.username}`} pending={rowAction.pending()}>
+                    <Menu aria-label={`Actions for ${user.username}`}>
                       <For each={grantable().filter((r) => r !== user.role)}>
                         {(role) => (
                           <MenuItem onSelect={() => setChanging({ user, role })}>
@@ -315,9 +290,7 @@ export function AccountSettings(props: Routed & { me: Me; apps?: string[] }) {
                           </MenuItem>
                         )}
                       </For>
-                      <MenuItem onSelect={() => void setEnabled(user, !user.enabled)}>
-                        {user.enabled ? "Disable" : "Enable"}
-                      </MenuItem>
+                      <MenuItem onSelect={() => setToggling(user)}>{user.enabled ? "Disable…" : "Enable…"}</MenuItem>
                       <MenuItem onSelect={() => setResetting(user)}>Reset password…</MenuItem>
                       <MenuItem onSelect={() => setRequiring(user)}>Require TOTP enrolment…</MenuItem>
                       <MenuItem onSelect={() => setPasskeysOf(user)}>Passkeys…</MenuItem>
@@ -371,15 +344,17 @@ export function AccountSettings(props: Routed & { me: Me; apps?: string[] }) {
 
       <Show when={removing()}>
         {(user) => (
-          <Confirm
+          <Proved
             title={`Delete ${user().username}?`}
             verb="Delete"
-            act={() => remove(user())}
+            act={(proof) => remove(user(), proof)}
             onClose={() => setRemoving(undefined)}
           >
-            The account is removed and any session it holds stops working. What
-            it did stays in the audit log.
-          </Confirm>
+            <p>
+              The account is removed and any session it holds stops working. What
+              it did stays in the audit log.
+            </p>
+          </Proved>
         )}
       </Show>
 
@@ -402,6 +377,39 @@ export function AccountSettings(props: Routed & { me: Me; apps?: string[] }) {
             onClose={() => setChanging(undefined)}
           >
             <p>What they may do changes from their next request.</p>
+          </Proved>
+        )}
+      </Show>
+
+      <Show when={toggling()}>
+        {(user) => {
+          const verb = user().enabled ? "Disable" : "Enable";
+          return (
+            <Proved
+              title={`${verb} ${user().username}?`}
+              verb={verb}
+              act={(proof) => setEnabled(user(), !user().enabled, proof)}
+              onClose={() => setToggling(undefined)}
+            >
+              <p>{user().enabled ? "They cannot sign in until enabled again." : "They can sign in again."}</p>
+            </Proved>
+          );
+        }}
+      </Show>
+
+      <Show when={assigning()} keyed>
+        {({ user, app, role }) => (
+          <Proved
+            title={
+              role
+                ? `Make ${user.username} ${ROLE_LABELS[role].toLowerCase()} in ${app}?`
+                : `Remove ${user.username} from ${app}?`
+            }
+            verb={role ? `Make ${ROLE_LABELS[role].toLowerCase()}` : "Remove"}
+            act={(proof) => setAppRole(user, app, role, proof)}
+            onClose={() => setAssigning(undefined)}
+          >
+            <p>What they may do in {app} changes from their next request.</p>
           </Proved>
         )}
       </Show>
