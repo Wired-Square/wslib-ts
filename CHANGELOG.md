@@ -220,6 +220,10 @@ and `constants` are exported from the root. No dependencies and no peers.
 
 ## `@wired-square/appliance-ui`
 
+### 0.7.1
+
+- The source typechecks under TypeScript 7, where a `Uint8Array` over an `ArrayBufferLike` is no longer a `BufferSource`.
+
 ### 0.7.0
 
 - `carrySession(store)` sends the session's second secret, which `store` (`SessionStore`: `read` and `keep`) holds,
