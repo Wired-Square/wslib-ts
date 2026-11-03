@@ -225,6 +225,12 @@ and `constants` are exported from the root. No dependencies and no peers.
 
 ## `@wired-square/appliance-ui`
 
+### 0.8.0
+
+- Accounts asks for the acting administrator's proof before Disable…, Enable…, Delete… and a role in an app's column:
+  `{ enabled, proof }` (`EnabledChange`), the proof as the `DELETE` body, and `{ role, proof }` (`AppRoleChange`). The
+  app's select shows the role held until the change lands. The appliance-types peer is `^0.1.2`.
+
 ### 0.7.1
 
 - The source typechecks under TypeScript 7, where a `Uint8Array` over an `ArrayBufferLike` is no longer a `BufferSource`.

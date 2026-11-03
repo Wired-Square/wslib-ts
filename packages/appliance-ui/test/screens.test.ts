@@ -858,7 +858,7 @@ test("A role per app is a column only when the host names its apps", async () =>
   assert.ok(![...within(root)].some((n) => n.props["aria-label"] === "owner's role in widgets"), "a host admin is Admin");
 });
 
-test("A refused role in an app shows the role held again, and None sends a null", async () => {
+test("A role in an app is sent with the administrator's proof, and the select shows the held role until it lands", async () => {
   let refused = true;
   const { root, asked } = await accounts({ me: admin, apps: ["widgets"] }, (_, init) =>
     init.method !== "PUT"
@@ -867,26 +867,81 @@ test("A refused role in an app shows the role held again, and None sends a null"
         ? Response.json({ error: "that role is not this app's" }, { status: 403 })
         : new Response(null, { status: 204 }),
   );
+  const named = (n: Element) => n.props["aria-label"] === "member's role in widgets";
   // As in a browser, the select shows the choice before the screen hears of it.
   const choose = async (role: string) => {
     const select = { value: role };
-    const named = (n: Element) => n.props["aria-label"] === "member's role in widgets";
     (find(root, named).props.onChange as (e: unknown) => void)({ currentTarget: select });
     await settled();
     return select.value;
   };
+  const prove = async (verb: string) => {
+    const dialog = find(root, (n) => n.tag === "dialog");
+    await typeOwnPassword(dialog, "the administrator's own");
+    await click(dialog, verb);
+    return dialog;
+  };
 
   assert.equal(await choose("admin"), "operator");
-  assert.match(textOf(root), /that role is not this app's/);
+  assert.match(textOf(find(root, (n) => n.tag === "dialog")), /Make member admin in widgets\?/);
+  assert.match(textOf(await prove("Make admin")), /that role is not this app's/);
+  assert.equal(find(root, named).props.value, "operator");
+  await click(root, "Cancel");
+
   refused = false;
-  assert.equal(await choose(""), "");
+  assert.equal(await choose(""), "operator");
+  assert.match(textOf(await prove("Remove")), /Remove member from widgets\?/);
+  assert.ok(![...within(root)].some((n) => n.tag === "dialog"), "the dialog closed");
+  assert.equal(find(root, named).props.value, "");
+  const proof = { password: "the administrator's own" };
   assert.deepEqual(
     asked.filter((a) => a.method === "PUT").map((a) => [a.path, a.body]),
     [
-      ["/api/users/2/apps/widgets", { role: "admin" }],
-      ["/api/users/2/apps/widgets", { role: null }],
+      ["/api/users/2/apps/widgets", { role: "admin", proof }],
+      ["/api/users/2/apps/widgets", { role: null, proof }],
     ],
   );
+});
+
+test("Disabling and enabling an account each send the administrator's proof", async () => {
+  const { root, asked } = await accounts({ me: admin }, (_, init) =>
+    init.method === "PUT" ? new Response(null, { status: 204 }) : undefined,
+  );
+  const toggle = async (item: string, verb: string) => {
+    await chooseFromMenu(root, "Actions for member", item);
+    const dialog = find(root, (n) => n.tag === "dialog");
+    assert.match(textOf(dialog), new RegExp(`${verb} member\\?`));
+    await typeOwnPassword(dialog, "the administrator's own");
+    await click(dialog, verb);
+  };
+
+  await toggle("Disable…", "Disable");
+  assert.match(textOf(find(root, (n) => n.tag === "td" && textOf(n).startsWith("member"))), /Disabled/);
+  await toggle("Enable…", "Enable");
+  const proof = { password: "the administrator's own" };
+  assert.deepEqual(
+    asked.filter((a) => a.method === "PUT").map((a) => [a.path, a.body]),
+    [
+      ["/api/users/2/enabled", { enabled: false, proof }],
+      ["/api/users/2/enabled", { enabled: true, proof }],
+    ],
+  );
+});
+
+test("Deleting an account sends the administrator's proof as the body", async () => {
+  const { root, asked } = await accounts({ me: admin }, (_, init) =>
+    init.method === "DELETE" ? new Response(null, { status: 204 }) : undefined,
+  );
+  await chooseFromMenu(root, "Actions for member", "Delete…");
+  const dialog = find(root, (n) => n.tag === "dialog");
+  assert.match(textOf(dialog), /What it did stays in the audit log/);
+  await typeOwnPassword(dialog, "the administrator's own");
+  await click(dialog, "Delete");
+  assert.deepEqual(
+    asked.filter((a) => a.method === "DELETE").map((a) => [a.path, a.body]),
+    [["/api/users/2", { password: "the administrator's own" }]],
+  );
+  assert.deepEqual(menus(root), [], "the row went");
 });
 
 const pills = (root: Element) => [...within(root)].filter((n) => n.props.role === "tab").map(textOf);
