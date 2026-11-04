@@ -49,6 +49,22 @@ export const bang = (props: IconProps = {}) => (
   </Glyph>
 );
 
+export const bust = (props: IconProps = {}) => (
+  <Glyph {...props}>
+    <circle cx="12" cy="7" r="3.5"/>
+    <path d="M4.5 21a7.5 7.5 0 0 1 15 0"/>
+  </Glyph>
+);
+
+export const calendar = (props: IconProps = {}) => (
+  <Glyph {...props}>
+    <rect x="3" y="5" width="18" height="16" rx="2"/>
+    <path d="M8 3v4M16 3v4"/>
+    <path d="M3 10h18"/>
+    <path d="M8 14h.01M12 14h.01M16 14h.01M8 17.5h.01M12 17.5h.01"/>
+  </Glyph>
+);
+
 export const check = (props: IconProps = {}) => (
   <Glyph {...props}>
     <path d="M4.5 13 9.5 18 19.5 5.5"/>
@@ -106,6 +122,20 @@ export const database = (props: IconProps = {}) => (
   </Glyph>
 );
 
+export const envelope = (props: IconProps = {}) => (
+  <Glyph {...props}>
+    <rect x="3" y="5" width="18" height="14" rx="2"/>
+    <path d="M4 7l8 6 8-6"/>
+  </Glyph>
+);
+
+export const film = (props: IconProps = {}) => (
+  <Glyph {...props}>
+    <rect x="3" y="5" width="18" height="14" rx="2"/>
+    <path d="M10 9.5v5l4.5-2.5z"/>
+  </Glyph>
+);
+
 export const gauge = (props: IconProps = {}) => (
   <Glyph {...props}>
     <path d="M4.21 18.5A9 9 0 1 1 19.79 18.5"/>
@@ -114,11 +144,25 @@ export const gauge = (props: IconProps = {}) => (
   </Glyph>
 );
 
+export const handset = (props: IconProps = {}) => (
+  <Glyph {...props}>
+    <path d="M5 3h4l1.5 5-2.5 1.5a11 11 0 0 0 6.5 6.5L16 13.5l5 1.5v4a2 2 0 0 1-2 2A16 16 0 0 1 3 5a2 2 0 0 1 2-2z"/>
+  </Glyph>
+);
+
 export const info = (props: IconProps = {}) => (
   <Glyph {...props}>
     <circle cx="12" cy="12" r="9"/>
     <path d="M10.5 11H12v5.5"/>
     <path d="M12 7.5h.01"/>
+  </Glyph>
+);
+
+export const landscape = (props: IconProps = {}) => (
+  <Glyph {...props}>
+    <rect x="3" y="5" width="18" height="14" rx="2"/>
+    <circle cx="8" cy="9.5" r="1.5"/>
+    <path d="M3 17l5-5 5 5 3-3 4.5 4.5"/>
   </Glyph>
 );
 
@@ -152,6 +196,20 @@ export const overcast = (props: IconProps = {}) => (
   </Glyph>
 );
 
+export const page = (props: IconProps = {}) => (
+  <Glyph {...props}>
+    <path d="M14 3H6v18h12V7z"/>
+    <path d="M14 3v4h4"/>
+    <path d="M9 12.5h6M9 16.5h4"/>
+  </Glyph>
+);
+
+export const paperclip = (props: IconProps = {}) => (
+  <Glyph {...props}>
+    <path d="M7 9v7a5 5 0 0 0 10 0V6a3 3 0 0 0-6 0v10a1.5 1.5 0 0 0 3 0V9"/>
+  </Glyph>
+);
+
 export const pencil = (props: IconProps = {}) => (
   <Glyph {...props}>
     <path d="M15.5 5 19 8.5 9.5 18 4.5 19.5 6 14.5z"/>
@@ -165,10 +223,32 @@ export const plus = (props: IconProps = {}) => (
   </Glyph>
 );
 
+export const portico = (props: IconProps = {}) => (
+  <Glyph {...props}>
+    <path d="M3 9.5 12 4l9 5.5z"/>
+    <path d="M7 12.5V20M12 12.5V20M17 12.5V20"/>
+    <path d="M3 20h18"/>
+  </Glyph>
+);
+
 export const schemeSystem = (props: IconProps = {}) => (
   <Glyph {...props}>
     <rect x="3" y="4" width="18" height="12" rx="1.5"/>
     <path d="M10 16l-1 4h6l-1-4"/>
+  </Glyph>
+);
+
+export const speaker = (props: IconProps = {}) => (
+  <Glyph {...props}>
+    <path d="M4 9.5h3L11 6v12l-4-3.5H4z"/>
+    <path d="M14.5 9.5a3.5 3.5 0 0 1 0 5M17 6.5a7.5 7.5 0 0 1 0 11"/>
+  </Glyph>
+);
+
+export const speechBubble = (props: IconProps = {}) => (
+  <Glyph {...props}>
+    <path d="M3 4h18v13H10l-5 4v-4H3z"/>
+    <path d="M7.5 8.5h9M7.5 12.5h5"/>
   </Glyph>
 );
 

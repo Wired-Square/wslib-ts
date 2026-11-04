@@ -27,10 +27,11 @@ npm install @wired-square/icons
 | `./sprite.svg` | Every glyph as a `<symbol id="icon-<name>">` |
 | `./glyphs/<name>.svg` | Each glyph alone |
 
-A glyph's name is its file's, in kebab-case: `alert`, `arrow-down`, `arrow-left`, `arrow-right`, `arrow-up`,
-`bang`, `check`, `chevron-down`, `chevron-left`, `chevron-right`, `chevron-up`, `clear`, `cloud`, `copy`,
-`database`, `gauge`, `info`, `lock`, `moon`, `more`, `overcast`, `pencil`, `plus`, `scheme-system`, `sun`, `timer`, `trash`,
-`unlock` and `x`.
+A glyph's name is its file's, in kebab-case: `alert`, `arrow-down`, `arrow-left`, `arrow-right`, `arrow-up`, `bang`,
+`bust`, `calendar`, `check`, `chevron-down`, `chevron-left`, `chevron-right`, `chevron-up`, `clear`, `cloud`,
+`copy`, `database`, `envelope`, `film`, `gauge`, `handset`, `info`, `landscape`, `lock`, `moon`, `more`, `overcast`,
+`page`, `paperclip`, `pencil`, `plus`, `portico`, `scheme-system`, `speaker`, `speech-bubble`, `sun`, `timer`,
+`trash`, `unlock` and `x`.
 
 ## Without a bundler
 
