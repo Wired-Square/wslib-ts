@@ -461,6 +461,11 @@ and no peers.
 
 ## `@wired-square/icons`
 
+### 0.1.2
+
+- `bust`, `calendar`, `envelope`, `film`, `handset`, `landscape`, `page`, `paperclip`, `portico`, `speaker` and
+  `speech-bubble`: pictures for records of people, organisations, events, documents, media and messages.
+
 ### 0.1.1
 
 - `gauge`: a dial with a needle, for a dashboard.
