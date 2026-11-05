@@ -208,6 +208,12 @@ names unchanged.
 
 ## `@wired-square/appliance-types`
 
+### 0.1.3
+
+Generated from `wslib-appliance-types-v0.1.5`. `AppManifest` gains the optional `options`, a list of `AppOption`
+(`name`, `kind`, an `AppOptionKind`, and the optional `required`, `default`, a `JsonValue`, `label` and `description`),
+and `CheckedOptions` (`values`, a map of `JsonValue` by option name, `missing` and `dropped`) is new.
+
 ### 0.1.2
 
 Generated from `wslib-appliance-types-v0.1.3`. `EnabledChange` gains the optional `proof`, a `FactorProof`, and

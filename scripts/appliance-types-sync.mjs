@@ -10,7 +10,7 @@ import { join, resolve } from "node:path";
 
 import { fail } from "./files.mjs";
 
-const TAG = "wslib-appliance-types-v0.1.3";
+const TAG = "wslib-appliance-types-v0.1.5";
 const SOURCE = "git@github.com:Wired-Square/wslib-rs.git";
 
 const generated = resolve(import.meta.dirname, "../packages/appliance-types/src/generated");

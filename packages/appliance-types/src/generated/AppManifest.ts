@@ -6,6 +6,7 @@ import type { AppHealth } from "./AppHealth.js";
 import type { AppImage } from "./AppImage.js";
 import type { AppListener } from "./AppListener.js";
 import type { AppNetwork } from "./AppNetwork.js";
+import type { AppOption } from "./AppOption.js";
 import type { AppSockets } from "./AppSockets.js";
 import type { AppVolume } from "./AppVolume.js";
 
@@ -16,4 +17,4 @@ export type AppManifest = { schema: number,
 /**
  * Also the app's base path, `/apps/<name>/`.
  */
-name: string, version: string, image: AppImage, arches: Array<AppArch>, sockets: AppSockets, network: AppNetwork, capabilities: Array<AppCapability>, volumes: Array<AppVolume>, listeners: Array<AppListener>, health: AppHealth, devices?: Array<AppDevice>, };
+name: string, version: string, image: AppImage, arches: Array<AppArch>, sockets: AppSockets, network: AppNetwork, capabilities: Array<AppCapability>, volumes: Array<AppVolume>, listeners: Array<AppListener>, health: AppHealth, devices?: Array<AppDevice>, options?: Array<AppOption>, };
