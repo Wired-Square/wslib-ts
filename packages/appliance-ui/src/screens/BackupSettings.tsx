@@ -387,6 +387,7 @@ export function Inspected(props: {
     initial: initialPlatform(here().applicationHalf),
     sections: props.sections,
     blocked: props.inspection.blocked,
+    items: props.inspection.items,
   });
 
   return (

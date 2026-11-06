@@ -242,6 +242,12 @@ and `constants` are exported from the root. No dependencies and no peers.
 
 ## `@wired-square/appliance-ui`
 
+### 0.9.0
+
+- The signed-in restore offers a tick per item a section lists (`Inspection.items`), beneath the section's, and sends
+  `items` only for a section chosen in part; a section with every item cleared is left out. The appliance-types peer
+  is `^0.1.5`.
+
 ### 0.8.0
 
 - Accounts asks for the acting administrator's proof before Disable…, Enable…, Delete… and a role in an app's column:
