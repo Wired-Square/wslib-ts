@@ -208,6 +208,12 @@ names unchanged.
 
 ## `@wired-square/appliance-types`
 
+### 0.1.5
+
+Generated from `wslib-appliance-types-v0.1.7`. `Chosen` gains the optional `items`, the items chosen within a section in
+`app`, where a chosen section missing from it restores all of its items. `Inspection` gains `items`, each section's
+`SectionItem`s (`name` and `label`) a restore may choose among.
+
 ### 0.1.4
 
 Generated from `wslib-appliance-types-v0.1.6`. `AppManifest` gains the optional `min_applianceos`, the oldest

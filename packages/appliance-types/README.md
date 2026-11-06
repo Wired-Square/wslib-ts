@@ -47,8 +47,8 @@ them:
   `PasskeyHost`, `PasskeyRegistration`, `PasskeyRename`, `PasskeyView`, `PasswordChange`, `PasswordReset`, `Peer`,
   `Pending`, `PendingEnrolment`, `PendingState`, `PinPeer`, `Reauthentication`, `RecoveryCodes`,
   `RegistrationCredential`, `RelyingPartyEntity`, `RequestOptions`, `ResetReport`, `RestoreBundle`, `RestoreReport`,
-  `RestoreUnclaimed`, `Role`, `RoleChange`, `Rollback`, `ScheduleUpdate`, `ScheduleView`, `SecondStep`, `SettledBy`,
-  `SignInBody`, `SignInCode`, `SignInMethod`, `Subsystem`, `TakeBackup`, `ThemeTokens`, `TotpConfirm`,
+  `RestoreUnclaimed`, `Role`, `RoleChange`, `Rollback`, `ScheduleUpdate`, `ScheduleView`, `SecondStep`, `SectionItem`,
+  `SettledBy`, `SignInBody`, `SignInCode`, `SignInMethod`, `Subsystem`, `TakeBackup`, `ThemeTokens`, `TotpConfirm`,
   `TotpEnrolment`, `TotpView`, `TrustedCa`, `TrustedCert`, `User`, `UserEntity`, `Warning` and `WarningScope`.
 - The constants: `TOKEN_PREFIX`, `MAX_TOKENS`, `MAX_VALUE_LEN`, `ROLE_LADDER`, `MIN_PASSWORD_LEN`,
   `MAX_PASSWORD_BYTES`, `MAX_USERNAME_LEN`, `MAX_PASSKEY_NAME_LEN`, `STALE_PROOF`, `MAX_AUDIT_PAGE`, `MAX_PEM_LEN`,

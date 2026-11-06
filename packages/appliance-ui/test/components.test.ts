@@ -216,6 +216,7 @@ const everything: Inspection = {
   },
   warnings: [],
   blocked: {},
+  items: {},
 };
 
 async function inspected(session: Session, inspection = everything): Promise<string> {
@@ -322,7 +323,7 @@ test("A flagged section is carried rather than counted, in the signed-in restore
   const { Inspected } = await screen();
   for (const html of [
     await within(session(admin), () =>
-      Inspected({ chosen: { text: "{}", header }, inspection: { header, warnings: [], blocked: {} }, passphrase: "", sections }),
+      Inspected({ chosen: { text: "{}", header }, inspection: { header, warnings: [], blocked: {}, items: {} }, passphrase: "", sections }),
     ),
     await rendered(() => Unclaimed({ file: { text: "{}", header }, sections, onDone: () => {} })),
   ]) {
