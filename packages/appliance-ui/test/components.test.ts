@@ -216,6 +216,7 @@ const everything: Inspection = {
   },
   warnings: [],
   blocked: {},
+  items: {},
 };
 
 async function inspected(session: Session, inspection = everything): Promise<string> {
@@ -271,6 +272,30 @@ test("Restore leaves a blocked section unticked, untickable and saying why", asy
   assert.doesNotMatch(widgets, /checked/);
 });
 
+test("Restore ticks each item a section lists beneath it, by label, and a section listing none as before", async () => {
+  const header = { ...everything.header, contains: { ...everything.header.contains, app: { widgets: 3, dials: 1 } } };
+  const items = { widgets: [{ name: "north", label: "North wing" }, { name: "south", label: "South wing" }] };
+  const html = await inspected(session(admin), { ...everything, header, items });
+  const ticks = [...html.matchAll(/<input type="checkbox"([^>]*)><span>(?:<!--[^>]*-->)*([^<(]+)/g)]
+    .map(([, attributes, label]) => [label?.trim(), attributes?.includes("checked")])
+    .slice(-4);
+  assert.deepEqual(ticks, [
+    ["Widgets", true],
+    ["North wing", true],
+    ["South wing", true],
+    ["dials", true],
+  ]);
+  assert.doesNotMatch(html, /north|south/);
+});
+
+test("Restore leaves a blocked section's items unticked and untickable", async () => {
+  const items = { widgets: [{ name: "north", label: "North wing" }] };
+  const html = await inspected(session(admin), { ...everything, blocked: { widgets: "busy" }, items });
+  const north = html.slice(html.lastIndexOf("<input", html.indexOf("North wing")), html.indexOf("North wing"));
+  assert.match(north, /disabled/);
+  assert.doesNotMatch(north, /checked/);
+});
+
 test("A first-run restore ticks every section the header lists, and the accounts cannot be unticked", async () => {
   const { Unclaimed } = await load<typeof import("../src/screens/RestoreOnboarding.tsx")>(
     "/src/screens/RestoreOnboarding.tsx",
@@ -322,7 +347,7 @@ test("A flagged section is carried rather than counted, in the signed-in restore
   const { Inspected } = await screen();
   for (const html of [
     await within(session(admin), () =>
-      Inspected({ chosen: { text: "{}", header }, inspection: { header, warnings: [], blocked: {} }, passphrase: "", sections }),
+      Inspected({ chosen: { text: "{}", header }, inspection: { header, warnings: [], blocked: {}, items: {} }, passphrase: "", sections }),
     ),
     await rendered(() => Unclaimed({ file: { text: "{}", header }, sections, onDone: () => {} })),
   ]) {

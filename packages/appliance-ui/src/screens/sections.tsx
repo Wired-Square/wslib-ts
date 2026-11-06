@@ -68,6 +68,7 @@ export const PLATFORM: PlatformRow[] = [
  * A tick per row `contains` holds, the product's own all on but those
  * `blocked` names, and what they ask for: a tick on a section the file does
  * not hold is not sent. A blocked section is off, cannot be ticked, and says why.
+ * A section's listed items each get a tick beneath it, sent only when some are cleared.
  */
 export function chooseSections(props: {
   contains: () => Contains;
@@ -75,27 +76,48 @@ export function chooseSections(props: {
   initial: Record<PlatformKey, boolean>;
   sections: SectionRow[];
   blocked?: Inspection["blocked"];
+  items?: Inspection["items"];
 }) {
   const contains = props.contains;
   const blocked = (name: string) => props.blocked?.[name];
   const [platform, setPlatform] = createSignal(props.initial);
-  const [app, setApp] = createSignal<Record<string, boolean>>(
+  const [ticked, setTicked] = createSignal<Record<string, boolean>>(
     Object.fromEntries(Object.keys(contains().app).map((name) => [name, !blocked(name)])),
   );
+  const isTicked = (name: string) => ticked()[name] ?? false;
+  const listed = (name: string) => props.items?.[name] ?? [];
+  const [picked, setPicked] = createSignal<Record<string, string[]>>(
+    Object.fromEntries(Object.keys(contains().app).map((name) => [name, listed(name).map((item) => item.name)])),
+  );
+  const pickedIn = (name: string) => picked()[name] ?? [];
+  const pick = (name: string, item: string, on: boolean) =>
+    setPicked({
+      ...picked(),
+      [name]: listed(name)
+        .map((i) => i.name)
+        .filter((i) => (i === item ? on : pickedIn(name).includes(i))),
+    });
 
   /** The label a product gave a section, or the name it travels under. */
   const rowFor = (name: string) => props.sections.find((s) => s.name === name) ?? { name, label: name };
 
-  const asked = (): Chosen => ({
-    accounts: platform().accounts && contains().accounts > 0,
-    settings: platform().settings && contains().settings > 0,
-    trusted_certs: platform().trusted_certs && contains().trusted_certs > 0,
-    trusted_cas: platform().trusted_cas && contains().trusted_cas > 0,
-    serving_certificate: platform().serving_certificate && contains().serving_certificate,
-    ssh_keys: platform().ssh_keys && contains().ssh_keys > 0,
-    host: platform().host && contains().host,
-    app: Object.keys(contains().app).filter((name) => app()[name]),
-  });
+  const asked = (): Chosen => {
+    const app = Object.keys(contains().app).filter(
+      (name) => isTicked(name) && (listed(name).length === 0 || pickedIn(name).length > 0),
+    );
+    const partial = app.filter((name) => pickedIn(name).length < listed(name).length);
+    return {
+      accounts: platform().accounts && contains().accounts > 0,
+      settings: platform().settings && contains().settings > 0,
+      trusted_certs: platform().trusted_certs && contains().trusted_certs > 0,
+      trusted_cas: platform().trusted_cas && contains().trusted_cas > 0,
+      serving_certificate: platform().serving_certificate && contains().serving_certificate,
+      ssh_keys: platform().ssh_keys && contains().ssh_keys > 0,
+      host: platform().host && contains().host,
+      app,
+      ...(partial.length > 0 && { items: Object.fromEntries(partial.map((name) => [name, pickedIn(name)])) }),
+    };
+  };
   const anything = () => {
     const c = asked();
     return (
@@ -138,12 +160,28 @@ export function chooseSections(props: {
                   <Tick
                     label={`${rowFor(name).label} (${carried()})`}
                     hint={rowFor(name).hint}
-                    checked={app()[name] ?? false}
+                    checked={isTicked(name)}
                     disabled={blocked(name) !== undefined}
-                    onChange={(on) => setApp({ ...app(), [name]: on })}
+                    onChange={(on) => setTicked({ ...ticked(), [name]: on })}
                   />
                 </p>
                 <Show when={blocked(name)}>{(why) => <Notice tone="warn">{why()}</Notice>}</Show>
+                <Show when={listed(name).length > 0}>
+                  <div class="app-items">
+                    <For each={listed(name)}>
+                      {(item) => (
+                        <div>
+                          <Tick
+                            label={item.label}
+                            checked={isTicked(name) && pickedIn(name).includes(item.name)}
+                            disabled={!isTicked(name)}
+                            onChange={(on) => pick(name, item.name, on)}
+                          />
+                        </div>
+                      )}
+                    </For>
+                  </div>
+                </Show>
               </>
             )}
           </Show>

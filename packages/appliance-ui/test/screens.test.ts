@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { mock, test } from "node:test";
 import type { TestContext } from "node:test";
 import { STALE_PROOF } from "@wired-square/appliance-types";
-import type { BrandingView, ListedUser, LocalIdentity, LogSnapshot } from "@wired-square/appliance-types";
+import type { BrandingView, Chosen, Inspection, ListedUser, LocalIdentity, LogSnapshot } from "@wired-square/appliance-types";
 import type { JSX } from "solid-js";
 
 import type { FeedTransport } from "../src/follow.ts";
@@ -1295,6 +1295,62 @@ test("A take sends leave_out with an optional section's tick cleared, and none w
   assert.deepEqual((await take(root, asked, true)).at(-1), { ...sent, leave_out: ["node"] });
   await setTick(root, "Node", true);
   assert.deepEqual((await take(root, asked, true)).at(-1), sent);
+});
+
+/** A bundle whose widgets section lists two items and whose dials section lists none. */
+const listing: Inspection = {
+  header: {
+    ...header,
+    box_id: null,
+    app_version: "0.11.0",
+    app_schema_version: 1,
+    contains: { ...header.contains, app: { widgets: 2, dials: 1 } },
+  },
+  warnings: [],
+  blocked: {},
+  items: {
+    widgets: [
+      { name: "north", label: "North wing" },
+      { name: "south", label: "South wing" },
+    ],
+  },
+};
+
+/** The sections a local restore of `listing` sends with the ticks `cleared` named unticked. */
+async function restoredWith(...cleared: string[]) {
+  const { Inspected } = await backupSettings();
+  const { root, asked } = await mount(
+    () =>
+      Inspected({
+        chosen: { text: "{}", header: listing.header },
+        inspection: listing,
+        passphrase: PASSPHRASE,
+        sections: [{ name: "widgets", label: "Widgets" }],
+      }),
+    () => undefined,
+    () => localAdmin,
+  );
+  for (const label of cleared) await setTick(root, label, false);
+  await submit(root);
+  return asked.filter((a) => a.path === "/api/backup/restore").map((a) => (a.body as { sections: Chosen }).sections);
+}
+
+test("A restore with every item ticked sends no items", async () => {
+  const [sent] = await restoredWith();
+  assert.deepEqual(sent?.app, ["widgets", "dials"]);
+  assert.equal(sent && "items" in sent, false);
+});
+
+test("A restore with an item cleared sends the section's rest as its items", async () => {
+  const [sent] = await restoredWith("North wing");
+  assert.deepEqual(sent?.app, ["widgets", "dials"]);
+  assert.deepEqual(sent?.items, { widgets: ["south"] });
+});
+
+test("A restore with every item of a section cleared leaves the section out", async () => {
+  const [sent] = await restoredWith("North wing", "South wing");
+  assert.deepEqual(sent?.app, ["dials"]);
+  assert.equal(sent && "items" in sent, false);
 });
 
 const consoleAdmin = { ...consoleOperator, role: "admin" } as const;

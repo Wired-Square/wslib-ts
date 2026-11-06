@@ -17,4 +17,9 @@ ssh_keys: boolean,
  * Rename this box after the other, after the commit; its addressing is
  * reported, never applied.
  */
-host: boolean, app: Array<string>, };
+host: boolean, app: Array<string>, 
+/**
+ * The items chosen within a section in `app`; a chosen section missing
+ * from it restores all of its items.
+ */
+items?: { [key in string]?: Array<string> }, };

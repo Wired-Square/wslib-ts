@@ -86,6 +86,7 @@ export type * from "./generated/Rollback.js";
 export type * from "./generated/ScheduleUpdate.js";
 export type * from "./generated/ScheduleView.js";
 export type * from "./generated/SecondStep.js";
+export type * from "./generated/SectionItem.js";
 export type * from "./generated/SettledBy.js";
 export type * from "./generated/SignInBody.js";
 export type * from "./generated/SignInCode.js";
