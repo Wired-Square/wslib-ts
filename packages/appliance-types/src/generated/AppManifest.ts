@@ -17,4 +17,8 @@ export type AppManifest = { schema: number,
 /**
  * Also the app's base path, `/apps/<name>/`.
  */
-name: string, version: string, image: AppImage, arches: Array<AppArch>, sockets: AppSockets, network: AppNetwork, capabilities: Array<AppCapability>, volumes: Array<AppVolume>, listeners: Array<AppListener>, health: AppHealth, devices?: Array<AppDevice>, options?: Array<AppOption>, };
+name: string, version: string, image: AppImage, arches: Array<AppArch>, sockets: AppSockets, network: AppNetwork, capabilities: Array<AppCapability>, volumes: Array<AppVolume>, listeners: Array<AppListener>, health: AppHealth, devices?: Array<AppDevice>, options?: Array<AppOption>, 
+/**
+ * The oldest ApplianceOS release that runs the app, `MAJOR.MINOR.PATCH`.
+ */
+min_applianceos?: string | null, };

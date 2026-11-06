@@ -208,6 +208,11 @@ names unchanged.
 
 ## `@wired-square/appliance-types`
 
+### 0.1.4
+
+Generated from `wslib-appliance-types-v0.1.6`. `AppManifest` gains the optional `min_applianceos`, the oldest
+ApplianceOS release that runs the app as `MAJOR.MINOR.PATCH`.
+
 ### 0.1.3
 
 Generated from `wslib-appliance-types-v0.1.5`. `AppManifest` gains the optional `options`, a list of `AppOption`
