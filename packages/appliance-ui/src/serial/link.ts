@@ -1,4 +1,4 @@
-import { fromBase, withSession } from "../api";
+import { ApiError, api, fromBase, withSession } from "../api";
 import type { ConsoleEvent, EchoSpan } from "./wire";
 
 export const DEFAULT_BAUD = 115200;
@@ -22,8 +22,9 @@ export function serialUrl(port: ConsolePort, baud: number, page = fromBase("/ws/
 /**
  * A console is `open` once the back end says it is attached. `unreachable` is
  * one the back end refused, by refusing the upgrade or by closing before
- * attaching, with its `error` message when it sent one; a retry would not
- * change that. One that was attached and then dropped is `retrying`.
+ * attaching, or whose session no longer holds, with its `error` message when it
+ * sent one; a retry would not change that. One that was attached and then
+ * dropped is `retrying`, and redials only once the session is answered for.
  */
 export type LinkState =
   | { is: "connecting" }
@@ -45,37 +46,74 @@ export interface Link {
   send: (bytes: Uint8Array<ArrayBuffer>) => boolean;
 }
 
-type Socket = Pick<WebSocket, "binaryType" | "close" | "onopen" | "onmessage" | "onclose" | "send" | "readyState">;
+type Socket = Pick<WebSocket, "binaryType" | "close" | "onmessage" | "onclose" | "send" | "readyState">;
 
 const OPEN = 1;
 
 const FIRST_RETRY_MS = 1000;
 const LAST_RETRY_MS = 15000;
+const SESSION_WAIT_MS = 5000;
 
-/** A `spans` event names whose echo is in the binary frame after it. */
+/** The status `GET /api/session` answers with, 0 when nothing answered. */
+function sessionStatus(): Promise<number> {
+  return api("/api/session", { signal: AbortSignal.timeout(SESSION_WAIT_MS) }).then(
+    () => 200,
+    (error) => (error instanceof ApiError ? error.status : 0),
+  );
+}
+
+interface LinkDeps {
+  socket?: (url: string) => Socket;
+  session?: () => Promise<number>;
+}
+
+/**
+ * A `spans` event names whose echo is in the binary frame after it. A redial waits for a shown tab, then asks for the
+ * session: a 401 or 403 is `unreachable`, no answer or a 5xx waits longer, and any other answer dials.
+ */
 export function openLink(
   url: string,
   on: LinkEvents,
-  socket: (url: string) => Socket = (url) => new WebSocket(url),
+  { socket = (url) => new WebSocket(url), session = sessionStatus }: LinkDeps = {},
 ): Link {
   let retryMs = FIRST_RETRY_MS;
-  let everAttached = false;
   let closed = false;
   let current: Socket | undefined;
   let spans: readonly EchoSpan[] = [];
   let timer: ReturnType<typeof setTimeout> | undefined;
+  let unpark = () => {};
+
+  const retry = () => {
+    on.state({ is: "retrying", inMs: retryMs });
+    timer = setTimeout(redial, retryMs);
+    retryMs = Math.min(retryMs * 2, LAST_RETRY_MS);
+  };
+
+  const redial = async () => {
+    if (globalThis.document?.hidden) {
+      const shown = () => {
+        if (document.hidden) return;
+        unpark();
+        void redial();
+      };
+      document.addEventListener("visibilitychange", shown);
+      unpark = () => document.removeEventListener("visibilitychange", shown);
+      return;
+    }
+    const status = await session();
+    if (closed) return;
+    if (status === 401 || status === 403) on.state({ is: "unreachable" });
+    else if (status === 0 || status >= 500) retry();
+    else dial();
+  };
 
   const dial = () => {
     on.state({ is: "connecting" });
     const ws = socket(withSession(url));
     current = ws;
     ws.binaryType = "arraybuffer";
-    let upgraded = false;
     let attached = false;
     let error: string | undefined;
-    ws.onopen = () => {
-      upgraded = true;
-    };
     ws.onmessage = (event: MessageEvent) => {
       const data = event.data as ArrayBuffer | string;
       if (typeof data !== "string") {
@@ -87,7 +125,7 @@ export function openLink(
       if (parsed?.type === "spans") spans = parsed.spans;
       else if (parsed) {
         if (parsed.type === "attached" && !attached) {
-          attached = everAttached = true;
+          attached = true;
           retryMs = FIRST_RETRY_MS;
           on.state({ is: "open" });
         }
@@ -98,13 +136,8 @@ export function openLink(
     ws.onclose = () => {
       spans = [];
       if (closed) return;
-      if (upgraded ? !attached : !everAttached) {
-        on.state(error === undefined ? { is: "unreachable" } : { is: "unreachable", message: error });
-        return;
-      }
-      on.state({ is: "retrying", inMs: retryMs });
-      timer = setTimeout(dial, retryMs);
-      retryMs = Math.min(retryMs * 2, LAST_RETRY_MS);
+      if (attached) retry();
+      else on.state(error === undefined ? { is: "unreachable" } : { is: "unreachable", message: error });
     };
   };
 
@@ -113,6 +146,7 @@ export function openLink(
     close: () => {
       closed = true;
       clearTimeout(timer);
+      unpark();
       current?.close();
     },
     send: (bytes) => {

@@ -242,6 +242,12 @@ and `constants` are exported from the root. No dependencies and no peers.
 
 ## `@wired-square/appliance-ui`
 
+### 0.9.1
+
+- `SerialConsole` asks `GET /api/session` before each redial. A 401 or 403, or a redial refused although the session
+  holds, ends `unreachable` rather than redialling every 15 s; no answer or a 5xx waits and asks again. A hidden tab
+  doesn't redial until it is shown.
+
 ### 0.9.0
 
 - The signed-in restore offers a tick per item a section lists (`Inspection.items`), beneath the section's, and sends

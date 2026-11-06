@@ -3,7 +3,7 @@ import { afterEach, mock, test } from "node:test";
 
 import type { LinkState } from "../src/serial/link.ts";
 import type { ConsoleEvent, EchoSpan } from "../src/serial/wire.ts";
-import { load } from "./mount.ts";
+import { load, settled } from "./mount.ts";
 import { FakeSocket } from "./socket.ts";
 
 const link = () => load<typeof import("../src/serial/link.ts")>("/src/serial/link.ts");
@@ -24,8 +24,9 @@ test("serialUrl names another baud, and no USB serial for a port without one", a
   assert.deepEqual(Object.fromEntries(url.searchParams), { address: "/dev/ttyUSB0", baud: "74880" });
 });
 
-async function dialled() {
+async function dialled(session: () => Promise<number> = async () => 200) {
   const { openLink } = await link();
+  let checks = 0;
   const sockets: FakeSocket[] = [];
   const urls: string[] = [];
   const states: LinkState[] = [];
@@ -38,14 +39,27 @@ async function dialled() {
       output: (b, spans) => received.push([new TextDecoder().decode(b), spans]),
       event: (e) => events.push(e),
     },
-    (url) => {
-      urls.push(url);
-      const socket = new FakeSocket();
-      sockets.push(socket);
-      return socket as unknown as WebSocket;
+    {
+      socket: (url) => {
+        urls.push(url);
+        const socket = new FakeSocket();
+        sockets.push(socket);
+        return socket as unknown as WebSocket;
+      },
+      session: () => {
+        checks++;
+        return session();
+      },
     },
   );
-  return { sockets, urls, states, received, events, ...opened };
+  return { sockets, urls, states, received, events, checks: () => checks, ...opened };
+}
+
+async function dropped(opened: Awaited<ReturnType<typeof dialled>>) {
+  opened.sockets[0]!.attach();
+  opened.sockets[0]!.drop();
+  mock.timers.tick(1000);
+  await settled();
 }
 
 afterEach(() => mock.timers.reset());
@@ -75,18 +89,20 @@ test("One the back end refused before attaching is unreachable with its message,
   assert.equal(opened.sockets.length, 1);
 });
 
-test("One revoked after attaching redials once, and is unreachable when that dial is refused", async () => {
+test("One revoked after attaching redials once its session holds, and is unreachable when that dial is refused", async () => {
   const opened = await dialled();
   mock.timers.enable({ apis: ["setTimeout"] });
   opened.sockets[0]!.attach();
   opened.sockets[0]!.text({ type: "error", message: "access revoked" });
   opened.sockets[0]!.drop();
   mock.timers.tick(1000);
+  await settled();
   assert.equal(opened.sockets.length, 2);
   opened.sockets[1]!.open();
   opened.sockets[1]!.text({ type: "error", message: "not permitted" });
   opened.sockets[1]!.drop();
   mock.timers.tick(60_000);
+  await settled();
   assert.deepEqual(opened.states, [
     { is: "connecting" },
     { is: "open" },
@@ -97,19 +113,114 @@ test("One revoked after attaching redials once, and is unreachable when that dia
   assert.equal(opened.sockets.length, 2);
 });
 
-test("One that attached and dropped redials, waiting longer each time up to fifteen seconds", async () => {
+for (const status of [401, 403]) {
+  test(`A redial whose session check answers ${status} is unreachable and is not dialled`, async () => {
+    const opened = await dialled(async () => status);
+    mock.timers.enable({ apis: ["setTimeout"] });
+    await dropped(opened);
+    mock.timers.tick(60_000);
+    await settled();
+    assert.deepEqual(opened.states.slice(2), [{ is: "retrying", inMs: 1000 }, { is: "unreachable" }]);
+    assert.equal(opened.sockets.length, 1);
+    assert.equal(opened.checks(), 1);
+  });
+}
+
+test("A redial whose session check goes unanswered waits longer without dialling, and dials once it answers", async () => {
+  let status = 0;
+  const opened = await dialled(async () => status);
+  mock.timers.enable({ apis: ["setTimeout"] });
+  await dropped(opened);
+  assert.deepEqual(opened.states.slice(2), [
+    { is: "retrying", inMs: 1000 },
+    { is: "retrying", inMs: 2000 },
+  ]);
+  status = 503;
+  mock.timers.tick(2000);
+  await settled();
+  assert.deepEqual(opened.states.at(-1), { is: "retrying", inMs: 4000 });
+  assert.equal(opened.sockets.length, 1);
+  status = 200;
+  mock.timers.tick(4000);
+  await settled();
+  assert.deepEqual(opened.states.at(-1), { is: "connecting" });
+  assert.equal(opened.sockets.length, 2);
+});
+
+test("A redial whose session check answers 404 dials", async () => {
+  const opened = await dialled(async () => 404);
+  mock.timers.enable({ apis: ["setTimeout"] });
+  await dropped(opened);
+  assert.deepEqual(opened.states.at(-1), { is: "connecting" });
+  assert.equal(opened.sockets.length, 2);
+});
+
+test("A redial whose session holds but whose socket never opens is unreachable", async () => {
   const opened = await dialled();
   mock.timers.enable({ apis: ["setTimeout"] });
+  await dropped(opened);
+  opened.sockets[1]!.drop();
+  mock.timers.tick(60_000);
+  await settled();
+  assert.deepEqual(opened.states.slice(2), [
+    { is: "retrying", inMs: 1000 },
+    { is: "connecting" },
+    { is: "unreachable" },
+  ]);
+  assert.equal(opened.sockets.length, 2);
+});
+
+test("A hidden tab does not redial until it is shown", async (t) => {
+  const page = Object.assign(new EventTarget(), { hidden: true });
+  Object.assign(globalThis, { document: page });
+  t.after(() => Reflect.deleteProperty(globalThis, "document"));
+  const opened = await dialled();
+  mock.timers.enable({ apis: ["setTimeout"] });
+  await dropped(opened);
+  mock.timers.tick(60_000);
+  page.dispatchEvent(new Event("visibilitychange"));
+  await settled();
+  assert.equal(opened.checks(), 0);
+  assert.equal(opened.sockets.length, 1);
+  page.hidden = false;
+  page.dispatchEvent(new Event("visibilitychange"));
+  await settled();
+  page.dispatchEvent(new Event("visibilitychange"));
+  await settled();
+  assert.equal(opened.checks(), 1);
+  assert.equal(opened.sockets.length, 2);
+});
+
+test("Closing while the session check is out stops the redial, and nothing more is said", async () => {
+  let answer: (status: number) => void = () => {};
+  const opened = await dialled(() => new Promise((resolve) => (answer = resolve)));
+  mock.timers.enable({ apis: ["setTimeout"] });
+  await dropped(opened);
+  opened.close();
+  answer(200);
+  await settled();
+  assert.deepEqual(opened.states.at(-1), { is: "retrying", inMs: 1000 });
+  assert.equal(opened.sockets.length, 1);
+});
+
+test("One that dropped while nothing answers waits longer each time up to fifteen seconds, and attaching resets it", async () => {
+  let status = 0;
+  const opened = await dialled(async () => status);
+  mock.timers.enable({ apis: ["setTimeout"] });
   opened.sockets[0]!.attach();
+  opened.sockets[0]!.drop();
   const waits: number[] = [];
   for (let i = 0; i < 6; i++) {
-    opened.sockets.at(-1)!.drop();
     const retry = opened.states.at(-1);
     if (retry?.is === "retrying") waits.push(retry.inMs);
     mock.timers.tick(retry?.is === "retrying" ? retry.inMs : 0);
+    await settled();
   }
   assert.deepEqual(waits, [1000, 2000, 4000, 8000, 15000, 15000]);
-  assert.equal(opened.sockets.length, 7);
+  assert.equal(opened.sockets.length, 1);
+  status = 200;
+  mock.timers.tick(15000);
+  await settled();
   opened.sockets.at(-1)!.attach();
   opened.sockets.at(-1)!.drop();
   assert.deepEqual(opened.states.at(-1), { is: "retrying", inMs: 1000 }, "attaching resets the wait");
@@ -132,6 +243,7 @@ test("Each dial carries the secret held then, and none with no store", async (t)
   secret = "s-2";
   opened.sockets[0]!.drop();
   mock.timers.tick(1000);
+  await settled();
   opened.close();
   assert.deepEqual(plain.urls, ["ws://x/ws/serial"]);
   assert.deepEqual(opened.urls, ["ws://x/ws/serial?appliance_session=s-1", "ws://x/ws/serial?appliance_session=s-2"]);

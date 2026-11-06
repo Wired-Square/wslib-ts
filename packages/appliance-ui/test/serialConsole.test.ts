@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { afterEach, beforeEach, test } from "node:test";
 
 import type { SerialConsoleProps } from "../src/serial/SerialConsole.tsx";
-import { click, find, load, mount, settled, textOf, within } from "./mount.ts";
+import { admin, click, find, load, mount, settled, textOf, within } from "./mount.ts";
 import { FakeSocket } from "./socket.ts";
 
 class Dialled extends FakeSocket {
@@ -27,7 +27,10 @@ async function opened(props: SerialConsoleProps) {
   const { SerialConsole } = await load<typeof import("../src/serial/SerialConsole.tsx")>(
     "/src/serial/SerialConsole.tsx",
   );
-  const { root } = await mount(() => SerialConsole(props), () => undefined);
+  const { root } = await mount(
+    () => SerialConsole(props),
+    (path) => (path.endsWith("/api/session") ? Response.json(admin) : undefined),
+  );
   const socket = () => Dialled.all.at(-1)!;
   const screen = () => find(root, (n) => n.tag === "pre");
   const say = async (event: unknown) => {
@@ -168,6 +171,7 @@ test("A reconnect clears a refusal and leaves a marker line in the scrollback", 
   t.mock.timers.enable({ apis: ["setTimeout"] });
   c.socket().drop();
   t.mock.timers.tick(1000);
+  await settled();
   c.socket().open();
   await settled();
   assert.match(c.shown(), /Not sent/, "a reconnect isn't made until the back end attaches it");
