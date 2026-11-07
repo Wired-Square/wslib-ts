@@ -2,19 +2,21 @@
  * "…or restore a backup", beside the first-account form.
  *
  * A replacement card has no accounts, and the person setting it up may be
- * holding the old card's bundle. `POST /api/onboarding/restore` puts the
- * sections ticked onto the box — a tick for each the bundle's header lists, all
- * on to start, because a fresh box has nothing worth keeping — and the daemon
- * gates it on the box still being unclaimed, so the write succeeds once. The
- * accounts cannot be unticked: they are what claims the box. The bundle's own
- * administrator signs in afterwards, so `onDone` is where the shell asks again
- * whether the first-account screen is still needed.
+ * holding the old card's bundle. **Check** sends it to
+ * `POST /api/onboarding/inspect`, which proves the passphrase and says what the
+ * restore would refuse, writing nothing; the ticks appear only then, all on,
+ * because a fresh box has nothing worth keeping. `POST /api/onboarding/restore`
+ * puts the sections ticked onto the box, gated on the box still being
+ * unclaimed, so the write succeeds once. The accounts cannot be unticked: they
+ * are what claims the box. The bundle's own administrator signs in afterwards,
+ * so `onDone` is where the shell asks again whether the first-account screen is
+ * still needed.
  *
  * The daemon opens the file under a lower KDF ceiling than a signed-in restore
  * gets, and says so in words when a bundle is priced above it; rendering that
  * message is the whole handling. A host puts it in `FirstAccount`'s `actions`.
  */
-import type { RestoreReport, RestoreUnclaimed } from "@wired-square/appliance-types";
+import type { Inspection, OpenBundle, RestoreReport, RestoreUnclaimed } from "@wired-square/appliance-types";
 import { Button, Field, Form, Notice, Section, Warnings } from "@wired-square/kit";
 import { Show, createSignal } from "solid-js";
 
@@ -47,22 +49,83 @@ export function RestoreOnboarding(props: { sections?: SectionRow[]; onDone: () =
 }
 
 /**
- * The form for one chosen file, mounted per file so its ticks are that file's.
+ * The form for one chosen file, mounted per file so a new file starts afresh.
  * Exported for the kit's tests, not from the package.
  */
 export function Unclaimed(props: { file: ChosenBundle; sections: SectionRow[]; onDone: () => void }) {
   const [passphrase, setPassphrase] = createSignal("");
+  const [seen, setSeen] = createSignal<Inspection | undefined>();
+
+  return (
+    <>
+      <Provenance header={seen()?.header ?? props.file.header} />
+      <Show
+        when={seen()}
+        fallback={
+          <Form
+            verb="Check"
+            act={async () => {
+              setSeen(
+                await api<Inspection>("/api/onboarding/inspect", {
+                  method: "POST",
+                  body: { passphrase: passphrase(), bundle: props.file.text } satisfies OpenBundle,
+                  signal: slowAnswer(),
+                }),
+              );
+            }}
+          >
+            <Field
+              label="Passphrase"
+              type="password"
+              autocomplete="off"
+              required
+              hint="Opens the file to show what it holds, before anything is changed."
+              value={passphrase()}
+              onValue={setPassphrase}
+            />
+          </Form>
+        }
+      >
+        {(inspection) => (
+          <Opened
+            file={props.file}
+            inspection={inspection()}
+            passphrase={passphrase()}
+            sections={props.sections}
+            onRestored={() => setPassphrase("")}
+            onDone={props.onDone}
+          />
+        )}
+      </Show>
+    </>
+  );
+}
+
+/**
+ * The ticks and the restore once the daemon has opened the file.
+ * Exported for the kit's tests, not from the package.
+ */
+export function Opened(props: {
+  file: ChosenBundle;
+  inspection: Inspection;
+  passphrase: string;
+  sections: SectionRow[];
+  onRestored: () => void;
+  onDone: () => void;
+}) {
   const [report, setReport] = createSignal<RestoreReport | undefined>();
   const { asked, Ticks } = chooseSections({
-    contains: () => props.file.header.contains,
+    contains: () => props.inspection.header.contains,
     rows: ROWS,
     initial: ALL_ON,
     sections: props.sections,
+    blocked: props.inspection.blocked,
+    items: props.inspection.items,
   });
 
   return (
     <>
-      <Provenance header={props.file.header} />
+      <Warnings of={props.inspection.warnings} />
       <Show
         when={report()}
         fallback={
@@ -73,25 +136,17 @@ export function Unclaimed(props: { file: ChosenBundle; sections: SectionRow[]; o
                 await api<RestoreReport>("/api/onboarding/restore", {
                   method: "POST",
                   body: {
-                    passphrase: passphrase(),
+                    passphrase: props.passphrase,
                     bundle: props.file.text,
                     sections: asked(),
                   } satisfies RestoreUnclaimed,
                   signal: slowAnswer(),
                 }),
               );
-              setPassphrase("");
+              props.onRestored();
             }}
           >
             <Ticks />
-            <Field
-              label="Passphrase"
-              type="password"
-              autocomplete="off"
-              required
-              value={passphrase()}
-              onValue={setPassphrase}
-            />
           </Form>
         }
       >
@@ -100,7 +155,7 @@ export function Unclaimed(props: { file: ChosenBundle; sections: SectionRow[]; o
         {(done) => (
           <>
             <Notice tone="good">Restored. Sign in with an account from the backup.</Notice>
-            <Warnings of={done().warnings} />
+            <Warnings of={done().warnings.filter((w) => !props.inspection.warnings.includes(w))} />
             <div class="app-actions">
               <Button tone="primary" onClick={() => props.onDone()}>
                 Sign in

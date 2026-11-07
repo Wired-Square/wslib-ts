@@ -20,6 +20,7 @@ import {
   localAdmin,
   mount,
   setTick,
+  tickbox,
   settled,
   textOf,
   within,
@@ -1351,6 +1352,51 @@ test("A restore with every item of a section cleared leaves the section out", as
   const [sent] = await restoredWith("North wing", "South wing");
   assert.deepEqual(sent?.app, ["dials"]);
   assert.equal(sent && "items" in sent, false);
+});
+
+test("A first-run restore checks the file before its ticks, then restores what was ticked with the same passphrase", async () => {
+  const { Unclaimed } = await load<typeof import("../src/screens/RestoreOnboarding.tsx")>(
+    "/src/screens/RestoreOnboarding.tsx",
+  );
+  const claiming = { ...listing.header, contains: { ...header.contains, accounts: 1 } };
+  const bundle = JSON.stringify({ header: claiming });
+  const { root, asked } = await mount(
+    () => Unclaimed({ file: { text: bundle, header: claiming }, sections: [], onDone: () => {} }),
+    (path) =>
+      path === "/api/onboarding/inspect"
+        ? Response.json({ header: claiming, warnings: [], blocked: {}, items: {} })
+        : path === "/api/onboarding/restore"
+          ? Response.json({ applied: {}, warnings: [], signed_out: false })
+          : undefined,
+    () => undefined,
+    null,
+  );
+  assert.equal(hasTick(root, "Pinned certificates"), false);
+  await bubble(find(root, (n) => n.tag === "input" && n.props.autocomplete === "off"), "onInput", PASSPHRASE);
+  await submit(root);
+  assert.deepEqual(asked.map((a) => [a.path, a.body]), [["/api/onboarding/inspect", { passphrase: PASSPHRASE, bundle }]]);
+  assert.equal(tickbox(root, "Accounts").props.disabled, true);
+  assert.ok(![...within(root)].some((n) => n.props.type === "password"), "the passphrase is not asked again");
+
+  await setTick(root, "Hostname", false);
+  await submit(root);
+  const restore = asked.at(-1)!;
+  assert.equal(restore.path, "/api/onboarding/restore");
+  assert.deepEqual(restore.body, {
+    passphrase: PASSPHRASE,
+    bundle,
+    sections: {
+      accounts: true,
+      settings: false,
+      trusted_certs: true,
+      trusted_cas: false,
+      serving_certificate: false,
+      ssh_keys: false,
+      host: false,
+      app: [],
+    },
+  });
+  assert.match(textOf(root), /Restored\. Sign in/);
 });
 
 const consoleAdmin = { ...consoleOperator, role: "admin" } as const;

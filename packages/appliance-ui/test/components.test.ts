@@ -14,6 +14,7 @@ import { createServer } from "vite";
 import type { ViteDevServer } from "vite";
 import solidPlugin from "vite-plugin-solid";
 
+import type { SectionRow } from "../src/screens/sections.tsx";
 import type { Session } from "../src/shell/session.ts";
 
 let vite: ViteDevServer;
@@ -296,15 +297,29 @@ test("Restore leaves a blocked section's items unticked and untickable", async (
   assert.doesNotMatch(north, /checked/);
 });
 
-test("A first-run restore ticks every section the header lists, and the accounts cannot be unticked", async () => {
-  const { Unclaimed } = await load<typeof import("../src/screens/RestoreOnboarding.tsx")>(
+/** The first-run restore once the daemon has opened a file and answered `inspection`. */
+async function opened(inspection: Inspection, sections: SectionRow[] = []): Promise<string> {
+  const { Opened } = await load<typeof import("../src/screens/RestoreOnboarding.tsx")>(
     "/src/screens/RestoreOnboarding.tsx",
   );
+  return rendered(() =>
+    Opened({
+      file: { text: "{}", header: inspection.header },
+      inspection,
+      passphrase: "",
+      sections,
+      onRestored: () => {},
+      onDone: () => {},
+    }),
+  );
+}
+
+test("A first-run restore ticks every section the header lists, and the accounts cannot be unticked", async () => {
   const header = {
     ...everything.header,
     contains: { ...everything.header.contains, ssh_keys: 0, host: false, app: { widgets: 3, dials: 0 } },
   };
-  const html = await rendered(() => Unclaimed({ file: { text: "{}", header }, sections: [], onDone: () => {} }));
+  const html = await opened({ ...everything, header });
   const ticks = [...html.matchAll(/<input type="checkbox"([^>]*)><span>(?:<!--[^>]*-->)*([^(<]+) \(/g)].map(
     ([, attributes, label]) => [label?.trim(), attributes?.includes("checked"), attributes?.includes("disabled")],
   );
@@ -319,26 +334,14 @@ test("A first-run restore ticks every section the header lists, and the accounts
 });
 
 test("A first-run restore names a product's section by its row, and one it was given no row for by its name", async () => {
-  const { Unclaimed } = await load<typeof import("../src/screens/RestoreOnboarding.tsx")>(
-    "/src/screens/RestoreOnboarding.tsx",
-  );
   const header = { ...everything.header, contains: { ...everything.header.contains, app: { widgets: 3, tailnet: 1 } } };
-  const html = await rendered(() =>
-    Unclaimed({
-      file: { text: "{}", header },
-      sections: [{ name: "tailnet", label: "Tailnet", hint: "this box's node key" }],
-      onDone: () => {},
-    }),
-  );
+  const html = await opened({ ...everything, header }, [{ name: "tailnet", label: "Tailnet", hint: "this box's node key" }]);
   assert.match(html, /Tailnet \(1 in the backup\)[^]*?<small> — this box's node key<\/small>/);
   assert.doesNotMatch(html, /tailnet \(/);
   assert.match(html, /widgets \(3 in the backup\)/);
 });
 
 test("A flagged section is carried rather than counted, in the signed-in restore and the first-run one", async () => {
-  const { Unclaimed } = await load<typeof import("../src/screens/RestoreOnboarding.tsx")>(
-    "/src/screens/RestoreOnboarding.tsx",
-  );
   const header = { ...everything.header, contains: { ...everything.header.contains, app: { widgets: 3, node: 4 } } };
   const sections = [
     { name: "widgets", label: "Widgets" },
@@ -349,12 +352,35 @@ test("A flagged section is carried rather than counted, in the signed-in restore
     await within(session(admin), () =>
       Inspected({ chosen: { text: "{}", header }, inspection: { header, warnings: [], blocked: {}, items: {} }, passphrase: "", sections }),
     ),
-    await rendered(() => Unclaimed({ file: { text: "{}", header }, sections, onDone: () => {} })),
+    await opened({ ...everything, header }, sections),
   ]) {
     assert.match(html, /Node \(carried\)/);
     assert.match(html, /Widgets \(3 in the backup\)/);
     assert.doesNotMatch(html, /Node \(4/);
   }
+});
+
+test("A first-run restore shows the inspection's warnings before its ticks", async () => {
+  const warning = "The backup has no enabled administrator.";
+  const html = await opened({ ...everything, warnings: [warning] });
+  assert.ok(html.indexOf(warning) > -1 && html.indexOf(warning) < html.indexOf("Accounts ("));
+});
+
+test("A first-run restore leaves a blocked section unticked and ticks each item beneath its section", async () => {
+  const header = { ...everything.header, contains: { ...everything.header.contains, app: { widgets: 3, dials: 1 } } };
+  const items = { widgets: [{ name: "north", label: "North wing" }] };
+  const html = await opened({ ...everything, header, blocked: { dials: "The dials are busy." }, items }, [
+    { name: "widgets", label: "Widgets" },
+  ]);
+  const ticks = [...html.matchAll(/<input type="checkbox"([^>]*)><span>(?:<!--[^>]*-->)*([^<(]+)/g)]
+    .map(([, attributes, label]) => [label?.trim(), attributes?.includes("checked"), attributes?.includes("disabled")])
+    .slice(-3);
+  assert.deepEqual(ticks, [
+    ["Widgets", true, false],
+    ["North wing", true, false],
+    ["dials", false, true],
+  ]);
+  assert.match(html, /The dials are busy\./);
 });
 
 /** `BackupSettings` at `view` under `session`, with every request left unanswered. */
