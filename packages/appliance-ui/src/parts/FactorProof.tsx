@@ -145,6 +145,8 @@ export function FactorProofField(props: { of: FactorProofState }) {
               type={way() === "password" ? "password" : "text"}
               autocomplete={way() === "password" ? "current-password" : "one-time-code"}
               inputmode={way() === "code" ? "numeric" : "text"}
+              maxLength={way() === "code" ? 6 : undefined}
+              pattern={way() === "code" ? "[0-9]*" : undefined}
               spellcheck={false}
               required
               hint={hint()}

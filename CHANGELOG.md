@@ -242,6 +242,12 @@ and `constants` are exported from the root. No dependencies and no peers.
 
 ## `@wired-square/appliance-ui`
 
+### 0.10.1
+
+- A backup's passphrase fields carry `data-1p-ignore`, and a proof's code field takes at most six digits
+  (`maxLength`, `pattern="[0-9]*"`; a recovery code is not held to them), so a password manager's one-time code fills
+  the code field alone.
+
 ### 0.10.0
 
 - The first-run restore checks the file through `POST /api/onboarding/inspect` (`OpenBundle`, answered `Inspection`)

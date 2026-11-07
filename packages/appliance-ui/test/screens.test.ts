@@ -1136,6 +1136,26 @@ test("Backup is the views Take, Restore and Schedule: the one a host routes, els
   assert.match(textOf(routed.root), /Restore from a backup/);
 });
 
+test("A backup's passphrase is no password manager's to fill: Take's and Schedule's carry data-1p-ignore", async () => {
+  const { BackupSettings } = await backupSettings();
+  const view = {
+    schedule: { enabled: false, every_hours: 24, keep: 7 },
+    passphrase_set: false,
+    runs: false,
+    state: { last_run_at: null, file: null, error: null },
+    files: [],
+  };
+  for (const routed of ["take", "schedule"] as const) {
+    const { root } = await mount(
+      () => BackupSettings({ view: routed }),
+      (path) => (path === "/api/backup/schedule" ? Response.json(view) : undefined),
+    );
+    const passphrases = [...within(root)].filter((n) => n.tag === "input" && n.props.autocomplete === "new-password");
+    assert.equal(passphrases.length, 1, routed);
+    assert.equal(passphrases[0]!.props["data-1p-ignore"], true, routed);
+  }
+});
+
 /** A product section a take offers to leave out when `offered` says so. */
 const optional = (offered: () => boolean | Promise<boolean>) => [
   { name: "node", label: "Node", hint: "this box's node", optional: offered },
