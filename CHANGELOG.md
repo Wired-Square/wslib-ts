@@ -242,6 +242,13 @@ and `constants` are exported from the root. No dependencies and no peers.
 
 ## `@wired-square/appliance-ui`
 
+### 0.10.0
+
+- The first-run restore checks the file through `POST /api/onboarding/inspect` (`OpenBundle`, answered `Inspection`)
+  before its ticks, as the signed-in restore does: it shows the inspection's warnings above them and passes its
+  `blocked` and `items` to them, then restores with the passphrase already entered. It needs a daemon that serves
+  that route.
+
 ### 0.9.1
 
 - `SerialConsole` asks `GET /api/session` before each redial. A 401 or 403, or a redial refused although the session
