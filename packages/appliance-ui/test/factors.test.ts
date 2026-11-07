@@ -396,6 +396,21 @@ test("PasswordAgain offers a passkey only where the caller has one made on the p
   }
 });
 
+test("A proof's code field takes six digits, and a recovery code is not held to them", async () => {
+  const { FactorProofField, createFactorProof } = await load<typeof import("../src/parts/FactorProof.tsx")>(
+    "/src/parts/FactorProof.tsx",
+  );
+  const proof = createFactorProof(() => true);
+  const { root } = await mount(() => FactorProofField({ of: proof }), () => undefined);
+  const field = () => find(root, byAutocomplete("one-time-code"));
+  assert.equal(field().props.maxLength, 6);
+  assert.equal(field().props.pattern, "[0-9]*");
+  proof.setWay("recovery");
+  await settled();
+  assert.equal(field().props.maxLength, undefined);
+  assert.equal(field().props.pattern, undefined);
+});
+
 test("A proof offers no way until the TOTP state is known, and what was typed for one way never carries to another", async () => {
   const { createFactorProof } = await load<typeof import("../src/parts/FactorProof.tsx")>("/src/parts/FactorProof.tsx");
   const { createRoot, createSignal } = await load<typeof import("solid-js")>("solid-js");

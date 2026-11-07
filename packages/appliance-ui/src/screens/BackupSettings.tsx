@@ -256,6 +256,7 @@ function Take(props: { sections: SectionRow[] }) {
         <Field
           label="Passphrase"
           type="password"
+          data-1p-ignore
           autocomplete="new-password"
           required
           minLength={MIN_PASSPHRASE_LEN}
@@ -335,6 +336,7 @@ function Restore(props: { sections: SectionRow[]; onRestored?: (() => void) | un
                   <Field
                     label="Passphrase"
                     type="password"
+                    data-1p-ignore
                     autocomplete="off"
                     required
                     hint="Opens the file to show what it holds, before anything is changed."
@@ -606,6 +608,7 @@ function Schedule() {
               <Field
                 label={current().passphrase_set ? "New passphrase" : "Passphrase"}
                 type="password"
+                data-1p-ignore
                 autocomplete="new-password"
                 minLength={MIN_PASSPHRASE_LEN}
                 value={passphrase()}
