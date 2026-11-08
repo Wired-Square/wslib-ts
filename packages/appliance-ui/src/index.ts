@@ -19,9 +19,10 @@ export {
   saveText,
   slowAnswer,
   unansweredMeans,
+  upload,
   withSession,
 } from "./api";
-export type { ApiInit, SessionStore } from "./api";
+export type { ApiInit, SessionStore, UploadInit } from "./api";
 export { sharedFeed, useFeed } from "./feed";
 export type { FeedHandlers } from "./feed";
 export type { FeedListener, FeedTransport } from "./follow";

@@ -51,6 +51,9 @@ export type { PendingChangeProps } from "./PendingChange";
 export { PickFile } from "./PickFile";
 export type { PickFileProps } from "./PickFile";
 
+export { Progress } from "./Progress";
+export type { ProgressProps } from "./Progress";
+
 export { FeedStatus, Pulse } from "./Pulse";
 export type { FeedStatusProps, PulseProps } from "./Pulse";
 
@@ -70,6 +73,9 @@ export type { Selection } from "./selection";
 
 export { Select } from "./Select";
 export type { SelectProps } from "./Select";
+
+export { ShownOnce } from "./ShownOnce";
+export type { ShownOnceProps } from "./ShownOnce";
 
 export { Table, Td, Th, Tr } from "./Table";
 export type { TableProps, TdProps, ThProps, TrProps } from "./Table";

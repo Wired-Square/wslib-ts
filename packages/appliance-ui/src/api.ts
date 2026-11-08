@@ -144,16 +144,25 @@ export function withSession(url: string): string {
 
 /** `fetch`, carrying the secret to a guarded `url`; a 401 without a new one forgets it. */
 export async function fetchWithSession(url: string | URL, init: RequestInit): Promise<Response> {
-  const store = session;
-  if (!store || !guarded(url)) return fetch(url, init);
-  const headers = new Headers(init.headers);
-  const secret = store.read();
-  if (secret) headers.set(SESSION_HEADER, secret);
-  const response = await fetch(url, { ...init, headers });
-  const handed = response.headers.get(SESSION_HEADER);
-  if (handed) store.keep(handed);
-  else if (response.status === 401) store.keep(undefined);
+  const store = storeFor(url);
+  if (!store) return fetch(url, init);
+  const response = await fetch(url, { ...init, headers: withSecret(store, init.headers) });
+  heardBack(store, response.status, response.headers.get(SESSION_HEADER));
   return response;
+}
+
+const storeFor = (url: string | URL) => (session && guarded(url) ? session : undefined);
+
+function withSecret(store: SessionStore | undefined, headers: HeadersInit | undefined): Headers {
+  const carrying = new Headers(headers);
+  const secret = store?.read();
+  if (secret) carrying.set(SESSION_HEADER, secret);
+  return carrying;
+}
+
+function heardBack(store: SessionStore, status: number, handed: string | null): void {
+  if (handed) store.keep(handed);
+  else if (status === 401) store.keep(undefined);
 }
 
 /**
@@ -204,8 +213,13 @@ export interface ApiInit extends Omit<RequestInit, "body"> {
  * not JSON — an empty one included.
  */
 export async function api<T>(path: string, init: ApiInit = {}): Promise<T> {
-  const response = await send(path, init);
+  return parsed<T>(await send(path, init));
+}
 
+/** What `api` and `upload` read of an answer. */
+type Answer = Pick<Response, "status" | "text">;
+
+async function parsed<T>(response: Answer): Promise<T> {
   // 204 is the appliance's answer for "done, and there is nothing to tell you".
   // 205 is not used today; it is here because both are defined as bodiless.
   if (response.status === 204 || response.status === 205) {
@@ -271,12 +285,15 @@ async function send(path: string, init: ApiInit): Promise<Response> {
     clearTimeout(timer);
   }
 
-  if (!response.ok) {
-    const refused = await refusal(response, request.signal);
-    if (unauthenticated(refused)) for (const listener of unauthenticatedListeners) listener();
-    throw refused;
-  }
-  return response;
+  return accepted(response, request.signal);
+}
+
+/** `response`, unless it is a refusal, which is thrown. */
+async function accepted<A extends Answer>(response: A, signal: RequestInit["signal"]): Promise<A> {
+  if (response.status >= 200 && response.status < 300) return response;
+  const refused = await refusal(response, signal);
+  if (unauthenticated(refused)) for (const listener of unauthenticatedListeners) listener();
+  throw refused;
 }
 
 /**
@@ -290,7 +307,7 @@ async function send(path: string, init: ApiInit): Promise<Response> {
  * shell must still hear; one lost any other way keeps the status, which was a
  * real answer.
  */
-async function refusal(response: Response, signal: RequestInit["signal"]): Promise<ApiError> {
+async function refusal(response: Answer, signal: RequestInit["signal"]): Promise<ApiError> {
   let text = "";
   try {
     text = await response.text();
@@ -352,6 +369,85 @@ export async function download(
     await unansweredIfCutOff(response.blob()),
     filename(response.headers.get("content-disposition")) ?? fallbackName,
   );
+}
+
+export interface UploadInit {
+  /** Default `POST`. */
+  method?: string;
+  headers?: HeadersInit;
+  signal?: AbortSignal;
+}
+
+/**
+ * Send `file` as the request body, resolving to the parsed answer as `api`
+ * does, and refused as `api` is.
+ *
+ * Through XHR, for its upload progress, with the `Blob` itself as the body, so
+ * the browser streams it from disk: a multi-gigabyte archive is never read into
+ * the page. There is no overall deadline, since a slow link can take hours over
+ * a healthy upload. It fails as unanswered once no bytes have gone for the
+ * upload wait, or the whole body has gone and no answer has begun within it.
+ * The `signal` aborts it with its reason, as it would a `fetch`.
+ */
+export async function upload<T>(
+  path: string,
+  file: Blob,
+  onProgress: (sent: number, total: number) => void,
+  init: UploadInit = {},
+): Promise<T> {
+  const { signal } = init;
+  signal?.throwIfAborted();
+  const url = fromBase(path);
+  const store = storeFor(url);
+  const xhr = new XMLHttpRequest();
+
+  const answer = await new Promise<Answer>((resolve, reject) => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const finish = () => {
+      clearTimeout(timer);
+      signal?.removeEventListener("abort", aborted);
+    };
+    const unanswered = () => {
+      finish();
+      reject(new ApiError(0, UNANSWERED, false));
+    };
+    const aborted = () => {
+      xhr.abort();
+      finish();
+      reject(signal?.reason);
+    };
+    // Rearmed by each progress event; once an answer has begun, its body is not timed, as in `api`.
+    const wait = () => {
+      clearTimeout(timer);
+      if (xhr.readyState < xhr.HEADERS_RECEIVED) {
+        timer = setTimeout(() => {
+          xhr.abort();
+          unanswered();
+        }, UPLOAD_WAIT_MS);
+      }
+    };
+
+    signal?.addEventListener("abort", aborted);
+    xhr.open(init.method ?? "POST", url);
+    withSecret(store, init.headers).forEach((value, name) => xhr.setRequestHeader(name, value));
+    xhr.upload.onprogress = (event) => {
+      wait();
+      onProgress(event.loaded, file.size);
+    };
+    xhr.upload.onload = wait;
+    xhr.onreadystatechange = wait;
+    xhr.onerror = unanswered;
+    xhr.onload = () => {
+      if (xhr.status === 0) return unanswered();
+      if (store) heardBack(store, xhr.status, xhr.getResponseHeader(SESSION_HEADER));
+      finish();
+      resolve({ status: xhr.status, text: async () => xhr.responseText });
+    };
+    xhr.send(file);
+    wait();
+  });
+
+  return parsed<T>(await accepted(answer, signal));
 }
 
 /** Save text the browser already holds under `name` — a log export, say. */

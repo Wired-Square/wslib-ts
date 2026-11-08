@@ -883,6 +883,85 @@ select.app-field__input {
   color: var(--app-text-muted);
 }
 
+/* --- shown once --------------------------------------------------------- */
+
+.app-shown-once {
+  margin-block-end: 1rem;
+}
+
+.app-shown-once .app-field__input {
+  font-family: var(--app-font-mono);
+}
+
+/* --- progress ----------------------------------------------------------- */
+
+.app-progress__head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.25rem 1rem;
+  font-size: 0.875rem;
+  margin-block-end: 0.3rem;
+}
+
+/* Each engine's part in a rule of its own: a selector list naming another engine's pseudo-element is dropped whole. */
+.app-progress__bar {
+  appearance: none;
+  display: block;
+  inline-size: 100%;
+  block-size: 0.5rem;
+  border: 0;
+  border-radius: var(--app-radius);
+  overflow: hidden;
+  background: var(--app-surface-sunken);
+}
+
+.app-progress__bar::-webkit-progress-bar {
+  background: transparent;
+}
+
+.app-progress__bar::-webkit-progress-value {
+  background: var(--app-accent);
+}
+
+.app-progress__bar::-moz-progress-bar {
+  background: var(--app-accent);
+}
+
+.app-progress__bar:indeterminate {
+  background: linear-gradient(90deg, transparent 35%, var(--app-accent) 35% 65%, transparent 65%) 50% 0 / 200% 100%
+    no-repeat var(--app-surface-sunken);
+  animation: app-progress-sweep 1.5s linear infinite;
+}
+
+.app-progress__bar:indeterminate::-moz-progress-bar {
+  background: transparent;
+}
+
+@keyframes app-progress-sweep {
+  from {
+    background-position: 135% 0;
+  }
+  to {
+    background-position: -35% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-progress__bar:indeterminate {
+    animation: none;
+  }
+}
+
+@media (forced-colors: active) {
+  .app-progress__bar,
+  .app-progress__bar:indeterminate {
+    appearance: auto;
+    background: none;
+    animation: none;
+  }
+}
+
 /* --- search ------------------------------------------------------------- */
 
 .app-search {
