@@ -24,12 +24,13 @@ npm install -D vite vite-plugin-solid
 |---|---|
 | `.` | The shell, the screens, their parts, `SerialConsole`, and the request, feed and access helpers, as TSX |
 | `./testing` | The kit's `mount` inside a session (`admin` by default), and the sessions `admin`, `behindConsole`, `signedIn` and `viewerSignedIn`, as TSX |
+| `./testing/proof` | `proofAsked`, `answerProof` and `cancelProof`: the open `withProof` ask read, answered through its `send` or cancelled, with no vitest, jsdom or DOM; a `ProofHost` must be mounted, as `Shell` mounts one, as TSX |
 | `./testing/setup` | The kit's vitest `setupFiles` entry, and an `EventSource` that never connects, as TSX |
 | `./vite` | `applianceVite` and `applianceProxy`, compiled JavaScript with types |
 | `./shell.css` | The styles for `Shell` and `Chrome` |
 | `./appliance.css` | The screens' and parts' styles |
 
-`.`, `./testing` and `./testing/setup` ship TSX source behind a `solid` export condition, so the app compiles them
+`.`, `./testing`, `./testing/proof` and `./testing/setup` ship TSX source behind a `solid` export condition, so the app compiles them
 with `vite-plugin-solid` ^2.11.10, passed to `applianceVite({ plugins: [solid()] })`. The components import no CSS;
 import, once and in this order, `@wired-square/kit/theme.css`, the app's own token overrides,
 `@wired-square/kit/kit.css`, `./shell.css` (only if the app mounts `Shell` or `Chrome`) and `./appliance.css`.
@@ -53,6 +54,14 @@ export default defineConfig(applianceVite({ plugins: [solid()], server: { proxy:
 `Chrome` reads `GET /api/switcher` at the origin root, whatever the app's base, and given two or more `AppLink`s
 shows a menu beside the hostname, named for the app whose `href` is the longest prefix of the page's path. Choosing
 another loads its `href`. Any failure, a 401 included, leaves the masthead without one and signs nobody out.
+
+## Branding
+
+`Shell` and `Chrome` take `wordmark`, `(name) => JSX.Element`, to draw the app's name wherever the shell shows it;
+accessible names keep it as text. `Chrome` inside a `Shell` uses the `Shell`'s unless given its own.
+
+The daemon's branding is applied as an adopted stylesheet, which outranks the app's CSS, so an app whose accent fails
+contrast on dark backgrounds sets its dark accent in the branding's `tokens_dark` as well as in its CSS.
 
 ## Peers
 

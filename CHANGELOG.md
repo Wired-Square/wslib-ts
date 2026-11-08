@@ -260,6 +260,26 @@ and `constants` are exported from the root. No dependencies and no peers.
 
 ## `@wired-square/appliance-ui`
 
+### 0.13.0
+
+- Breaking: `FactorProofField`, `createFactorProof`, their types `FactorProofState` and `ProofWay`, `PasswordAgain`,
+  `PasswordAgainProps` and `reauthentication` are no longer exported. Ask for the proof with `withProof` in place of
+  `FactorProofField` and `createFactorProof`, and with `withPassword` in place of `PasswordAgain` and
+  `reauthentication`.
+- `Proved` (`title`, `verb`, `act(proof)`, `tone`, `disabled`, `onClose`, `children`): a confirm dialog whose button
+  asks the proof through `withProof` over it and hands it to `act`. It stays open on a cancelled proof, shows any other
+  refusal, and closes once `act` is done. `tone` is `primary` by default; Accounts' reset and passkey removal pass
+  `danger`.
+- `./testing/proof`: `proofAsked()` reads the open ask's `ProofAsk`, `answerProof(proof)` hands a proof to its `send`
+  as the dialog would, rejecting with a refused proof and leaving the ask open, and `cancelProof()` closes it. It needs
+  no vitest, jsdom or DOM, so a `node --test` runner can use it, and a `ProofHost` mounted, as in the app.
+- `wordmark`, `(name) => JSX.Element`, on `Shell` and `Chrome` draws the app's name in the masthead, the switcher and
+  the signed-out screens, as plain text without it; accessible names stay text. `Chrome` takes `Shell`'s unless given
+  its own. The README says an app's dark accent goes in the branding's `tokens_dark` too.
+- Take and Schedule ask for the passphrase twice, and refuse one shorter than `MIN_PASSPHRASE_LEN` or typed
+  differently again before the proof is asked, rather than after it. `NewPassword` takes `passphrase`, which sets the
+  minimum and `data-1p-ignore` on both fields, and `optional`; `createNewPassword` gains `clear`.
+
 ### 0.12.0
 
 - `withProof({ for }, send)` asks the signed-in account's proof in a dialog of its own, offering what

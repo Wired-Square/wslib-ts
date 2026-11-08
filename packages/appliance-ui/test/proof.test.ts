@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync, statSync } from "node:fs";
 import { test } from "node:test";
 import { STALE_PROOF } from "@wired-square/appliance-types";
 
@@ -217,4 +218,139 @@ test("withPassword asks the password, or a passkey where one is made here, and h
   await prove(root, "correct horse battery");
   assert.deepEqual(await done, { password: "correct horse battery" });
   assert.deepEqual(sent, { password: "correct horse battery" });
+});
+
+/** `Proved` with `props` over a mounted host, the proofs `act` was handed, and how often it closed. */
+async function proved(props: { tone?: "danger"; act?: (proof: object) => Promise<void> } = {}) {
+  const { Proved } = await load<typeof import("../src/parts/Proved.tsx")>("/src/parts/Proved.tsx");
+  const acted: object[] = [];
+  let closed = 0;
+  const { root } = await mount(
+    () =>
+      Proved({
+        title: "Remove widget-01?",
+        verb: "Remove",
+        act: props.act ?? (async (proof) => void acted.push(proof)),
+        onClose: () => closed++,
+        children: "It is gone for good.",
+        ...(props.tone && { tone: props.tone }),
+      }),
+    totp(false),
+  );
+  return { root, acted, closed: () => closed };
+}
+
+const verbButton = (root: Element) =>
+  [...within(root)].find((n) => n.tag === "button" && textOf(n) === "Remove" && n.props.type !== "submit");
+
+test("Proved asks the proof over itself on its button, in its tone, primary by default, and closes once act is done", async () => {
+  const { root, acted, closed } = await proved();
+  assert.match(textOf(root), /Remove widget-01\?.*It is gone for good\./);
+  assert.equal(verbButton(root)?.props.class, "app-btn app-btn--primary");
+  await click(root, "Remove");
+  const ask = proofDialog(root);
+  assert.match(textOf(ask), /Remove widget-01\?/);
+  assert.equal(find(ask, (n) => n.props.type === "submit").props.class, "app-btn app-btn--primary");
+  await prove(root, "correct horse battery");
+  assert.deepEqual(acted, [{ password: "correct horse battery" }]);
+  assert.equal(closed(), 1);
+
+  const danger = await proved({ tone: "danger" });
+  assert.equal(verbButton(danger.root)?.props.class, "app-btn app-btn--danger");
+});
+
+test("Proved stays open on a cancelled proof, and shows a refusal that is not the proof's", async () => {
+  const { ApiError } = await load<typeof import("../src/api.ts")>("/src/api.ts");
+  const cancelled = await proved();
+  await click(cancelled.root, "Remove");
+  await click(proofDialog(cancelled.root), "Cancel");
+  assert.deepEqual([cancelled.acted, cancelled.closed()], [[], 0]);
+  assert.match(textOf(cancelled.root), /Remove widget-01\?/);
+
+  const refused = await proved({ act: () => Promise.reject(new ApiError(403, "widget-01 is in use", true)) });
+  await click(refused.root, "Remove");
+  await prove(refused.root, "correct horse battery");
+  assert.equal(refused.closed(), 0);
+  assert.match(textOf(refused.root), /widget-01 is in use/);
+});
+
+const testingProof = () => load<typeof import("../src/testing/proof.ts")>("/src/testing/proof.ts");
+
+/** What `withProof` came to, once it has. */
+async function askedOverHost(send: (proof: object) => Promise<NonNullable<unknown> | null>) {
+  const { withProof } = await proofs();
+  await mount(() => null, totp(false));
+  const outcome: { value?: unknown; error?: unknown; settled: boolean } = { settled: false };
+  withProof({ for: "Delete widget-01?", verb: "Delete", tone: "danger" }, send).then(
+    (value) => Object.assign(outcome, { value, settled: true }),
+    (error: unknown) => Object.assign(outcome, { error, settled: true }),
+  );
+  await settled();
+  return outcome;
+}
+
+test("The testing proof reads the open ask and answers it through send, with no DOM", async () => {
+  const { answerProof, cancelProof, proofAsked } = await testingProof();
+  assert.equal(proofAsked(), undefined);
+  assert.throws(() => answerProof({ password: "x" }), /no proof is being asked for/);
+  assert.throws(() => cancelProof(), /no proof is being asked for/);
+
+  const sent: object[] = [];
+  const outcome = await askedOverHost(async (proof) => (sent.push(proof), "done"));
+  assert.deepEqual(proofAsked(), { for: "Delete widget-01?", verb: "Delete", tone: "danger" });
+  await answerProof({ password: "correct horse battery" });
+  assert.deepEqual(sent, [{ password: "correct horse battery" }]);
+  assert.deepEqual(outcome, { value: "done", settled: true });
+  assert.equal(proofAsked(), undefined);
+});
+
+test("The testing proof rejects a refused proof and leaves the ask open, settles any other refusal, and cancels", async () => {
+  const { answerProof, cancelProof, proofAsked } = await testingProof();
+  const { ApiError } = await load<typeof import("../src/api.ts")>("/src/api.ts");
+  const wrong = new ApiError(403, "the password is incorrect", true);
+  let tries = 0;
+  const retried = await askedOverHost(async (proof) => {
+    if (tries++ === 0) throw wrong;
+    return proof;
+  });
+  await assert.rejects(answerProof({ password: "wrong" }), wrong);
+  assert.equal(retried.settled, false);
+  assert.ok(proofAsked());
+  await answerProof({ password: "right" });
+  assert.deepEqual(retried, { value: { password: "right" }, settled: true });
+
+  const busy = new ApiError(409, "widget-01 is in use", true);
+  const refused = await askedOverHost(() => Promise.reject(busy));
+  await answerProof({ password: "right" });
+  assert.deepEqual(refused, { error: busy, settled: true });
+
+  const cancelled = await askedOverHost(async () => "done");
+  cancelProof();
+  await settled();
+  assert.deepEqual(cancelled, { value: undefined, settled: true });
+  assert.equal(proofAsked(), undefined);
+});
+
+test("The testing proof imports no vitest, no jsdom and none of the kit's testing", () => {
+  const seen = new Set<string>();
+  const outside: string[] = [];
+  const walk = (file: string) => {
+    if (seen.has(file)) return;
+    seen.add(file);
+    for (const [, specifier] of readFileSync(file, "utf8").matchAll(/(?:from|import)\s+"([^"]+)"/g)) {
+      if (!specifier!.startsWith(".")) {
+        outside.push(specifier!);
+        continue;
+      }
+      const base = new URL(specifier!, `file://${file}`).pathname;
+      const found = ["", ".ts", ".tsx", "/index.ts"]
+        .map((end) => base + end)
+        .find((path) => statSync(path, { throwIfNoEntry: false })?.isFile());
+      assert.ok(found, `${specifier} from ${file}`);
+      walk(found);
+    }
+  };
+  walk(new URL("../src/testing/proof.ts", import.meta.url).pathname);
+  assert.deepEqual(outside.filter((name) => /vitest|jsdom|\/testing/.test(name)), []);
+  assert.ok(outside.includes("@wired-square/kit"));
 });

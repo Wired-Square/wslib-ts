@@ -58,6 +58,7 @@ interface Asking {
 }
 
 const [asking, setAsking] = createSignal<Asking>();
+export { asking };
 const [hosts, setHosts] = createSignal<symbol[]>([]);
 
 type Sent = NonNullable<unknown> | null;
@@ -152,8 +153,20 @@ export function ProofHost() {
   );
 }
 
+/** Sends `proof`, settling the ask with what came of it, unless the proof was refused, which throws. */
+export async function answer(open: Asking, proof: unknown) {
+  let value: unknown;
+  try {
+    value = await open.send(proof);
+  } catch (error) {
+    if (refusedProof(error)) throw error;
+    return open.settle({ error });
+  }
+  open.settle({ value });
+}
+
 function ProofDialog(props: { asking: Asking }) {
-  const { ask, send, settle } = props.asking;
+  const { ask, settle } = props.asking;
   const proving = props.asking.proving();
   const [pending, setPending] = createSignal(false);
   const [refused, setRefused] = createSignal<unknown>();
@@ -164,13 +177,9 @@ function ProofDialog(props: { asking: Asking }) {
     event.preventDefault();
     if (pending() || !proving.ready()) return;
     setPending(true);
-    let sending = false;
     try {
-      const proof = await proving.take();
-      sending = true;
-      settle({ value: await send(proof) });
+      await answer(props.asking, await proving.take());
     } catch (error) {
-      if (sending && !refusedProof(error)) return settle({ error });
       setRefused(error);
       proving.clear();
       setPending(false);

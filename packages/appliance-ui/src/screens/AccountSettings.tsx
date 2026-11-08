@@ -75,7 +75,6 @@ import {
   Badge,
   Button,
   Dialog,
-  DialogActions,
   Field,
   Form,
   Loaded,
@@ -102,6 +101,7 @@ import type { JSX } from "solid-js";
 
 import { api } from "../api";
 import { NewPassword, createNewPassword } from "../parts/NewPassword";
+import { Proved } from "../parts/Proved";
 import { ROLE_LABELS, RoleBadge } from "../parts/RoleBadge";
 import { withProof } from "../parts/withProof";
 import type { ProofAsk } from "../parts/withProof";
@@ -459,46 +459,6 @@ function FactorGlyphs(props: { user: ListedUser }) {
   );
 }
 
-/**
- * A change to another account with fields of its own, sent with the acting
- * administrator's proof once confirmed. A cancelled proof leaves it open.
- */
-function Proved(props: {
-  title: string;
-  verb: string;
-  act: (proof: FactorProof) => Promise<void>;
-  disabled?: boolean;
-  onClose: () => void;
-  children: JSX.Element;
-}) {
-  const action = createAction();
-  const confirm = () =>
-    void action.run(
-      () =>
-        withProof({ for: props.title, verb: props.verb, tone: "danger" }, (proof) =>
-          props.act(proof).then(() => ({})),
-        ),
-      (done) => {
-        if (done) props.onClose();
-      },
-    );
-  return (
-    <Dialog title={props.title} class="app-confirm" pending={action.pending()} onClose={props.onClose}>
-      <Notice tone="bad">{action.failed()}</Notice>
-      <div class="app-dialog__body">{props.children}</div>
-      <DialogActions
-        onCancel={props.onClose}
-        pending={action.pending()}
-        confirm={
-          <Button tone="danger" pending={action.pending()} disabled={props.disabled} onClick={confirm}>
-            {props.verb}
-          </Button>
-        }
-      />
-    </Dialog>
-  );
-}
-
 /** Another account's passkeys, one of which may be removed. */
 function AccountPasskeys(props: { user: User; onChanged: () => void; onClose: () => void }) {
   const path = `/api/users/${props.user.id}/passkeys`;
@@ -507,6 +467,7 @@ function AccountPasskeys(props: { user: User; onChanged: () => void; onClose: ()
   const picked = () => chosen() || (passkeys.state === "ready" ? passkeys()[0]?.id : "") || "";
   return (
     <Proved
+      tone="danger"
       title={`${props.user.username}'s passkeys`}
       verb="Remove passkey"
       disabled={picked() === ""}
@@ -610,6 +571,7 @@ function ResetPassword(props: { user: User; onChanged: () => void; onClose: () =
 
   return (
     <Proved
+      tone="danger"
       title={`Reset ${props.user.username}'s password?`}
       verb="Reset password"
       act={reset}

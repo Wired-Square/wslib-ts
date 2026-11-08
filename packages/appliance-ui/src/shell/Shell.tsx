@@ -19,10 +19,12 @@ import {
   Match,
   Show,
   Switch,
+  createContext,
   createMemo,
   createResource,
   createSignal,
   onCleanup,
+  useContext,
 } from "solid-js";
 import type { JSX } from "solid-js";
 
@@ -44,6 +46,9 @@ export interface ShellProps {
    * are: a `SchemePicker`, say.
    */
   controls?: JSX.Element;
+
+  /** Draws the app's name wherever the shell shows it, in place of plain text. */
+  wordmark?: Wordmark;
 
   /** Beneath the signed-out card — the product's locked-out hint. */
   help?: JSX.Element;
@@ -74,6 +79,10 @@ export interface ShellProps {
    */
   children: JSX.Element;
 }
+
+export type Wordmark = (name: string) => JSX.Element;
+
+export const WordmarkContext = createContext<Wordmark>((name) => name);
 
 /**
  * How often the shell probes the daemon, and how long any of its asks may
@@ -239,70 +248,72 @@ export function Shell(props: ShellProps) {
 
   return (
     <SessionContext.Provider value={session}>
-      <Show when={known() && !final() && failed()}>
-        {(why) => (
-          <Notice tone="bad" class="app-away">
-            {refusalMessage(why())} — retrying every few seconds.
-            {retry()}
-          </Notice>
-        )}
-      </Show>
-      <Switch>
-        <Match when={starting()}>
-          <main class="app-centred app-muted">Starting…</main>
-        </Match>
-        {/* Ahead of the product, which `known()` still picks until the session answers. */}
-        <Match when={parting()}>
-          {(left) => (
-            <Welcome controls={props.controls}>
-              <ResetDone
-                report={left().report}
-                pending={reading.pending()}
-                onContinue={() => void read()}
-              />
-            </Welcome>
+      <WordmarkContext.Provider value={(name) => (props.wordmark ? props.wordmark(name) : name)}>
+        <Show when={known() && !final() && failed()}>
+          {(why) => (
+            <Notice tone="bad" class="app-away">
+              {refusalMessage(why())} — retrying every few seconds.
+              {retry()}
+            </Notice>
           )}
-        </Match>
-        <Match when={refused()}>
-          <Trouble
-            why={refusalMessage(failed())}
-            note="A client reaching it that way provides its own session."
-            action={null}
-          />
-        </Match>
-        <Match when={roleless()}>
-          <Trouble
-            why={refusalMessage(failed())}
-            note="This app gives you no role. Reload this page once its administrator gives you one."
-            action={null}
-          />
-        </Match>
-        <Match when={!known()}>
-          <Trouble why={refusalMessage(failed())} note="Retrying every few seconds." action={retry()} />
-        </Match>
-        <Match when={known()?.needed}>
-          <Welcome controls={props.controls}>{productsOr(props.firstAccount, () => props.unclaimed)}</Welcome>
-        </Match>
-        <Match when={!known()?.user}>
-          <Welcome controls={props.controls}>{productsOr(props.signIn, () => <SignedOut help={props.help} />)}</Welcome>
-        </Match>
-        <Match when={known()?.user}>
-          <ErrorBoundary
-            fallback={(error, reset) => (
-              <Trouble
-                why="The interface hit an error."
-                note={error instanceof Refusal ? error.message : String(error)}
-                action={<Button onClick={reset}>Try again</Button>}
-              />
+        </Show>
+        <Switch>
+          <Match when={starting()}>
+            <main class="app-centred app-muted">Starting…</main>
+          </Match>
+          {/* Ahead of the product, which `known()` still picks until the session answers. */}
+          <Match when={parting()}>
+            {(left) => (
+              <Welcome controls={props.controls}>
+                <ResetDone
+                  report={left().report}
+                  pending={reading.pending()}
+                  onContinue={() => void read()}
+                />
+              </Welcome>
             )}
-          >
-            <PartingContext.Provider value={(report, onRead) => setParting({ report, onRead })}>
-              {props.children}
-            </PartingContext.Provider>
-          </ErrorBoundary>
-        </Match>
-      </Switch>
-      <ProofHost />
+          </Match>
+          <Match when={refused()}>
+            <Trouble
+              why={refusalMessage(failed())}
+              note="A client reaching it that way provides its own session."
+              action={null}
+            />
+          </Match>
+          <Match when={roleless()}>
+            <Trouble
+              why={refusalMessage(failed())}
+              note="This app gives you no role. Reload this page once its administrator gives you one."
+              action={null}
+            />
+          </Match>
+          <Match when={!known()}>
+            <Trouble why={refusalMessage(failed())} note="Retrying every few seconds." action={retry()} />
+          </Match>
+          <Match when={known()?.needed}>
+            <Welcome controls={props.controls}>{productsOr(props.firstAccount, () => props.unclaimed)}</Welcome>
+          </Match>
+          <Match when={!known()?.user}>
+            <Welcome controls={props.controls}>{productsOr(props.signIn, () => <SignedOut help={props.help} />)}</Welcome>
+          </Match>
+          <Match when={known()?.user}>
+            <ErrorBoundary
+              fallback={(error, reset) => (
+                <Trouble
+                  why="The interface hit an error."
+                  note={error instanceof Refusal ? error.message : String(error)}
+                  action={<Button onClick={reset}>Try again</Button>}
+                />
+              )}
+            >
+              <PartingContext.Provider value={(report, onRead) => setParting({ report, onRead })}>
+                {props.children}
+              </PartingContext.Provider>
+            </ErrorBoundary>
+          </Match>
+        </Switch>
+        <ProofHost />
+      </WordmarkContext.Provider>
     </SessionContext.Provider>
   );
 }
@@ -366,11 +377,24 @@ export function Brand(props: { class: string; children?: JSX.Element }) {
     <div class={props.class}>
       <img src={fromBase("/api/branding/logo")} alt="" onError={(e) => (e.currentTarget.hidden = true)} />
       <div>
-        <h1>{branding()?.app_name}</h1>
+        <h1>
+          <AppName />
+        </h1>
         <Show when={branding()?.manufacturer}>{(who) => <p class="app-muted">{who()}</p>}</Show>
       </div>
       {props.children}
     </div>
+  );
+}
+
+/** The app's name, drawn by the `wordmark` in force. */
+export function AppName() {
+  const { branding } = useSession();
+  const wordmark = useContext(WordmarkContext);
+  return (
+    <Show when={branding()?.app_name} keyed>
+      {(name) => wordmark(name)}
+    </Show>
   );
 }
 

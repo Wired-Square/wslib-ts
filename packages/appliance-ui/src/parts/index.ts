@@ -13,14 +13,11 @@ export type { Capable, CapabilityProps, Ready } from "./Capability";
 export { NewPassword, createNewPassword } from "./NewPassword";
 export type { NewPasswordProps, NewPasswordState } from "./NewPassword";
 
-export { PasswordAgain, reauthentication } from "./PasswordAgain";
-export type { PasswordAgainProps } from "./PasswordAgain";
-
-export { FactorProofField, createFactorProof } from "./FactorProof";
-export type { FactorProofState, ProofWay } from "./FactorProof";
-
 export { ProofHost, withPassword, withProof } from "./withProof";
 export type { ProofAsk } from "./withProof";
+
+export { Proved } from "./Proved";
+export type { ProvedProps } from "./Proved";
 
 export {
   ClockSkewNotice,

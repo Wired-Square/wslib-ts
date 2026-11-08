@@ -14,7 +14,7 @@
 export { Chrome } from "./Chrome";
 export type { ChromeProps } from "./Chrome";
 export { Shell } from "./Shell";
-export type { ShellProps } from "./Shell";
+export type { ShellProps, Wordmark } from "./Shell";
 export { SignIn } from "./SignIn";
 export { CodeStep, EnrolStep, PasskeySignIn } from "./SecondStep";
 export type { StepProps } from "./SecondStep";
