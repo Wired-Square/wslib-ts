@@ -270,6 +270,9 @@ and `constants` are exported from the root. No dependencies and no peers.
   asks the proof through `withProof` over it and hands it to `act`. It stays open on a cancelled proof, shows any other
   refusal, and closes once `act` is done. `tone` is `primary` by default; Accounts' reset and passkey removal pass
   `danger`.
+- `./testing/proof`: `proofAsked()` reads the open ask's `ProofAsk`, `answerProof(proof)` hands a proof to its `send`
+  as the dialog would, rejecting with a refused proof and leaving the ask open, and `cancelProof()` closes it. It needs
+  no vitest, jsdom or DOM, so a `node --test` runner can use it, and a `ProofHost` mounted, as in the app.
 
 ### 0.12.0
 

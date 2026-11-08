@@ -24,12 +24,13 @@ npm install -D vite vite-plugin-solid
 |---|---|
 | `.` | The shell, the screens, their parts, `SerialConsole`, and the request, feed and access helpers, as TSX |
 | `./testing` | The kit's `mount` inside a session (`admin` by default), and the sessions `admin`, `behindConsole`, `signedIn` and `viewerSignedIn`, as TSX |
+| `./testing/proof` | `proofAsked`, `answerProof` and `cancelProof`: the open `withProof` ask read, answered through its `send` or cancelled, with no vitest, jsdom or DOM; a `ProofHost` must be mounted, as `Shell` mounts one, as TSX |
 | `./testing/setup` | The kit's vitest `setupFiles` entry, and an `EventSource` that never connects, as TSX |
 | `./vite` | `applianceVite` and `applianceProxy`, compiled JavaScript with types |
 | `./shell.css` | The styles for `Shell` and `Chrome` |
 | `./appliance.css` | The screens' and parts' styles |
 
-`.`, `./testing` and `./testing/setup` ship TSX source behind a `solid` export condition, so the app compiles them
+`.`, `./testing`, `./testing/proof` and `./testing/setup` ship TSX source behind a `solid` export condition, so the app compiles them
 with `vite-plugin-solid` ^2.11.10, passed to `applianceVite({ plugins: [solid()] })`. The components import no CSS;
 import, once and in this order, `@wired-square/kit/theme.css`, the app's own token overrides,
 `@wired-square/kit/kit.css`, `./shell.css` (only if the app mounts `Shell` or `Chrome`) and `./appliance.css`.

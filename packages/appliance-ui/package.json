@@ -21,6 +21,10 @@
       "solid": "./src/testing/index.ts",
       "default": "./src/testing/index.ts"
     },
+    "./testing/proof": {
+      "solid": "./src/testing/proof.ts",
+      "default": "./src/testing/proof.ts"
+    },
     "./testing/setup": {
       "solid": "./src/testing/setup.ts",
       "default": "./src/testing/setup.ts"
