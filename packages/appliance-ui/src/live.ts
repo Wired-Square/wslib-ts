@@ -9,14 +9,28 @@
 import { onCleanup } from "solid-js";
 
 /**
- * Re-read on a timer, cleared with the screen.
+ * Re-read on a timer, cleared with the screen. A hidden tab has no reader, so
+ * the timer stops while it is hidden, and showing it re-reads once.
  *
  * The mechanism is shared; the *reason* is not, and stays at each call site —
  * rows added from another browser, a feed that may have skipped.
  */
 export function useRefresh(refetch: () => unknown, ms = 10_000): void {
-  const timer = setInterval(() => void refetch(), ms);
-  onCleanup(() => clearInterval(timer));
+  const page = globalThis.document;
+  let timer: ReturnType<typeof setInterval> | undefined;
+  const start = () => (timer = setInterval(() => void refetch(), ms));
+  const followVisibility = () => {
+    clearInterval(timer);
+    if (page.visibilityState === "hidden") return;
+    void refetch();
+    start();
+  };
+  if (page?.visibilityState !== "hidden") start();
+  page?.addEventListener("visibilitychange", followVisibility);
+  onCleanup(() => {
+    clearInterval(timer);
+    page?.removeEventListener("visibilitychange", followVisibility);
+  });
 }
 
 /**

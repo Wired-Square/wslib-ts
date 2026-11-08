@@ -242,6 +242,11 @@ and `constants` are exported from the root. No dependencies and no peers.
 
 ## `@wired-square/appliance-ui`
 
+### 0.11.0
+
+- `useRefresh` stops its timer while the tab is hidden, and on being shown reads once and starts it again. A screen
+  mounted in a hidden tab starts it when the tab is shown.
+
 ### 0.10.1
 
 - A backup's passphrase fields carry `data-1p-ignore`, and a proof's code field takes at most six digits
