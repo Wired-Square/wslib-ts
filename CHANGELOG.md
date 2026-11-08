@@ -266,6 +266,10 @@ and `constants` are exported from the root. No dependencies and no peers.
   `PasswordAgainProps` and `reauthentication` are no longer exported. Ask for the proof with `withProof` in place of
   `FactorProofField` and `createFactorProof`, and with `withPassword` in place of `PasswordAgain` and
   `reauthentication`.
+- `Proved` (`title`, `verb`, `act(proof)`, `tone`, `disabled`, `onClose`, `children`): a confirm dialog whose button
+  asks the proof through `withProof` over it and hands it to `act`. It stays open on a cancelled proof, shows any other
+  refusal, and closes once `act` is done. `tone` is `primary` by default; Accounts' reset and passkey removal pass
+  `danger`.
 
 ### 0.12.0
 

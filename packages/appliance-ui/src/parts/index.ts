@@ -16,6 +16,9 @@ export type { NewPasswordProps, NewPasswordState } from "./NewPassword";
 export { ProofHost, withPassword, withProof } from "./withProof";
 export type { ProofAsk } from "./withProof";
 
+export { Proved } from "./Proved";
+export type { ProvedProps } from "./Proved";
+
 export {
   ClockSkewNotice,
   PasskeyHosts,

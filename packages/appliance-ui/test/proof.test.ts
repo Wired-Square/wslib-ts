@@ -218,3 +218,57 @@ test("withPassword asks the password, or a passkey where one is made here, and h
   assert.deepEqual(await done, { password: "correct horse battery" });
   assert.deepEqual(sent, { password: "correct horse battery" });
 });
+
+/** `Proved` with `props` over a mounted host, the proofs `act` was handed, and how often it closed. */
+async function proved(props: { tone?: "danger"; act?: (proof: object) => Promise<void> } = {}) {
+  const { Proved } = await load<typeof import("../src/parts/Proved.tsx")>("/src/parts/Proved.tsx");
+  const acted: object[] = [];
+  let closed = 0;
+  const { root } = await mount(
+    () =>
+      Proved({
+        title: "Remove widget-01?",
+        verb: "Remove",
+        act: props.act ?? (async (proof) => void acted.push(proof)),
+        onClose: () => closed++,
+        children: "It is gone for good.",
+        ...(props.tone && { tone: props.tone }),
+      }),
+    totp(false),
+  );
+  return { root, acted, closed: () => closed };
+}
+
+const verbButton = (root: Element) =>
+  [...within(root)].find((n) => n.tag === "button" && textOf(n) === "Remove" && n.props.type !== "submit");
+
+test("Proved asks the proof over itself on its button, in its tone, primary by default, and closes once act is done", async () => {
+  const { root, acted, closed } = await proved();
+  assert.match(textOf(root), /Remove widget-01\?.*It is gone for good\./);
+  assert.equal(verbButton(root)?.props.class, "app-btn app-btn--primary");
+  await click(root, "Remove");
+  const ask = proofDialog(root);
+  assert.match(textOf(ask), /Remove widget-01\?/);
+  assert.equal(find(ask, (n) => n.props.type === "submit").props.class, "app-btn app-btn--primary");
+  await prove(root, "correct horse battery");
+  assert.deepEqual(acted, [{ password: "correct horse battery" }]);
+  assert.equal(closed(), 1);
+
+  const danger = await proved({ tone: "danger" });
+  assert.equal(verbButton(danger.root)?.props.class, "app-btn app-btn--danger");
+});
+
+test("Proved stays open on a cancelled proof, and shows a refusal that is not the proof's", async () => {
+  const { ApiError } = await load<typeof import("../src/api.ts")>("/src/api.ts");
+  const cancelled = await proved();
+  await click(cancelled.root, "Remove");
+  await click(proofDialog(cancelled.root), "Cancel");
+  assert.deepEqual([cancelled.acted, cancelled.closed()], [[], 0]);
+  assert.match(textOf(cancelled.root), /Remove widget-01\?/);
+
+  const refused = await proved({ act: () => Promise.reject(new ApiError(403, "widget-01 is in use", true)) });
+  await click(refused.root, "Remove");
+  await prove(refused.root, "correct horse battery");
+  assert.equal(refused.closed(), 0);
+  assert.match(textOf(refused.root), /widget-01 is in use/);
+});
