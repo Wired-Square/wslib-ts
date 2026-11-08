@@ -114,6 +114,40 @@ test("The signed-out screens name the box in a pill under the product's name", a
   assert.ok(!asked.some((a) => a.path === "/api/onboarding"), "no slot needs the onboarding route");
 });
 
+const branded: Answer = (path) =>
+  path === "/api/branding"
+    ? Response.json({ build: "b1", app_name: "Widget Monitor", manufacturer: "", tokens: {}, tokens_dark: {}, hostname: "" })
+    : path === "/api/session"
+      ? Response.json({ error: "sign in" }, { status: 401 })
+      : undefined;
+
+const brandNames = (root: Element) =>
+  [...within(root)]
+    .filter((n) => String(n.props.class).endsWith("__brand"))
+    .map((brand) => textOf(find(brand, (n) => n.tag === "h1")));
+
+test("Shell's wordmark draws the app's name on the signed-out screens", async () => {
+  const { root } = await shell(() => "the product", branded, { wordmark: (name) => `«${name}»` });
+  assert.deepEqual(brandNames(root), ["«Widget Monitor»"]);
+});
+
+test("Chrome draws the app's name with Shell's wordmark, or with its own", async () => {
+  const { createComponent } = await load<typeof import("solid-js")>("solid-js");
+  const { Chrome } = await load<typeof import("../src/shell/Chrome.tsx")>("/src/shell/Chrome.tsx");
+  const signedIn: Answer = (path, init) => (path === "/api/session" ? Response.json(consoleOperator) : branded(path, init));
+  const chromes = () => [
+    createComponent(Chrome, { children: "the product" }),
+    createComponent(Chrome, { wordmark: (name) => `<${name}>`, children: "the product" }),
+  ];
+  const { root } = await shell(chromes, signedIn, { wordmark: (name) => `«${name}»` });
+  assert.deepEqual(brandNames(root), ["«Widget Monitor»", "<Widget Monitor>"]);
+});
+
+test("Without a wordmark the app's name is plain text", async () => {
+  const { root } = await shell(() => "the product", branded);
+  assert.deepEqual(brandNames(root), ["Widget Monitor"]);
+});
+
 test("With no slots, the console's account reaches the product, named in the masthead without account controls", async () => {
   const { createComponent } = await load<typeof import("solid-js")>("solid-js");
   const { Chrome } = await load<typeof import("../src/shell/Chrome.tsx")>("/src/shell/Chrome.tsx");
@@ -416,7 +450,7 @@ const apps = [
 /** `Chrome` at `pathname` behind the console's proxy, branded Hello by Acme, with `/api/switcher` answered by `answer`. */
 const unswitched = { document: globalThis.document, location: globalThis.location };
 
-async function switching(t: TestContext, pathname: string, answer: () => Response) {
+async function switching(t: TestContext, pathname: string, answer: () => Response, props: Partial<ChromeProps> = {}) {
   const assigned: string[] = [];
   t.after(() => Object.assign(globalThis, unswitched));
   Object.assign(globalThis, {
@@ -432,7 +466,7 @@ async function switching(t: TestContext, pathname: string, answer: () => Respons
       createComponent(SessionProvider, {
         value: { branding: () => branding, me: () => admin, local: () => undefined, refresh: () => {} },
         get children() {
-          return createComponent(Chrome, { children: "the product" });
+          return createComponent(Chrome, { ...props, children: "the product" });
         },
       }),
     (path) => (path === SWITCHER ? answer() : undefined),
@@ -499,6 +533,12 @@ test("Given links, the brand is the switcher's button, named for its words", asy
   assert.equal(textOf(trigger), "HelloAcme");
   assert.equal(find(trigger, (n) => n.tag === "img").props.src, "https://box.local/apps/hello/api/branding/logo");
   assert.equal([...within(brand)].find((n) => n.tag === "h1"), undefined);
+});
+
+test("Chrome's wordmark draws the switcher's name, which stays plain text in its accessible name", async (t) => {
+  const { root } = await switching(t, "/apps/hello/x", () => Response.json(apps), { wordmark: (name) => `«${name}»` });
+  const trigger = find(brandOf(root), (n) => n.tag === "button" && isSwitcher(n));
+  assert.equal(textOf(trigger), "«Hello»Acme");
 });
 
 test("The switcher's and the account's triggers carry the kit's chevron, kept out of their names", async (t) => {

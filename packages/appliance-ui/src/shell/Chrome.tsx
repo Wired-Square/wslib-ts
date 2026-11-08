@@ -14,12 +14,13 @@
  */
 import { Button, Dialog, IconButton, Menu, MenuItem, Notice, createAction } from "@wired-square/kit";
 import type { AppLink } from "@wired-square/appliance-types";
-import { For, Show, children, createSignal, onCleanup, onMount } from "solid-js";
+import { For, Show, children, createSignal, onCleanup, onMount, useContext } from "solid-js";
 import type { JSX } from "solid-js";
 
 import { api, fetchWithSession, fromBase } from "../api";
 import { ROLE_LABELS, RoleBadge } from "../parts/RoleBadge";
-import { Brand, Hostname } from "./Shell";
+import { AppName, Brand, Hostname, WordmarkContext } from "./Shell";
+import type { Wordmark } from "./Shell";
 import { isStoreAccount, useSession } from "./session";
 
 export interface ChromeProps {
@@ -33,6 +34,9 @@ export interface ChromeProps {
 
   /** The product's own masthead controls, before the account's: a `SchemePicker`, say. */
   controls?: JSX.Element;
+
+  /** Draws the app's name in the masthead in place of plain text; `Shell`'s, unless given. */
+  wordmark?: Wordmark;
 
   /** The change-password dialog's content, handed what closes it; without it there is no "Change password…". */
   changePassword?: (close: () => void) => JSX.Element;
@@ -104,7 +108,9 @@ function BrandSwitcher() {
             <>
               <img src={fromBase("/api/branding/logo")} alt="" onError={(e) => (e.currentTarget.hidden = true)} />
               <span class="app-switcher__words">
-                <span class="app-switcher__name">{branding()?.app_name}</span>
+                <span class="app-switcher__name">
+                  <AppName />
+                </span>
                 <Show when={branding()?.manufacturer}>{(who) => <span class="app-muted">{who()}</span>}</Show>
               </span>
             </>
@@ -119,6 +125,7 @@ function BrandSwitcher() {
 
 export function Chrome(props: ChromeProps) {
   const { me, refresh } = useSession();
+  const inherited = useContext(WordmarkContext);
   const [changingPassword, setChangingPassword] = createSignal(false);
   const signingOut = createAction();
   const close = () => setChangingPassword(false);
@@ -144,7 +151,9 @@ export function Chrome(props: ChromeProps) {
     <>
       <header class="app-masthead">
         <div class="app-masthead__bar">
-          <BrandSwitcher />
+          <WordmarkContext.Provider value={(name) => (props.wordmark ? props.wordmark(name) : inherited(name))}>
+            <BrandSwitcher />
+          </WordmarkContext.Provider>
           <Show when={!bare()}>
             <Hostname />
           </Show>

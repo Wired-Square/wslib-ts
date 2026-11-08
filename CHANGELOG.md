@@ -273,6 +273,9 @@ and `constants` are exported from the root. No dependencies and no peers.
 - `./testing/proof`: `proofAsked()` reads the open ask's `ProofAsk`, `answerProof(proof)` hands a proof to its `send`
   as the dialog would, rejecting with a refused proof and leaving the ask open, and `cancelProof()` closes it. It needs
   no vitest, jsdom or DOM, so a `node --test` runner can use it, and a `ProofHost` mounted, as in the app.
+- `wordmark`, `(name) => JSX.Element`, on `Shell` and `Chrome` draws the app's name in the masthead, the switcher and
+  the signed-out screens, as plain text without it; accessible names stay text. `Chrome` takes `Shell`'s unless given
+  its own. The README says an app's dark accent goes in the branding's `tokens_dark` too.
 
 ### 0.12.0
 

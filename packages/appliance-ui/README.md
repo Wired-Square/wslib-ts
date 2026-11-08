@@ -55,6 +55,14 @@ export default defineConfig(applianceVite({ plugins: [solid()], server: { proxy:
 shows a menu beside the hostname, named for the app whose `href` is the longest prefix of the page's path. Choosing
 another loads its `href`. Any failure, a 401 included, leaves the masthead without one and signs nobody out.
 
+## Branding
+
+`Shell` and `Chrome` take `wordmark`, `(name) => JSX.Element`, to draw the app's name wherever the shell shows it;
+accessible names keep it as text. `Chrome` inside a `Shell` uses the `Shell`'s unless given its own.
+
+The daemon's branding is applied as an adopted stylesheet, which outranks the app's CSS, so an app whose accent fails
+contrast on dark backgrounds sets its dark accent in the branding's `tokens_dark` as well as in its CSS.
+
 ## Peers
 
 - `@wired-square/kit` ^0.4.0
