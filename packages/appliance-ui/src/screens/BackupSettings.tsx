@@ -94,6 +94,8 @@ import { For, Match, Show, Switch, createResource, createSignal } from "solid-js
 import { ApiError, api, download, slowAnswer } from "../api";
 import { BundlePicker, Provenance } from "../parts/BundlePicker";
 import type { ChosenBundle } from "../parts/BundlePicker";
+import { NewPassword, createNewPassword } from "../parts/NewPassword";
+import type { NewPasswordState } from "../parts/NewPassword";
 import { RestoredFactorsNote } from "../parts/factorNotes";
 import { isStoreAccount, useSession } from "../shell/session";
 import { createDone, provedIf } from "./proved";
@@ -141,6 +143,17 @@ export const restoreBody = (
   sections: Chosen,
   proof: FactorProof,
 ): RestoreBundle => ({ ...open, sections, ...(applicationHalf ? {} : proof) });
+
+const PASSPHRASE_LENGTH = `At least ${MIN_PASSPHRASE_LEN} characters.`;
+
+/** Refuses a passphrase too short for the daemon, or not typed the same twice, before any proof is asked for it. */
+function refuseUnfit(passphrase: NewPasswordState) {
+  // Code points, as the daemon counts them.
+  if ([...passphrase.value()].length < MIN_PASSPHRASE_LEN) {
+    throw new Refusal(`The passphrase is too short. ${PASSPHRASE_LENGTH}`);
+  }
+  if (!passphrase.matches()) throw new Refusal("The passphrase typed again does not match.");
+}
 
 /** Whether a schedule edit asks for proof: only one that sets a passphrase, and never a local session's. */
 const scheduleAsks = (applicationHalf: boolean, passphrase: string) => passphrase !== "" && !applicationHalf;
@@ -222,7 +235,7 @@ export function BackupSettings(props: Routed & { sections?: SectionRow[]; onRest
 
 function Take(props: { sections: SectionRow[] }) {
   const here = where();
-  const [passphrase, setPassphrase] = createSignal("");
+  const passphrase = createNewPassword();
   const downloaded = createDone("Downloaded.");
   const [optional] = createResource(() => !here().applicationHalf && props.sections, leavable);
   const [leftOut, setLeftOut] = createSignal<string[]>([]);
@@ -239,6 +252,7 @@ function Take(props: { sections: SectionRow[] }) {
         verb="Take a backup"
         done={downloaded.sentence()}
         act={async () => {
+          refuseUnfit(passphrase);
           const taken = await provedIf(
             !here().applicationHalf,
             { for: "Take a backup", verb: "Take a backup" },
@@ -248,23 +262,18 @@ function Take(props: { sections: SectionRow[] }) {
               provedBy(here(), () =>
                 download("/api/backup", "appliance-backup.json", {
                   method: "POST",
-                  body: takeBody(here().applicationHalf, passphrase(), proof, leftOut()),
+                  body: takeBody(here().applicationHalf, passphrase.value(), proof, leftOut()),
                 }),
               ).then(() => ({})),
           );
-          if (downloaded.went(taken)) setPassphrase("");
+          if (downloaded.went(taken)) passphrase.clear();
         }}
       >
-        <Field
+        <NewPassword
+          of={passphrase}
+          passphrase
           label="Passphrase"
-          type="password"
-          data-1p-ignore
-          autocomplete="new-password"
-          required
-          minLength={MIN_PASSPHRASE_LEN}
-          hint={`At least ${MIN_PASSPHRASE_LEN} characters. It is ground offline by anyone holding the file, so it is longer than a password.`}
-          value={passphrase()}
-          onValue={setPassphrase}
+          hint={`${PASSPHRASE_LENGTH} It is ground offline by anyone holding the file, so it is longer than a password.`}
         />
         <Show when={!here().applicationHalf}>
           <For each={optional()}>
@@ -491,9 +500,9 @@ function Schedule() {
   const here = where();
   const [view, { refetch, mutate }] = createResource(() => api<ScheduleView>("/api/backup/schedule"));
   const [typed, setTyped] = createSignal<Partial<BackupSchedule>>({});
-  const [passphrase, setPassphrase] = createSignal("");
+  const passphrase = createNewPassword();
   const saved = createDone("Saved.");
-  const asks = () => scheduleAsks(here().applicationHalf, passphrase());
+  const asks = () => scheduleAsks(here().applicationHalf, passphrase.value());
   const [forgetting, setForgetting] = createSignal(false);
   const [removing, setRemoving] = createSignal<BackupFile>();
   const fetching = createAction();
@@ -508,7 +517,7 @@ function Schedule() {
   const settle = (saved: ScheduleView) => {
     mutate(saved);
     setTyped({});
-    setPassphrase("");
+    passphrase.clear();
   };
 
   /**
@@ -560,6 +569,7 @@ function Schedule() {
               verb="Save schedule"
               done={saved.sentence()}
               act={async () => {
+                if (passphrase.value() !== "" || passphrase.again() !== "") refuseUnfit(passphrase);
                 const view = await provedIf(
                   asks(),
                   {
@@ -570,7 +580,7 @@ function Schedule() {
                   (proof) =>
                     api<ScheduleView>("/api/backup/schedule", {
                       method: "PUT",
-                      body: scheduleBody(here().applicationHalf, wanted(current()), passphrase(), proof),
+                      body: scheduleBody(here().applicationHalf, wanted(current()), passphrase.value(), proof),
                     }),
                 );
                 if (saved.went(view)) settle(view);
@@ -611,18 +621,15 @@ function Schedule() {
                 onInput={(e) => setTyped({ ...typed(), keep: e.currentTarget.valueAsNumber })}
                 hint={`How many to keep on ${here().box}, ${MIN_KEEP} to ${MAX_KEEP}. The oldest goes when a new one lands.`}
               />
-              <Field
+              <NewPassword
+                of={passphrase}
+                passphrase
+                optional
                 label={current().passphrase_set ? "New passphrase" : "Passphrase"}
-                type="password"
-                data-1p-ignore
-                autocomplete="new-password"
-                minLength={MIN_PASSPHRASE_LEN}
-                value={passphrase()}
-                onValue={setPassphrase}
                 hint={
                   current().passphrase_set
                     ? "One is set. Leave this blank to keep it, or type a new one; every file written from then on opens with the new one."
-                    : `Needed before the schedule can be switched on. At least ${MIN_PASSPHRASE_LEN} characters, and not one you use for manual backups.`
+                    : `Needed before the schedule can be switched on. ${PASSPHRASE_LENGTH} Not one you use for manual backups.`
                 }
               />
             </Form>

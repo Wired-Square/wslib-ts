@@ -6,7 +6,7 @@
  * second field keeps a standing hint, because while it is empty the act is
  * disabled with no error to say why.
  */
-import { MAX_PASSWORD_BYTES } from "@wired-square/appliance-types";
+import { MAX_PASSWORD_BYTES, MIN_PASSPHRASE_LEN } from "@wired-square/appliance-types";
 import { Field } from "@wired-square/kit";
 import { createSignal } from "solid-js";
 
@@ -20,6 +20,10 @@ export function createNewPassword() {
     setAgain,
     matches: () => value() === again(),
     ready: () => value() !== "" && value() === again(),
+    clear: () => {
+      setValue("");
+      setAgain("");
+    },
   };
 }
 
@@ -30,18 +34,24 @@ export interface NewPasswordProps {
   /** The first field's, such as "New password"; the second is it with " again". */
   label: string;
   hint: string;
+  /** A backup's passphrase: at least `MIN_PASSPHRASE_LEN` characters, and kept from password managers. */
+  passphrase?: boolean;
+  /** Blank is allowed. */
+  optional?: boolean;
 }
 
 export function NewPassword(props: NewPasswordProps) {
   const mismatched = () => props.of.again() !== "" && !props.of.matches();
+  const unmanaged = () => (props.passphrase ? { "data-1p-ignore": true } : {});
   return (
     <>
       <Field
         type="password"
         label={props.label}
         autocomplete="new-password"
-        required
-        maxLength={MAX_PASSWORD_BYTES}
+        required={!props.optional}
+        {...(props.passphrase ? { minLength: MIN_PASSPHRASE_LEN } : { maxLength: MAX_PASSWORD_BYTES })}
+        {...unmanaged()}
         hint={props.hint}
         value={props.of.value()}
         onValue={props.of.setValue}
@@ -50,7 +60,8 @@ export function NewPassword(props: NewPasswordProps) {
         type="password"
         label={`${props.label} again`}
         autocomplete="new-password"
-        required
+        required={!props.optional}
+        {...unmanaged()}
         hint={`Retype the ${props.label.toLowerCase()} to confirm it.`}
         error={mismatched() ? `This does not match the ${props.label.toLowerCase()}.` : ""}
         value={props.of.again()}

@@ -1165,23 +1165,43 @@ test("Backup is the views Take, Restore and Schedule: the one a host routes, els
   assert.match(textOf(routed.root), /Restore from a backup/);
 });
 
-test("A backup's passphrase is no password manager's to fill: Take's and Schedule's carry data-1p-ignore", async () => {
+const unscheduled = {
+  schedule: { enabled: false, every_hours: 24, keep: 7 },
+  passphrase_set: false,
+  runs: false,
+  state: { last_run_at: null, file: null, error: null },
+  files: [],
+};
+
+const backupView = async (routed: "take" | "schedule") => {
   const { BackupSettings } = await backupSettings();
-  const view = {
-    schedule: { enabled: false, every_hours: 24, keep: 7 },
-    passphrase_set: false,
-    runs: false,
-    state: { last_run_at: null, file: null, error: null },
-    files: [],
-  };
+  return mount(
+    () => BackupSettings({ view: routed }),
+    (path) => (path === "/api/backup/schedule" ? Response.json(unscheduled) : undefined),
+  );
+};
+
+test("A backup's passphrase is typed twice, and no password manager's to fill: Take's and Schedule's carry data-1p-ignore", async () => {
   for (const routed of ["take", "schedule"] as const) {
-    const { root } = await mount(
-      () => BackupSettings({ view: routed }),
-      (path) => (path === "/api/backup/schedule" ? Response.json(view) : undefined),
-    );
+    const { root } = await backupView(routed);
     const passphrases = [...within(root)].filter((n) => n.tag === "input" && n.props.autocomplete === "new-password");
-    assert.equal(passphrases.length, 1, routed);
-    assert.equal(passphrases[0]!.props["data-1p-ignore"], true, routed);
+    assert.deepEqual(passphrases.map((n) => [n.props["data-1p-ignore"], n.props.minLength]), [[true, 16], [true, undefined]], routed);
+  }
+});
+
+test("Take and Schedule refuse a short passphrase, or one typed differently again, without asking for the proof", async () => {
+  for (const routed of ["take", "schedule"] as const) {
+    for (const [value, again, said] of [
+      ["too short", "too short", /The passphrase is too short\. At least 16 characters\./],
+      [PASSPHRASE, `${PASSPHRASE}!`, /The passphrase typed again does not match\./],
+    ] as const) {
+      const { root, asked } = await backupView(routed);
+      await typeNewPassword(root, value, again);
+      await submit(root);
+      assert.match(textOf(root), said, `${routed}: ${value} / ${again}`);
+      assert.ok(![...within(root)].some((n) => n.tag === "dialog"), `${routed}: no proof asked`);
+      assert.ok(!asked.some((a) => a.method !== "GET"), `${routed}: nothing sent`);
+    }
   }
 });
 
@@ -1198,7 +1218,7 @@ const PASSPHRASE = "a passphrase long enough to be one";
 
 /** Type the passphrase into Take, submit it, prove it with a password when asked, and return every take sent. */
 async function take(root: Element, sent: Asked, password: boolean) {
-  await bubble(find(root, (n) => n.tag === "input" && n.props.autocomplete === "new-password"), "onInput", PASSPHRASE);
+  await typeNewPassword(root, PASSPHRASE, PASSPHRASE);
   await submit(root);
   if (password) await prove(root, "hunter2");
   return sent.filter((a) => a.path === "/api/backup").map((a) => a.body);

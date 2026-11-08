@@ -276,6 +276,9 @@ and `constants` are exported from the root. No dependencies and no peers.
 - `wordmark`, `(name) => JSX.Element`, on `Shell` and `Chrome` draws the app's name in the masthead, the switcher and
   the signed-out screens, as plain text without it; accessible names stay text. `Chrome` takes `Shell`'s unless given
   its own. The README says an app's dark accent goes in the branding's `tokens_dark` too.
+- Take and Schedule ask for the passphrase twice, and refuse one shorter than `MIN_PASSPHRASE_LEN` or typed
+  differently again before the proof is asked, rather than after it. `NewPassword` takes `passphrase`, which sets the
+  minimum and `data-1p-ignore` on both fields, and `optional`; `createNewPassword` gains `clear`.
 
 ### 0.12.0
 
