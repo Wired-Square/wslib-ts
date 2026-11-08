@@ -260,6 +260,13 @@ and `constants` are exported from the root. No dependencies and no peers.
 
 ## `@wired-square/appliance-ui`
 
+### 0.13.0
+
+- Breaking: `FactorProofField`, `createFactorProof`, their types `FactorProofState` and `ProofWay`, `PasswordAgain`,
+  `PasswordAgainProps` and `reauthentication` are no longer exported. Ask for the proof with `withProof` in place of
+  `FactorProofField` and `createFactorProof`, and with `withPassword` in place of `PasswordAgain` and
+  `reauthentication`.
+
 ### 0.12.0
 
 - `withProof({ for }, send)` asks the signed-in account's proof in a dialog of its own, offering what
