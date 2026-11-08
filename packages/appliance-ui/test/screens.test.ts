@@ -19,6 +19,8 @@ import {
   load,
   localAdmin,
   mount,
+  proofDialog,
+  prove,
   setTick,
   tickbox,
   settled,
@@ -876,23 +878,21 @@ test("A role in an app is sent with the administrator's proof, and the select sh
     await settled();
     return select.value;
   };
-  const prove = async (verb: string) => {
-    const dialog = find(root, (n) => n.tag === "dialog");
-    await typeOwnPassword(dialog, "the administrator's own");
-    await click(dialog, verb);
-    return dialog;
-  };
+  const open = () => [...within(root)].some((n) => n.tag === "dialog");
 
   assert.equal(await choose("admin"), "operator");
-  assert.match(textOf(find(root, (n) => n.tag === "dialog")), /Make member admin in widgets\?/);
-  assert.match(textOf(await prove("Make admin")), /that role is not this app's/);
+  assert.match(textOf(proofDialog(root)), /Make member admin in widgets\?/);
+  await prove(root, "the administrator's own");
+  assert.ok(!open(), "a refusal that is not the proof's closes the dialog");
+  assert.match(textOf(root), /that role is not this app's/);
   assert.equal(find(root, named).props.value, "operator");
-  await click(root, "Cancel");
 
   refused = false;
   assert.equal(await choose(""), "operator");
-  assert.match(textOf(await prove("Remove")), /Remove member from widgets\?/);
-  assert.ok(![...within(root)].some((n) => n.tag === "dialog"), "the dialog closed");
+  assert.match(textOf(proofDialog(root)), /Remove member from widgets\?/);
+  await prove(root, "the administrator's own");
+  assert.ok(!open(), "the dialog closed");
+  assert.doesNotMatch(textOf(root), /that role is not this app's/);
   assert.equal(find(root, named).props.value, "");
   const proof = { password: "the administrator's own" };
   assert.deepEqual(
@@ -910,10 +910,8 @@ test("Disabling and enabling an account each send the administrator's proof", as
   );
   const toggle = async (item: string, verb: string) => {
     await chooseFromMenu(root, "Actions for member", item);
-    const dialog = find(root, (n) => n.tag === "dialog");
-    assert.match(textOf(dialog), new RegExp(`${verb} member\\?`));
-    await typeOwnPassword(dialog, "the administrator's own");
-    await click(dialog, verb);
+    assert.match(textOf(proofDialog(root)), new RegExp(`${verb} member\\?`));
+    await prove(root, "the administrator's own");
   };
 
   await toggle("Disable…", "Disable");
@@ -934,10 +932,8 @@ test("Deleting an account sends the administrator's proof as the body", async ()
     init.method === "DELETE" ? new Response(null, { status: 204 }) : undefined,
   );
   await chooseFromMenu(root, "Actions for member", "Delete…");
-  const dialog = find(root, (n) => n.tag === "dialog");
-  assert.match(textOf(dialog), /What it did stays in the audit log/);
-  await typeOwnPassword(dialog, "the administrator's own");
-  await click(dialog, "Delete");
+  assert.match(textOf(proofDialog(root)), /What it did stays in the audit log/);
+  await prove(root, "the administrator's own");
   assert.deepEqual(
     asked.filter((a) => a.method === "DELETE").map((a) => [a.path, a.body]),
     [["/api/users/2", { password: "the administrator's own" }]],
@@ -987,11 +983,8 @@ test("Adding an account sends it, says so, and returns to the list", async () =>
   await bubble(find(dialog, (n) => n.tag === "input" && n.props.autocomplete === "off"), "onInput", "newcomer");
   await typeNewPassword(dialog, "correct horse battery", "correct horse battery");
   await bubble(find(dialog, (n) => n.tag === "select"), "onChange", "operator");
-  await typeOwnPassword(dialog, "the administrator's own");
-  (find(dialog, (n) => n.tag === "form").props.onSubmit as (event: { preventDefault(): void }) => void)({
-    preventDefault() {},
-  });
-  await settled();
+  await submit(dialog);
+  await prove(root, "the administrator's own");
   assert.ok(![...within(root)].some((n) => n.tag === "dialog"), "the dialog closed");
   const listed = asked.filter((a) => a.path === "/api/users" && a.method === "GET");
   assert.equal(listed.length, 2, "the list read again");
@@ -1039,10 +1032,10 @@ test("An administrator's reset asks for the new password twice and sends nothing
   assert.deepEqual(sent(), []);
 
   await typeNewPassword(dialog, "correct horse battery", "correct horse battery");
-  assert.equal(reset().props.disabled, true, "no proof of the administrator yet");
-  await typeOwnPassword(dialog, "the administrator's own");
   assert.equal(reset().props.disabled, false);
-  await click(root, "Reset password");
+  await click(dialog, "Reset password");
+  assert.deepEqual(sent(), [], "nothing until the administrator's proof");
+  await prove(root, "the administrator's own");
   assert.deepEqual(sent(), [
     {
       path: "/api/users/2/password",
@@ -1073,17 +1066,18 @@ test("A row's glyphs follow requiring TOTP enrolment, removing a passkey and res
     },
   );
   const required = "Must set up TOTP at the next sign-in with a password";
-  const proved = async (item: string, verb: string, typed = async (_: Element) => {}) => {
+  const proved = async (item: string, verb?: string, typed = async (_: Element) => {}) => {
     await chooseFromMenu(root, "Actions for member", item);
-    const dialog = find(root, (n) => n.tag === "dialog");
-    await typed(dialog);
-    await typeOwnPassword(dialog, "the administrator's own");
-    await click(dialog, verb);
-    await settled();
+    if (verb) {
+      const dialog = find(root, (n) => n.tag === "dialog");
+      await typed(dialog);
+      await click(dialog, verb);
+    }
+    await prove(root, "the administrator's own");
     return glyphs(root, "member").map(([label]) => label);
   };
 
-  assert.deepEqual(await proved("Require TOTP enrolment…", "Require enrolment"), ["2 passkeys", required]);
+  assert.deepEqual(await proved("Require TOTP enrolment…"), ["2 passkeys", required]);
   assert.deepEqual(await proved("Passkeys…", "Remove passkey"), ["1 passkey", required]);
   const reset = (dialog: Element) => typeNewPassword(dialog, "correct horse battery", "correct horse battery");
   assert.deepEqual(await proved("Reset password…", "Reset password", reset), [required]);
@@ -1109,11 +1103,6 @@ test("Choosing Accounts reads the list again, so your own row follows a change m
   assert.equal(listed(), 2);
   assert.deepEqual(glyphs(root, "admin").map(([label]) => label), ["TOTP is on"]);
 });
-
-/** The acting account's own password, as `FactorProofField` asks it while its TOTP is off. */
-async function typeOwnPassword(scope: Element, value: string) {
-  await bubble(find(scope, (n) => n.tag === "input" && n.props.autocomplete === "current-password"), "onInput", value);
-}
 
 const backupSettings = () =>
   load<typeof import("../src/screens/BackupSettings.tsx")>("/src/screens/BackupSettings.tsx");
@@ -1167,12 +1156,11 @@ const hasTick = (root: Element, label: string) => tickLabel(root, label) !== und
 
 const PASSPHRASE = "a passphrase long enough to be one";
 
-/** Type the passphrase and, when asked, a password into Take, submit it, and return every take sent. */
+/** Type the passphrase into Take, submit it, prove it with a password when asked, and return every take sent. */
 async function take(root: Element, sent: Asked, password: boolean) {
-  const input = (autocomplete: string) => find(root, (n) => n.tag === "input" && n.props.autocomplete === autocomplete);
-  await bubble(input("new-password"), "onInput", PASSPHRASE);
-  if (password) await bubble(input("current-password"), "onInput", "hunter2");
+  await bubble(find(root, (n) => n.tag === "input" && n.props.autocomplete === "new-password"), "onInput", PASSPHRASE);
   await submit(root);
+  if (password) await prove(root, "hunter2");
   return sent.filter((a) => a.path === "/api/backup").map((a) => a.body);
 }
 
@@ -1247,19 +1235,18 @@ test("An optional section has a tick at take only when the product offers it, an
   assert.deepEqual(await take(local.root, local.asked, false), [{ passphrase: PASSPHRASE }]);
 });
 
-test("A local caller that arrives after Take is mounted stops it asking for a password or what to leave out", async () => {
+test("A local caller that arrives after Take is mounted stops it asking for proof or what to leave out", async () => {
   const { BackupSettings } = await backupSettings();
   const { createSignal } = await load<typeof import("solid-js")>("solid-js");
   const [local, setLocal] = createSignal<LocalIdentity>();
   const { root, asked } = await mount(() => BackupSettings({ sections: optional(() => true) }), () => undefined, local);
-  assert.match(textOf(root), /Your password/);
   await setTick(root, "Node", false);
 
   setLocal(localAdmin);
   await settled();
-  assert.doesNotMatch(textOf(root), /Your password/);
   assert.equal(hasTick(root, "Node"), false);
   assert.deepEqual(await take(root, asked, false), [{ passphrase: PASSPHRASE }]);
+  assert.ok(![...within(root)].some((n) => n.tag === "dialog"), "no proof asked");
 });
 
 const header = {
@@ -1455,7 +1442,7 @@ test("A take refused for a stale proof sends a console's caller to re-authentica
 
   const own = await mount(() => BackupSettings({}), refused);
   await take(own.root, own.asked, true);
-  assert.match(textOf(own.root), new RegExp(stale));
+  assert.match(textOf(proofDialog(own.root)), new RegExp(stale), "the dialog stays open to prove it again");
   assert.doesNotMatch(textOf(own.root), /console/);
 });
 
@@ -1468,4 +1455,5 @@ test("A take refused for a wrong password shows the daemon's sentence", async ()
   );
   assert.equal((await take(root, asked, true)).length, 1);
   assert.match(textOf(root), new RegExp(wrong));
+  assert.ok(![...within(root)].some((n) => n.tag === "dialog"), "a sentence not on the proof's list closes the dialog");
 });

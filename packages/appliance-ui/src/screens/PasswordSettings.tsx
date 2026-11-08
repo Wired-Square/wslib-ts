@@ -10,36 +10,36 @@
  * Available to anybody signed in, which is the point: rotating a Viewer's own
  * credential used to need an administrator, and that is how passwords come to
  * be shared. While the account's TOTP is on, a code, a recovery code or a
- * passkey is asked as well.
+ * passkey is asked as well, once the form is sent.
  *
  * `actions` is rendered beside the button, for a product that mounts this in
  * a dialog and wants a Cancel there.
  */
 import { MIN_PASSWORD_LEN } from "@wired-square/appliance-types";
-import type { PasswordChange } from "@wired-square/appliance-types";
+import type { FactorProof, PasswordChange } from "@wired-square/appliance-types";
 import { Field, Form, Section } from "@wired-square/kit";
-import { Show, createSignal } from "solid-js";
+import { createSignal } from "solid-js";
 import type { JSX } from "solid-js";
 
 import { api } from "../api";
-import { FactorProofField, createFactorProof } from "../parts/FactorProof";
+import { createTotpOn } from "../parts/FactorProof";
 import { NewPassword, createNewPassword } from "../parts/NewPassword";
+import { createDone, provedIf } from "./proved";
 
 export function PasswordSettings(props: { actions?: JSX.Element }) {
   const [current, setCurrent] = createSignal("");
   const next = createNewPassword();
-  const second = createFactorProof();
+  const totpOn = createTotpOn();
+  const changed = createDone("Your password was changed.");
 
   const submit = async () => {
-    await api<null>("/api/session/password", {
-      method: "PUT",
-      body: {
-        current_password: current(),
-        new_password: next.value(),
-        ...(second.totpOn() ? await second.take() : {}),
-      } satisfies PasswordChange,
-    });
-    second.clear();
+    const send = (proof: FactorProof) =>
+      api<null>("/api/session/password", {
+        method: "PUT",
+        body: { current_password: current(), new_password: next.value(), ...proof } satisfies PasswordChange,
+      });
+    const ask = { for: "Change your password", verb: "Change password" };
+    if (!changed.went(await provedIf(totpOn() === true, ask, send))) return;
 
     // The daemon reissues the session cookie on success — the write ends every
     // session this account had, including the one that made the request — so
@@ -57,8 +57,8 @@ export function PasswordSettings(props: { actions?: JSX.Element }) {
       <Form
         act={submit}
         verb="Change password"
-        done="Your password was changed."
-        disabled={!next.ready() || second.totpOn() === undefined || (second.totpOn() === true && !second.ready())}
+        done={changed.sentence()}
+        disabled={!next.ready() || totpOn() === undefined}
         actions={props.actions}
       >
         <Field
@@ -73,9 +73,6 @@ export function PasswordSettings(props: { actions?: JSX.Element }) {
           label="New password"
           hint={`At least ${MIN_PASSWORD_LEN} characters. Length is what matters; there is no character-class rule to satisfy.`}
         />
-        <Show when={second.totpOn()}>
-          <FactorProofField of={second} />
-        </Show>
       </Form>
     </Section>
   );
