@@ -883,6 +883,16 @@ select.app-field__input {
   color: var(--app-text-muted);
 }
 
+/* --- shown once --------------------------------------------------------- */
+
+.app-shown-once {
+  margin-block-end: 1rem;
+}
+
+.app-shown-once .app-field__input {
+  font-family: var(--app-font-mono);
+}
+
 /* --- search ------------------------------------------------------------- */
 
 .app-search {

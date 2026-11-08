@@ -71,6 +71,9 @@ export type { Selection } from "./selection";
 export { Select } from "./Select";
 export type { SelectProps } from "./Select";
 
+export { ShownOnce } from "./ShownOnce";
+export type { ShownOnceProps } from "./ShownOnce";
+
 export { Table, Td, Th, Tr } from "./Table";
 export type { TableProps, TdProps, ThProps, TrProps } from "./Table";
 

@@ -2,6 +2,12 @@
 
 ## `@wired-square/kit`
 
+### 0.4.2
+
+- `ShownOnce` (`label`, `value`, `note`, `onDone`), for a value shown only once, inside an `undismissible` `Dialog`:
+  the value in a read-only monospace `Field`, selected on focus, with `note` as its hint ("This is shown once. Copy it
+  now: it can't be shown again." by default), and an action row with a `CopyButton` and Done, which calls `onDone`.
+
 ### 0.4.1
 
 - The kit loads where `document` exists but `navigator.vendor` does not, as in a test shim.
