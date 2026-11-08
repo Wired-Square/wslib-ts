@@ -63,8 +63,18 @@
   align-items: center;
 }
 
-:where(form, .app-actions, .app-table-scroll):not(:last-child) {
+:where(form, .app-actions, .app-table-scroll):not(:last-child),
+:where(.app-section) > :where(.app-field, .app-nothing-yet):not(:last-child) {
   margin-block-end: 1rem;
+}
+
+:where(.app-section) > .app-muted {
+  max-width: 60ch;
+}
+
+/* A label wrapping a word per line reads worse than a title squeezed beside it. */
+.app-section__head .app-btn {
+  white-space: nowrap;
 }
 
 /* --- buttons ------------------------------------------------------------ */
@@ -350,6 +360,17 @@ select.app-field__input {
   font-size: 0.9375rem;
   margin-block-end: 1rem;
   overflow-wrap: anywhere;
+}
+
+.app-notice > pre {
+  margin: 0;
+  font-family: var(--app-font-mono);
+  font-size: 0.8125rem;
+  white-space: pre-wrap;
+}
+
+.app-notice > * + pre {
+  margin-block-start: 0.5rem;
 }
 
 .app-notice--good {
@@ -871,6 +892,11 @@ select.app-field__input {
 
 .app-copy__value {
   overflow-wrap: anywhere;
+}
+
+/* Words beside Done, not a value: `anywhere` would let the row squeeze them a letter per line. */
+.app-dialog__actions .app-copy {
+  white-space: nowrap;
 }
 
 .app-copy__glyph {

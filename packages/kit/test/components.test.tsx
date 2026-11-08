@@ -374,3 +374,21 @@ test("a link button is underlined text in the line's own font, with no box even 
     /border-color: transparent;\s*background: transparent;/,
   );
 });
+
+test("a lone field or empty state in a section is spaced from what follows, and a muted note stops at 60ch", () => {
+  const css = read("kit.css");
+  expect(rule(css, ":where(.app-section) > :where(.app-field, .app-nothing-yet):not(:last-child)")).toMatch(
+    /margin-block-end: 1rem;/,
+  );
+  expect(rule(css, ":where(.app-section) > .app-muted")).toMatch(/max-width: 60ch;/);
+});
+
+test("a section head's buttons and a dialog's Copy keep their words on one line", () => {
+  const css = read("kit.css");
+  expect(rule(css, ".app-section__head .app-btn")).toMatch(/white-space: nowrap;/);
+  expect(rule(css, ".app-dialog__actions .app-copy")).toMatch(/white-space: nowrap;/);
+});
+
+test("a pre in a notice keeps its line breaks and spacing, in monospace", () => {
+  expect(rule(read("kit.css"), ".app-notice > pre")).toMatch(/font-family: var\(--app-font-mono\);[^}]*white-space: pre-wrap;/);
+});

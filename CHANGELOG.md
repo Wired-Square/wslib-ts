@@ -2,6 +2,14 @@
 
 ## `@wired-square/kit`
 
+### 0.4.3
+
+- A `Field`, `Select`, `TextArea` or `NothingYet` directly in a `Section`, outside a form, has 1rem below it unless it
+  comes last, and a `.app-muted` note there stops at 60ch, as a blurb does.
+- A section head's buttons keep their label on one line, so at phone width the title wraps instead.
+- A `CopyButton` in a dialog's action row, as in `ShownOnce`, keeps its words on one line.
+- A `<pre>` in a `Notice` keeps its line breaks and spacing, in monospace, so a parse error's caret lines up.
+
 ### 0.4.2
 
 - `ShownOnce` (`label`, `value`, `note`, `onDone`), for a value shown only once, inside an `undismissible` `Dialog`:
