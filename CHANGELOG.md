@@ -7,6 +7,10 @@
 - `ShownOnce` (`label`, `value`, `note`, `onDone`), for a value shown only once, inside an `undismissible` `Dialog`:
   the value in a read-only monospace `Field`, selected on focus, with `note` as its hint ("This is shown once. Copy it
   now: it can't be shown again." by default), and an action row with a `CopyButton` and Done, which calls `onDone`.
+- `Progress` (`label`, `value`, `max`, 1 by default, and `eta` in seconds): a native `<progress>` named by its label,
+  with the percent done and "about 3m left" through `duration` beside it. With no `value` it is indeterminate, a
+  stripe sweeping the track, still under reduced motion. The bar is `--app-accent` on `--app-surface-sunken`, and
+  native under forced colours.
 
 ### 0.4.1
 
@@ -252,6 +256,11 @@ and `constants` are exported from the root. No dependencies and no peers.
 
 - `useRefresh` stops its timer while the tab is hidden, and on being shown reads once and starts it again. A screen
   mounted in a hidden tab starts it when the tab is shown.
+- `upload<T>(path, file, onProgress, init?)` sends a `Blob` as the body through XHR, so the browser streams it, and
+  reports `(sent, total)` as it goes. `init` takes `method` (`POST` by default), `headers` and `signal`. It carries the
+  session as `api` does and resolves or refuses as `api` does. It has no overall deadline: it fails as unanswered
+  after ten minutes with no bytes sent, or with the body sent and no answer begun, or on a network error. Its
+  `signal` rejects it with the signal's reason.
 
 ### 0.10.1
 
