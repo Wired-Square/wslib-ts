@@ -19,6 +19,9 @@ export type { PasswordAgainProps } from "./PasswordAgain";
 export { FactorProofField, createFactorProof } from "./FactorProof";
 export type { FactorProofState, ProofWay } from "./FactorProof";
 
+export { ProofHost, withPassword, withProof } from "./withProof";
+export type { ProofAsk } from "./withProof";
+
 export {
   ClockSkewNotice,
   PasskeyHosts,

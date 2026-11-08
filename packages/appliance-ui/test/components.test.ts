@@ -245,7 +245,7 @@ test("Restore offers a local session the application half, and no proof, sign-ou
   assert.doesNotMatch(html, /which proof|signs everybody out|this box|this appliance/);
 });
 
-test("Restore offers an appliance session every section, the proof and the sign-out warning", async () => {
+test("Restore offers an appliance session every section and the sign-out warning, the proof kept for its dialog", async () => {
   const html = await inspected(session(admin));
   const rows = [
     "Accounts",
@@ -260,7 +260,7 @@ test("Restore offers an appliance session every section, the proof and the sign-
   for (const row of rows) {
     assert.ok(html.includes(`${row} (`), row);
   }
-  assert.match(html, /which proof this needs/);
+  assert.doesNotMatch(html, /which proof this needs/);
   assert.match(html, /signs everybody out/);
 });
 
@@ -403,9 +403,9 @@ test("Take asks a local session for no proof, and never speaks of a box", async 
   assert.doesNotMatch(html, /which proof|this box|this appliance/);
 });
 
-test("Take asks an appliance session for its proof again", async () => {
+test("Take keeps an appliance session's proof for its dialog", async () => {
   const html = await backupSettings(session(admin));
-  assert.match(html, /which proof this needs/);
+  assert.doesNotMatch(html, /which proof this needs/);
   assert.match(html, /Everything this box is/);
 });
 
