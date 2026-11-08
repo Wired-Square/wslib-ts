@@ -7,7 +7,7 @@
  * A passkey is asked for when the form is sent, so its challenge is fresh.
  */
 import type { Availability, FactorProof, PasskeyHost, TotpView } from "@wired-square/appliance-types";
-import { Field, Refusal, Select } from "@wired-square/kit";
+import { Field, Notice, Refusal, Select } from "@wired-square/kit";
 import { For, Match, Show, Switch, createResource, createSignal } from "solid-js";
 
 import { api } from "../api";
@@ -52,18 +52,26 @@ export function createPasskeyHere(wanted: () => boolean = () => true) {
 }
 
 /**
+ * Whether the caller's own TOTP is on, asked while `wanted` says so and again
+ * after `totpChanged`; `undefined` until known, and false if it cannot be read.
+ */
+export function createTotpOn(wanted: () => boolean = () => true) {
+  const [asked] = createResource(
+    () => wanted() && totpTurned() + 1,
+    () => api<TotpView>("/api/session/totp").then((view) => view.on, () => false),
+  );
+  return () => (asked.state === "ready" ? asked() : undefined);
+}
+
+/**
  * `totpOn` is the caller's own TOTP state where the screen already holds it;
  * without it the state is asked for, while `wanted` says a proof is. Until it
  * is known no way is offered; one that cannot be read offers the password. A
  * passkey is offered only where the caller has one made on this page's name.
  */
 export function createFactorProof(totpOn?: () => boolean | undefined, wanted: () => boolean = () => true) {
-  const [asked] = createResource(
-    () => totpOn === undefined && wanted() && totpTurned() + 1,
-    () => api<TotpView>("/api/session/totp").then((view) => view.on, () => false),
-  );
+  const on = totpOn ?? createTotpOn(wanted);
   const passkeyHere = createPasskeyHere(wanted);
-  const on = () => (totpOn ? totpOn() : asked.state === "ready" ? asked() : undefined);
   const [picked, setPicked] = createSignal<ProofWay>();
   const [entry, setEntry] = createSignal<{ way: ProofWay; value: string }>();
 
@@ -119,7 +127,8 @@ export function createFactorProof(totpOn?: () => boolean | undefined, wanted: ()
 
 export type FactorProofState = ReturnType<typeof createFactorProof>;
 
-export function FactorProofField(props: { of: FactorProofState }) {
+/** `refused` is said in place of the hint: why the last proof was not taken. */
+export function FactorProofField(props: { of: FactorProofState; refused?: string | undefined }) {
   const hint = () =>
     props.of.totpOn()
       ? "Asked again because what this does outlives the session; with TOTP on, your password alone is not enough."
@@ -127,7 +136,12 @@ export function FactorProofField(props: { of: FactorProofState }) {
   return (
     <>
       <Show when={props.of.ways().length > 1}>
-        <Select label="Prove it is you with" value={props.of.way()} onValue={(to) => props.of.setWay(to as ProofWay)}>
+        <Select
+          class="app-proof-way"
+          label="Prove it is you with"
+          value={props.of.way()}
+          onValue={(to) => props.of.setWay(to as ProofWay)}
+        >
           <For each={props.of.ways()}>{(way) => <option value={way}>{WAYS[way]}</option>}</For>
         </Select>
       </Show>
@@ -136,6 +150,7 @@ export function FactorProofField(props: { of: FactorProofState }) {
           <p class="app-muted">Finding out which proof this needs…</p>
         </Match>
         <Match when={props.of.way() === "passkey"}>
+          <Notice tone="bad">{props.refused}</Notice>
           <p class="app-muted">Your passkey is asked for when you go ahead. {hint()}</p>
         </Match>
         <Match when={props.of.way()}>
@@ -150,6 +165,7 @@ export function FactorProofField(props: { of: FactorProofState }) {
               spellcheck={false}
               required
               hint={hint()}
+              error={props.refused ?? ""}
               value={props.of.typed()}
               onValue={props.of.setTyped}
             />

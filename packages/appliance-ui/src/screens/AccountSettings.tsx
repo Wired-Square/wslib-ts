@@ -26,8 +26,8 @@
  *
  * Creating, disabling, enabling or deleting an account, a role change here or
  * in an app, a reset, requiring TOTP enrolment and removing a passkey carry
- * `FactorProofField`'s proof of the acting administrator: while their TOTP is
- * on, a code, a recovery code or a passkey.
+ * `withProof`'s proof of the acting administrator, asked once the change is
+ * confirmed: while their TOTP is on, a code, a recovery code or a passkey.
  *
  * # The last-administrator rule is the daemon's, and is rendered rather than
  * predicted
@@ -74,8 +74,8 @@ import type {
 import {
   Badge,
   Button,
-  Confirm,
   Dialog,
+  DialogActions,
   Field,
   Form,
   Loaded,
@@ -101,9 +101,10 @@ import { For, Show, createEffect, createResource, createSignal, on } from "solid
 import type { JSX } from "solid-js";
 
 import { api } from "../api";
-import { FactorProofField, createFactorProof } from "../parts/FactorProof";
 import { NewPassword, createNewPassword } from "../parts/NewPassword";
 import { ROLE_LABELS, RoleBadge } from "../parts/RoleBadge";
+import { withProof } from "../parts/withProof";
+import type { ProofAsk } from "../parts/withProof";
 import { isStoreAccount } from "../shell/session";
 import type { Me } from "../shell/session";
 import { securityViews } from "./SecuritySettings";
@@ -143,7 +144,6 @@ export function AccountSettings(props: Routed & { me: Me; apps?: string[] }) {
       setAppRoles(granted);
     });
 
-  const [removing, setRemoving] = createSignal<User | undefined>();
   const [resetting, setResetting] = createSignal<User | undefined>();
   const [added, setAdded] = createSignal<string>();
   const [adding, setAdding] = createSignal(false);
@@ -152,46 +152,95 @@ export function AccountSettings(props: Routed & { me: Me; apps?: string[] }) {
   const patch = <K extends keyof User>(id: string, key: K, value: User[K]) =>
     setFetched((have) => have.map((row) => (row.id === id ? { ...row, [key]: value } : row)));
 
-  const [changing, setChanging] = createSignal<{ user: User; role: Role }>();
-  const [requiring, setRequiring] = createSignal<User>();
   const [passkeysOf, setPasskeysOf] = createSignal<User>();
-  const [toggling, setToggling] = createSignal<User>();
-  const [assigning, setAssigning] = createSignal<{ user: User; app: string; role: Role | null }>();
+  const acting = createAction();
+  /** `act`, confirmed with the acting administrator's proof; a refusal is said above the list. */
+  const proved = (ask: Omit<ProofAsk, "tone">, act: (proof: FactorProof) => Promise<unknown>) =>
+    void acting.run(() => withProof({ ...ask, tone: "danger" }, (proof) => act(proof).then(() => ({}))));
 
-  const setRole = async (user: User, role: Role, proof: FactorProof) => {
-    await api<null>(`/api/users/${user.id}/role`, {
-      method: "PUT",
-      body: { role, proof } satisfies RoleChange,
-    });
-    patch(user.id, "role", role);
-  };
+  const setRole = (user: User, role: Role) =>
+    proved(
+      {
+        for: `Make ${user.username} ${ROLE_LABELS[role].toLowerCase()}?`,
+        about: "What they may do changes from their next request.",
+        verb: `Make ${ROLE_LABELS[role].toLowerCase()}`,
+      },
+      async (proof) => {
+        await api<null>(`/api/users/${user.id}/role`, {
+          method: "PUT",
+          body: { role, proof } satisfies RoleChange,
+        });
+        patch(user.id, "role", role);
+      },
+    );
 
-  const setEnabled = async (user: User, enabled: boolean, proof: FactorProof) => {
-    await api<null>(`/api/users/${user.id}/enabled`, {
-      method: "PUT",
-      body: { enabled, proof } satisfies EnabledChange,
-    });
-    patch(user.id, "enabled", enabled);
+  const toggle = (user: User) => {
+    const verb = user.enabled ? "Disable" : "Enable";
+    proved(
+      {
+        for: `${verb} ${user.username}?`,
+        about: user.enabled ? "They cannot sign in until enabled again." : "They can sign in again.",
+        verb,
+      },
+      async (proof) => {
+        await api<null>(`/api/users/${user.id}/enabled`, {
+          method: "PUT",
+          body: { enabled: !user.enabled, proof } satisfies EnabledChange,
+        });
+        patch(user.id, "enabled", !user.enabled);
+      },
+    );
   };
 
   const roleIn = (user: User, app: string) =>
     appRoles().find((granted) => granted.user_id === user.id && granted.app === app)?.role ?? "";
 
-  const setAppRole = async (user: User, app: string, role: Role | null, proof: FactorProof) => {
-    await api<null>(`/api/users/${user.id}/apps/${encodeURIComponent(app)}`, {
-      method: "PUT",
-      body: { role, proof } satisfies AppRoleChange,
-    });
-    setAppRoles((have) => [
-      ...have.filter((granted) => granted.user_id !== user.id || granted.app !== app),
-      ...(role ? [{ user_id: user.id, app, role }] : []),
-    ]);
-  };
+  const setAppRole = (user: User, app: string, role: Role | null) =>
+    proved(
+      {
+        for: role
+          ? `Make ${user.username} ${ROLE_LABELS[role].toLowerCase()} in ${app}?`
+          : `Remove ${user.username} from ${app}?`,
+        about: `What they may do in ${app} changes from their next request.`,
+        verb: role ? `Make ${ROLE_LABELS[role].toLowerCase()}` : "Remove",
+      },
+      async (proof) => {
+        await api<null>(`/api/users/${user.id}/apps/${encodeURIComponent(app)}`, {
+          method: "PUT",
+          body: { role, proof } satisfies AppRoleChange,
+        });
+        setAppRoles((have) => [
+          ...have.filter((granted) => granted.user_id !== user.id || granted.app !== app),
+          ...(role ? [{ user_id: user.id, app, role }] : []),
+        ]);
+      },
+    );
 
-  const remove = async (user: User, proof: FactorProof) => {
-    await api<null>(`/api/users/${user.id}`, { method: "DELETE", body: proof });
-    setFetched((have) => have.filter((u) => u.id !== user.id));
-  };
+  const requireTotp = (user: User) =>
+    proved(
+      {
+        for: `Require ${user.username} to enrol TOTP?`,
+        about:
+          "Their TOTP key and recovery codes are cleared, and their next sign-in with a password sets up a new key " +
+          "before it is let in. Their password and passkeys stay: where the account may be in someone else's hands, " +
+          "reset its password instead, which clears every factor.",
+        verb: "Require enrolment",
+      },
+      (proof) => api<null>(`/api/users/${user.id}/require-totp`, { method: "POST", body: proof }).then(() => void load()),
+    );
+
+  const remove = (user: User) =>
+    proved(
+      {
+        for: `Delete ${user.username}?`,
+        about: "The account is removed and any session it holds stops working. What it did stays in the audit log.",
+        verb: "Delete",
+      },
+      async (proof) => {
+        await api<null>(`/api/users/${user.id}`, { method: "DELETE", body: proof });
+        setFetched((have) => have.filter((u) => u.id !== user.id));
+      },
+    );
 
   const list = () => (
     <Section
@@ -210,6 +259,7 @@ export function AccountSettings(props: Routed & { me: Me; apps?: string[] }) {
     >
       <Notice tone="good">{added() && `The account ${added()} was created.`}</Notice>
       <Notice tone="bad">{listing.failed()}</Notice>
+      <Notice tone="bad">{acting.failed()}</Notice>
 
       <Table
         head={
@@ -258,7 +308,7 @@ export function AccountSettings(props: Routed & { me: Me; apps?: string[] }) {
                           value={roleIn(user, app)}
                           onChange={(e) => {
                             const select = e.currentTarget;
-                            setAssigning({ user, app, role: (select.value || null) as Role | null });
+                            setAppRole(user, app, (select.value || null) as Role | null);
                             select.value = roleIn(user, app);
                           }}
                         >
@@ -285,16 +335,16 @@ export function AccountSettings(props: Routed & { me: Me; apps?: string[] }) {
                     <Menu aria-label={`Actions for ${user.username}`}>
                       <For each={grantable().filter((r) => r !== user.role)}>
                         {(role) => (
-                          <MenuItem onSelect={() => setChanging({ user, role })}>
+                          <MenuItem onSelect={() => setRole(user, role)}>
                             Make {ROLE_LABELS[role].toLowerCase()}…
                           </MenuItem>
                         )}
                       </For>
-                      <MenuItem onSelect={() => setToggling(user)}>{user.enabled ? "Disable…" : "Enable…"}</MenuItem>
+                      <MenuItem onSelect={() => toggle(user)}>{user.enabled ? "Disable…" : "Enable…"}</MenuItem>
                       <MenuItem onSelect={() => setResetting(user)}>Reset password…</MenuItem>
-                      <MenuItem onSelect={() => setRequiring(user)}>Require TOTP enrolment…</MenuItem>
+                      <MenuItem onSelect={() => requireTotp(user)}>Require TOTP enrolment…</MenuItem>
                       <MenuItem onSelect={() => setPasskeysOf(user)}>Passkeys…</MenuItem>
-                      <MenuItem onSelect={() => setRemoving(user)}>Delete…</MenuItem>
+                      <MenuItem onSelect={() => remove(user)}>Delete…</MenuItem>
                     </Menu>
                   </Show>
                 </Td>
@@ -342,22 +392,6 @@ export function AccountSettings(props: Routed & { me: Me; apps?: string[] }) {
         </Dialog>
       </Show>
 
-      <Show when={removing()}>
-        {(user) => (
-          <Proved
-            title={`Delete ${user().username}?`}
-            verb="Delete"
-            act={(proof) => remove(user(), proof)}
-            onClose={() => setRemoving(undefined)}
-          >
-            <p>
-              The account is removed and any session it holds stops working. What
-              it did stays in the audit log.
-            </p>
-          </Proved>
-        )}
-      </Show>
-
       <Show when={resetting()}>
         {(user) => (
           <ResetPassword
@@ -365,71 +399,6 @@ export function AccountSettings(props: Routed & { me: Me; apps?: string[] }) {
             onChanged={() => void load()}
             onClose={() => setResetting(undefined)}
           />
-        )}
-      </Show>
-
-      <Show when={changing()}>
-        {(change) => (
-          <Proved
-            title={`Make ${change().user.username} ${ROLE_LABELS[change().role].toLowerCase()}?`}
-            verb={`Make ${ROLE_LABELS[change().role].toLowerCase()}`}
-            act={(proof) => setRole(change().user, change().role, proof)}
-            onClose={() => setChanging(undefined)}
-          >
-            <p>What they may do changes from their next request.</p>
-          </Proved>
-        )}
-      </Show>
-
-      <Show when={toggling()}>
-        {(user) => {
-          const verb = user().enabled ? "Disable" : "Enable";
-          return (
-            <Proved
-              title={`${verb} ${user().username}?`}
-              verb={verb}
-              act={(proof) => setEnabled(user(), !user().enabled, proof)}
-              onClose={() => setToggling(undefined)}
-            >
-              <p>{user().enabled ? "They cannot sign in until enabled again." : "They can sign in again."}</p>
-            </Proved>
-          );
-        }}
-      </Show>
-
-      <Show when={assigning()} keyed>
-        {({ user, app, role }) => (
-          <Proved
-            title={
-              role
-                ? `Make ${user.username} ${ROLE_LABELS[role].toLowerCase()} in ${app}?`
-                : `Remove ${user.username} from ${app}?`
-            }
-            verb={role ? `Make ${ROLE_LABELS[role].toLowerCase()}` : "Remove"}
-            act={(proof) => setAppRole(user, app, role, proof)}
-            onClose={() => setAssigning(undefined)}
-          >
-            <p>What they may do in {app} changes from their next request.</p>
-          </Proved>
-        )}
-      </Show>
-
-      <Show when={requiring()}>
-        {(user) => (
-          <Proved
-            title={`Require ${user().username} to enrol TOTP?`}
-            verb="Require enrolment"
-            act={(proof) =>
-              api<null>(`/api/users/${user().id}/require-totp`, { method: "POST", body: proof }).then(() => void load())
-            }
-            onClose={() => setRequiring(undefined)}
-          >
-            <p>
-              Their TOTP key and recovery codes are cleared, and their next sign-in with a password sets up a new key
-              before it is let in. Their password and passkeys stay: where the account may be in someone else's
-              hands, reset its password instead, which clears every factor.
-            </p>
-          </Proved>
         )}
       </Show>
 
@@ -490,7 +459,10 @@ function FactorGlyphs(props: { user: ListedUser }) {
   );
 }
 
-/** A change to another account, confirmed with the acting administrator's own proof. */
+/**
+ * A change to another account with fields of its own, sent with the acting
+ * administrator's proof once confirmed. A cancelled proof leaves it open.
+ */
 function Proved(props: {
   title: string;
   verb: string;
@@ -499,18 +471,31 @@ function Proved(props: {
   onClose: () => void;
   children: JSX.Element;
 }) {
-  const proof = createFactorProof();
+  const action = createAction();
+  const confirm = () =>
+    void action.run(
+      () =>
+        withProof({ for: props.title, verb: props.verb, tone: "danger" }, (proof) =>
+          props.act(proof).then(() => ({})),
+        ),
+      (done) => {
+        if (done) props.onClose();
+      },
+    );
   return (
-    <Confirm
-      title={props.title}
-      verb={props.verb}
-      act={async () => props.act(await proof.take())}
-      disabled={props.disabled || !proof.ready()}
-      onClose={props.onClose}
-    >
-      {props.children}
-      <FactorProofField of={proof} />
-    </Confirm>
+    <Dialog title={props.title} class="app-confirm" pending={action.pending()} onClose={props.onClose}>
+      <Notice tone="bad">{action.failed()}</Notice>
+      <div class="app-dialog__body">{props.children}</div>
+      <DialogActions
+        onCancel={props.onClose}
+        pending={action.pending()}
+        confirm={
+          <Button tone="danger" pending={action.pending()} disabled={props.disabled} onClick={confirm}>
+            {props.verb}
+          </Button>
+        }
+      />
+    </Dialog>
   );
 }
 
@@ -558,26 +543,22 @@ function NewAccount(props: { roles: readonly Role[]; onCancel: () => void; onAdd
   const [username, setUsername] = createSignal("");
   const password = createNewPassword();
   const [role, setRole] = createSignal<Role>("viewer");
-  const proof = createFactorProof();
 
   const submit = async () => {
-    const created = await api<User>("/api/users", {
-      method: "POST",
-      body: {
-        username: username(),
-        password: password.value(),
-        role: role(),
-        proof: await proof.take(),
-      } satisfies NewUser,
-    });
-    props.onAdded(created.username);
+    const created = await withProof({ for: `Create ${username()}`, verb: "Create account" }, (proof) =>
+      api<User>("/api/users", {
+        method: "POST",
+        body: { username: username(), password: password.value(), role: role(), proof } satisfies NewUser,
+      }),
+    );
+    if (created) props.onAdded(created.username);
   };
 
   return (
     <Form
       act={submit}
       verb="Create account"
-      disabled={!password.ready() || !proof.ready()}
+      disabled={!password.ready()}
       actions={
         <Button tone="plain" type="button" onClick={props.onCancel}>
           Cancel
@@ -606,7 +587,6 @@ function NewAccount(props: { roles: readonly Role[]; onCancel: () => void; onAdd
           {(name) => <option value={name}>{ROLE_LABELS[name]}</option>}
         </For>
       </Select>
-      <FactorProofField of={proof} />
     </Form>
   );
 }
@@ -619,7 +599,7 @@ function NewAccount(props: { roles: readonly Role[]; onCancel: () => void; onAdd
 function ResetPassword(props: { user: User; onChanged: () => void; onClose: () => void }) {
   const password = createNewPassword();
 
-  // No local error state and no catch: `Confirm` keeps the dialog open on a
+  // No local error state and no catch: `Proved` keeps the dialog open on a
   // throw and renders the refusal inside it, which is what keeps the typed
   // password and the reason for the refusal together.
   const reset = (proof: FactorProof) =>

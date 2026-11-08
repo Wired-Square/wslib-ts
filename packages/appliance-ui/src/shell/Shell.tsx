@@ -27,6 +27,7 @@ import {
 import type { JSX } from "solid-js";
 
 import { ApiError, api, fromBase, onUnauthenticated, unauthenticated } from "../api";
+import { ProofHost } from "../parts/withProof";
 import { ResetDone } from "./ResetDone";
 import { startProbe } from "./probe";
 import { PartingContext, SessionContext, useSession } from "./session";
@@ -301,6 +302,7 @@ export function Shell(props: ShellProps) {
           </ErrorBoundary>
         </Match>
       </Switch>
+      <ProofHost />
     </SessionContext.Provider>
   );
 }

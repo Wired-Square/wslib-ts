@@ -63,6 +63,7 @@ export async function settled() {
 /**
  * `screen` mounted untracked, as JSX mounts a component, inside `me`'s
  * session, or `local`'s, and under an `ErrorBoundary` standing for the shell's,
+ * beside a `ProofHost`,
  * with each request answered by `answer` or else a 404; and every request it
  * made.
  */
@@ -75,6 +76,7 @@ export async function mount(
   const { Element, render } = await load<typeof import("./universal.ts")>("/test/universal.ts");
   const { ErrorBoundary, createComponent, untrack } = await load<typeof import("solid-js")>("solid-js");
   const { SessionProvider } = await load<typeof import("../src/shell/session.ts")>("/src/shell/session.ts");
+  const { ProofHost } = await load<typeof import("../src/parts/withProof.tsx")>("/src/parts/withProof.tsx");
   const asked: Asked = [];
   globalThis.fetch = async (input, init = {}) => {
     const path = String(input);
@@ -91,12 +93,15 @@ export async function mount(
       createComponent(SessionProvider, {
         value: { branding: () => undefined, me: () => (local() ? null : me), local, refresh: () => {} },
         get children() {
-          return createComponent(ErrorBoundary, {
-            fallback: (error: unknown) => `${BOUNDARY} ${String(error)}`,
-            get children() {
-              return untrack(screen);
-            },
-          });
+          return [
+            createComponent(ErrorBoundary, {
+              fallback: (error: unknown) => `${BOUNDARY} ${String(error)}`,
+              get children() {
+                return untrack(screen);
+              },
+            }),
+            createComponent(ProofHost, {}),
+          ];
         },
       }) as unknown as Element,
     root,
@@ -161,5 +166,29 @@ export async function click(root: Element, verb: string) {
   const named = (n: Element) => textOf(n) === verb || n.props["aria-label"] === verb;
   const button = find(root, (n) => n.tag === "button" && named(n));
   if (!button.props.disabled) (button.props.onClick as () => void)();
+  await settled();
+}
+
+/** The dialog `ProofHost` holds open: the last under `root`, since the host follows the screen. */
+export function proofDialog(root: Element): Element {
+  const dialog = [...within(root)].filter((n) => n.tag === "dialog").at(-1);
+  assert.ok(dialog, "no proof is being asked for");
+  return dialog;
+}
+
+/** `value` typed into the open proof dialog's field that `matches`, its password by default, and the dialog sent. */
+export async function prove(
+  root: Element,
+  value: string,
+  matches = (n: Element) => n.props.autocomplete === "current-password",
+) {
+  const dialog = proofDialog(root);
+  for (let at: Element | undefined = find(dialog, (n) => n.tag === "input" && matches(n)); at; at = at.parent) {
+    (at.props.onInput as ((e: unknown) => void) | undefined)?.({ target: { value }, currentTarget: at });
+  }
+  await settled();
+  (find(dialog, (n) => n.tag === "form").props.onSubmit as (event: { preventDefault(): void }) => void)({
+    preventDefault() {},
+  });
   await settled();
 }

@@ -2,7 +2,20 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { JSX } from "solid-js";
 
-import { BOUNDARY, admin, chooseFromMenu, click, find, load, mount, settled, textOf, within } from "./mount.ts";
+import {
+  BOUNDARY,
+  admin,
+  chooseFromMenu,
+  click,
+  find,
+  load,
+  mount,
+  proofDialog,
+  prove,
+  settled,
+  textOf,
+  within,
+} from "./mount.ts";
 import type { Answer } from "./mount.ts";
 import type { Element } from "./universal.ts";
 
@@ -276,8 +289,8 @@ test("Turning TOTP on proves the password, shows the key, and shows the codes it
     },
   );
   assert.match(textOf(root), /Off/);
-  await type(root, byAutocomplete("current-password"), "correct horse battery");
   await submit(root);
+  await prove(root, "correct horse battery");
   assert.deepEqual(asked.find((a) => a.path === "/api/session/totp" && a.method === "POST")?.body, {
     password: "correct horse battery",
   });
@@ -304,10 +317,8 @@ test("An administrator requires another account to enrol with their own proof, t
           : undefined,
   );
   await chooseFromMenu(root, "Actions for member", "Require TOTP enrolment…");
-  const dialog = find(root, (n) => n.tag === "dialog");
-  assert.match(textOf(dialog), /Their password and passkeys stay.*reset its password instead/);
-  await type(dialog, byAutocomplete("current-password"), "the administrator's own");
-  await click(dialog, "Require enrolment");
+  assert.match(textOf(proofDialog(root)), /Their password and passkeys stay.*reset its password instead/);
+  await prove(root, "the administrator's own");
   assert.deepEqual(
     asked.filter((a) => a.method === "POST").map((a) => [a.path, a.body]),
     [["/api/users/2/require-totp", { password: "the administrator's own" }]],
@@ -508,8 +519,9 @@ test("Turning TOTP on makes the password change ask for a code as well", async (
   for (const input of [...within(root)].filter((n) => n.tag === "input" && n.props.autocomplete === "new-password")) {
     await type(input.parent!, (n) => n === input, "a much longer passphrase");
   }
-  await type(root, byAutocomplete("one-time-code"), "123456");
+  assert.doesNotMatch(textOf(root), /authenticator app/, "the code is asked once the form is sent");
   await submit(root);
+  await prove(root, "123456", byAutocomplete("one-time-code"));
   const body = asked.find((a) => a.method === "PUT")?.body as Record<string, unknown>;
   assert.equal(body.current_password, "correct horse battery");
   assert.equal(body.new_password, "a much longer passphrase");
@@ -568,8 +580,9 @@ test("Adding a passkey proves the account, makes it for the host the page is on,
     const dialog = find(root, (n) => n.tag === "dialog");
     assert.match(textOf(dialog), /It is made for box\.local/);
     await type(dialog, (n) => n.props.maxLength === 64, " Laptop ");
-    await type(dialog, byAutocomplete("current-password"), "correct horse battery");
+    assert.doesNotMatch(textOf(dialog), /Your password/, "the proof waits for its own dialog");
     await submit(dialog);
+    await prove(root, "correct horse battery");
     assert.ok(![...within(root)].some((n) => n.tag === "dialog"), "the dialog closed");
     const posts = asked.filter((a) => a.method === "POST").map((a) => [a.path, a.body]);
     assert.deepEqual(posts, [
@@ -675,8 +688,8 @@ test("A passkey ceremony that fails retries with the options it holds until they
   await addingPasskeys(
     () => Response.json(made, { status: 201 }),
     async ({ root, dialog, browser, ceremonies, proofs, registrations }) => {
-      await type(dialog(), byAutocomplete("one-time-code"), "123456");
       await submit(dialog());
+      await prove(root, "123456", byAutocomplete("one-time-code"));
       assert.match(textOf(dialog()), /no passkey was used/);
       assert.match(textOf(dialog()), /Your proof still stands/);
 
@@ -694,14 +707,12 @@ test("A passkey ceremony that fails retries with the options it holds until they
 
       browser.wait(1_000);
       await submit(dialog());
-      assert.match(textOf(dialog()), /the earlier attempt expired; prove it is you again/);
       assert.equal(ceremonies.length, 2, "no ceremony on expired options");
-      const field = find(dialog(), (n) => n.tag === "input" && n.props.autocomplete === "one-time-code");
+      const field = find(proofDialog(root), (n) => n.tag === "input" && n.props.autocomplete === "one-time-code");
       assert.equal(field.props.value, "", "the spent code is not offered again");
 
       browser.fail = false;
-      await type(dialog(), byAutocomplete("one-time-code"), "654321");
-      await submit(dialog());
+      await prove(root, "654321", byAutocomplete("one-time-code"));
       assert.ok(![...within(root)].some((n) => n.tag === "dialog"), "the dialog closed");
       assert.deepEqual(proofs(), ["123456", "654321"]);
       assert.deepEqual(ceremonies.at(-1)?.challenge, [2]);
@@ -713,10 +724,10 @@ test("A passkey ceremony that fails retries with the options it holds until they
 test("A passkey the box refuses drops the options it was made with, so the next attempt asks for proof", async () => {
   await addingPasskeys(
     () => Response.json({ error: "the passkey was refused" }, { status: 403 }),
-    async ({ dialog, browser, ceremonies, proofs, registrations }) => {
+    async ({ root, dialog, browser, ceremonies, proofs, registrations }) => {
       browser.fail = false;
-      await type(dialog(), byAutocomplete("one-time-code"), "123456");
       await submit(dialog());
+      await prove(root, "123456", byAutocomplete("one-time-code"));
       assert.match(textOf(dialog()), /the passkey was refused/);
       assert.equal(registrations(), 1);
       assert.doesNotMatch(textOf(dialog()), /Your proof still stands/);
@@ -725,8 +736,7 @@ test("A passkey the box refuses drops the options it was made with, so the next 
       assert.deepEqual(proofs(), ["123456"], "no options asked for without proof");
       assert.equal(ceremonies.length, 1, "and no ceremony run");
 
-      await type(dialog(), byAutocomplete("one-time-code"), "654321");
-      await submit(dialog());
+      await prove(root, "654321", byAutocomplete("one-time-code"));
       assert.deepEqual(proofs(), ["123456", "654321"]);
       assert.deepEqual(
         ceremonies.map((c) => c.challenge),
@@ -793,9 +803,9 @@ test("Adding or removing a passkey has every proof on the page ask again whether
     await click(root, "Add a passkey…");
     const dialog = find(root, (n) => n.tag === "dialog");
     await type(dialog, (n) => n.props.maxLength === 64, "Laptop");
-    await type(dialog, byAutocomplete("current-password"), "correct horse battery");
     mine = [{ host: "box.local", passkeys: 1 }];
     await submit(dialog);
+    await prove(root, "correct horse battery");
     assert.ok(![...within(root)].some((n) => n.tag === "dialog"));
     assert.deepEqual(offered(), ["Your password", "A passkey"], "offered once added");
 
@@ -830,8 +840,8 @@ test("An administrator removes another account's passkey by its id, with their o
   await chooseFromMenu(root, "Actions for member", "Passkeys…");
   const dialog = find(root, (n) => n.tag === "dialog");
   assert.match(textOf(dialog), /Phone — made on box\.local, last used never/);
-  await type(dialog, byAutocomplete("current-password"), "the administrator's own");
   await click(dialog, "Remove passkey");
+  await prove(root, "the administrator's own");
   assert.deepEqual(
     asked.filter((a) => a.method === "POST").map((a) => [a.path, a.body]),
     [["/api/users/2/passkeys/k%2F1/remove", { password: "the administrator's own" }]],

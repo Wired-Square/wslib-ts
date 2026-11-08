@@ -3,7 +3,7 @@
  * pieces a product or a console mounts where it keeps the account's settings.
  *
  * Turning TOTP on or off, new recovery codes and a new passkey each ask
- * `FactorProofField`'s proof; renaming or removing a passkey asks none. TOTP
+ * `withProof`'s proof; renaming or removing a passkey asks none. TOTP
  * is not replaced while it is on: it is turned off and set up again.
  */
 import { MAX_PASSKEY_NAME_LEN } from "@wired-square/appliance-types";
@@ -28,19 +28,20 @@ import {
   Menu,
   MenuItem,
   NothingYet,
-  Refusal,
+  Notice,
   Section,
   Table,
   Td,
   Th,
   Tr,
   count,
+  createAction,
   when,
 } from "@wired-square/kit";
 import { For, Match, Show, Switch, createResource, createSignal } from "solid-js";
 
 import { api } from "../api";
-import { FactorProofField, createFactorProof, passkeysChanged, totpChanged } from "../parts/FactorProof";
+import { passkeysChanged, totpChanged } from "../parts/FactorProof";
 import { RecoveryCodesShown, TotpKey } from "../parts/TotpKey";
 import {
   ClockSkewNotice,
@@ -50,22 +51,36 @@ import {
   createPasskeyAvailability,
 } from "../parts/factorNotes";
 import { makePasskey } from "../parts/webauthn";
+import { withProof } from "../parts/withProof";
 
 export function TotpSettings() {
   const [view, { refetch }] = createResource(() => api<TotpView>("/api/session/totp"));
-  const on = () => (view.error ? undefined : view.latest?.on);
   const [enrolment, setEnrolment] = createSignal<TotpEnrolment>();
   const [codes, setCodes] = createSignal<string[]>();
   const [first, setFirst] = createSignal("");
   const [skew, setSkew] = createSignal<ClockSkew>();
-  const [turningOff, setTurningOff] = createSignal(false);
-  const setUp = createFactorProof(on);
-  const renew = createFactorProof(on);
+  const turningOff = createAction();
 
   const turned = () => {
     totpChanged();
     void refetch();
   };
+  const turnOff = () =>
+    void turningOff.run(
+      () =>
+        withProof(
+          {
+            for: "Turn off 2FA?",
+            about: "Your password alone will sign you in, and your recovery codes stop working.",
+            verb: "Turn off",
+            tone: "danger",
+          },
+          (body) => api<null>("/api/session/totp/off", { method: "POST", body }),
+        ),
+      (off) => {
+        if (off !== undefined) turned();
+      },
+    );
 
   return (
     <Section title="2FA" blurb="A code from an authenticator app, asked for after your password.">
@@ -119,14 +134,14 @@ export function TotpSettings() {
               <p class="app-muted">Off: your password alone signs you in.</p>
               <Form
                 verb="Set up"
-                disabled={!setUp.ready()}
                 act={async () => {
-                  const body = await setUp.take();
-                  setEnrolment(await api<TotpEnrolment>("/api/session/totp", { method: "POST", body }));
-                  setUp.clear();
+                  const enrolled = await withProof({ for: "Set up 2FA", verb: "Set up" }, (body) =>
+                    api<TotpEnrolment>("/api/session/totp", { method: "POST", body }),
+                  );
+                  if (enrolled) setEnrolment(enrolled);
                 }}
               >
-                <FactorProofField of={setUp} />
+                {null}
               </Form>
             </Match>
             <Match when={state().on}>
@@ -136,48 +151,32 @@ export function TotpSettings() {
               </p>
               <Form
                 verb="New recovery codes"
-                disabled={!renew.ready()}
                 actions={
-                  <Button tone="danger" type="button" onClick={() => setTurningOff(true)}>
+                  <Button
+                    tone="danger"
+                    type="button"
+                    pending={turningOff.pending()}
+                    onClick={turnOff}
+                  >
                     Turn off…
                   </Button>
                 }
                 act={async () => {
-                  const body = await renew.take();
-                  setCodes((await api<RecoveryCodes>("/api/session/recovery-codes", { method: "POST", body })).codes);
+                  const issued = await withProof({ for: "New recovery codes", verb: "Make new codes" }, (body) =>
+                    api<RecoveryCodes>("/api/session/recovery-codes", { method: "POST", body }),
+                  );
+                  if (!issued) return;
+                  setCodes(issued.codes);
                   void refetch();
-                  renew.clear();
                 }}
               >
-                <FactorProofField of={renew} />
+                <Notice tone="bad">{turningOff.failed()}</Notice>
               </Form>
             </Match>
           </Switch>
         )}
       </Loaded>
-      <Show when={turningOff()}>
-        <TurnOff on={on} onClose={() => setTurningOff(false)} onDone={turned} />
-      </Show>
     </Section>
-  );
-}
-
-function TurnOff(props: { on: () => boolean | undefined; onClose: () => void; onDone: () => void }) {
-  const proof = createFactorProof(props.on);
-  return (
-    <Confirm
-      title="Turn off 2FA?"
-      verb="Turn off"
-      disabled={!proof.ready()}
-      onClose={props.onClose}
-      act={async () => {
-        await api<null>("/api/session/totp/off", { method: "POST", body: await proof.take() });
-        props.onDone();
-      }}
-    >
-      <p>Your password alone will sign you in, and your recovery codes stop working.</p>
-      <FactorProofField of={proof} />
-    </Confirm>
   );
 }
 
@@ -285,19 +284,18 @@ export function PasskeySettings() {
 
 /**
  * A passkey made for `host`, the name this page reached the box by, with fresh
- * proof. A ceremony that fails before `register` is posted keeps its options,
- * and a retry within their timeout runs again, for what is left of it, without
- * asking for proof.
+ * proof asked once the form is sent. A ceremony that fails before `register`
+ * is posted keeps its options, and a retry within their timeout runs again,
+ * for what is left of it, without asking for proof; one after asks again.
  */
 function AddPasskey(props: { host: string; onClose: () => void; onAdded: (made: PasskeyView) => void }) {
   const [name, setName] = createSignal("");
-  const proof = createFactorProof();
   const [held, setHeld] = createSignal<{ options: CreationOptions; until: number }>();
   const proved = async () => {
-    const body = await proof.take();
-    const options = await api<CreationOptions>("/api/session/passkeys/options", { method: "POST", body });
-    setHeld({ options, until: Date.now() + options.timeout });
-    proof.clear();
+    const options = await withProof({ for: "Add a passkey" }, (body) =>
+      api<CreationOptions>("/api/session/passkeys/options", { method: "POST", body }),
+    );
+    if (options) setHeld({ options, until: Date.now() + options.timeout });
     return options;
   };
   return (
@@ -305,7 +303,7 @@ function AddPasskey(props: { host: string; onClose: () => void; onAdded: (made: 
       <p class="app-muted">It is made for {props.host}, and signs in only at that name.</p>
       <Form
         verb={held() ? "Try again" : "Add passkey"}
-        disabled={(!held() && !proof.ready()) || name().trim() === ""}
+        disabled={name().trim() === ""}
         actions={
           <Button tone="plain" type="button" onClick={props.onClose}>
             Cancel
@@ -314,11 +312,8 @@ function AddPasskey(props: { host: string; onClose: () => void; onAdded: (made: 
         act={async () => {
           const kept = held();
           const left = kept ? kept.until - Date.now() : 0;
-          if (kept && left <= 0) {
-            setHeld(undefined);
-            throw new Refusal("the earlier attempt expired; prove it is you again");
-          }
-          const options = kept ? { ...kept.options, timeout: left } : await proved();
+          const options = kept && left > 0 ? { ...kept.options, timeout: left } : await proved();
+          if (!options) return;
           const credential = await makePasskey(options);
           setHeld(undefined);
           const body: PasskeyRegistration = { name: name().trim(), credential };
@@ -335,8 +330,8 @@ function AddPasskey(props: { host: string; onClose: () => void; onAdded: (made: 
           value={name()}
           onValue={setName}
         />
-        <Show when={!held()} fallback={<p class="app-muted">Your proof still stands: try the passkey again.</p>}>
-          <FactorProofField of={proof} />
+        <Show when={held()}>
+          <p class="app-muted">Your proof still stands: try the passkey again.</p>
         </Show>
       </Form>
     </Dialog>

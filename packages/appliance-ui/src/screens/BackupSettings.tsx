@@ -27,8 +27,8 @@
  *
  * # A take, a restore and a schedule passphrase ask for proof again
  *
- * An appliance session gives `FactorProofField`'s: while its TOTP is on, a
- * code, a recovery code or a passkey, never the password alone.
+ * An appliance session gives `withProof`'s, once the form is sent: while its
+ * TOTP is on, a code, a recovery code or a passkey, never the password alone.
  *
  * # A local session is offered the application half, and asked no password
  *
@@ -94,9 +94,9 @@ import { For, Match, Show, Switch, createResource, createSignal } from "solid-js
 import { ApiError, api, download, slowAnswer } from "../api";
 import { BundlePicker, Provenance } from "../parts/BundlePicker";
 import type { ChosenBundle } from "../parts/BundlePicker";
-import { FactorProofField, createFactorProof } from "../parts/FactorProof";
 import { RestoredFactorsNote } from "../parts/factorNotes";
 import { isStoreAccount, useSession } from "../shell/session";
+import { createDone, provedIf } from "./proved";
 import { PLATFORM, chooseSections } from "./sections";
 import type { PlatformKey, SectionRow } from "./sections";
 
@@ -223,7 +223,7 @@ export function BackupSettings(props: Routed & { sections?: SectionRow[]; onRest
 function Take(props: { sections: SectionRow[] }) {
   const here = where();
   const [passphrase, setPassphrase] = createSignal("");
-  const proof = createFactorProof(undefined, () => !here().applicationHalf);
+  const downloaded = createDone("Downloaded.");
   const [optional] = createResource(() => !here().applicationHalf && props.sections, leavable);
   const [leftOut, setLeftOut] = createSignal<string[]>([]);
   return (
@@ -237,20 +237,22 @@ function Take(props: { sections: SectionRow[] }) {
     >
       <Form
         verb="Take a backup"
-        done="Downloaded."
-        disabled={!here().applicationHalf && !proof.ready()}
+        done={downloaded.sentence()}
         act={async () => {
-          const proved = here().applicationHalf ? {} : await proof.take();
-          // `download` rather than `api`: the answer is a file, and the kit's
-          // refusal path carries the daemon's sentence to the operator.
-          await provedBy(here(), () =>
-            download("/api/backup", "appliance-backup.json", {
-              method: "POST",
-              body: takeBody(here().applicationHalf, passphrase(), proved, leftOut()),
-            }),
+          const taken = await provedIf(
+            !here().applicationHalf,
+            { for: "Take a backup", verb: "Take a backup" },
+            (proof) =>
+              // `download` rather than `api`: the answer is a file, and the kit's
+              // refusal path carries the daemon's sentence to the operator.
+              provedBy(here(), () =>
+                download("/api/backup", "appliance-backup.json", {
+                  method: "POST",
+                  body: takeBody(here().applicationHalf, passphrase(), proof, leftOut()),
+                }),
+              ).then(() => ({})),
           );
-          setPassphrase("");
-          proof.clear();
+          if (downloaded.went(taken)) setPassphrase("");
         }}
       >
         <Field
@@ -279,7 +281,6 @@ function Take(props: { sections: SectionRow[] }) {
               </p>
             )}
           </For>
-          <FactorProofField of={proof} />
         </Show>
       </Form>
     </Section>
@@ -367,7 +368,7 @@ function Restore(props: { sections: SectionRow[]; onRestored?: (() => void) | un
 
 /**
  * The half of the restore form that exists once the daemon has opened the file:
- * the tickboxes for what it holds, the proof, and the outcome. Mounted per
+ * the tickboxes for what it holds, and the outcome. Mounted per
  * inspection and per kind of session, so a new file or a late local caller
  * starts it afresh. Exported for the kit's tests, not from the package.
  */
@@ -379,7 +380,6 @@ export function Inspected(props: {
   onRestored?: (() => void) | undefined;
 }) {
   const here = where();
-  const proof = createFactorProof(undefined, () => !here().applicationHalf);
   const [report, setReport] = createSignal<RestoreReport | undefined>();
   // Everything offered on, until somebody unticks: a restore is "put the box
   // back" first and "just the pins" second.
@@ -412,28 +412,29 @@ export function Inspected(props: {
         fallback={
           <Form
             verb="Restore"
-            disabled={!anything() || (!here().applicationHalf && !proof.ready())}
+            disabled={!anything()}
             act={async () => {
-              const proved = here().applicationHalf ? {} : await proof.take();
-              const done = await provedBy(here(), () =>
-                api<RestoreReport>("/api/backup/restore", {
-                  method: "POST",
-                  body: restoreBody(
-                    here().applicationHalf,
-                    { passphrase: props.passphrase, bundle: props.chosen.text },
-                    asked(),
-                    proved,
+              const done = await provedIf(
+                !here().applicationHalf,
+                { for: "Restore from this backup", verb: "Restore" },
+                (proof) =>
+                  provedBy(here(), () =>
+                    api<RestoreReport>("/api/backup/restore", {
+                      method: "POST",
+                      body: restoreBody(
+                        here().applicationHalf,
+                        { passphrase: props.passphrase, bundle: props.chosen.text },
+                        asked(),
+                        proof,
+                      ),
+                      signal: slowAnswer(),
+                    }),
                   ),
-                  signal: slowAnswer(),
-                }),
               );
-              proof.clear();
-              setReport(done);
+              if (done) setReport(done);
             }}
           >
-            <Show when={!here().applicationHalf}>
-              <FactorProofField of={proof} />
-            </Show>
+            {null}
           </Form>
         }
       >
@@ -491,7 +492,7 @@ function Schedule() {
   const [view, { refetch, mutate }] = createResource(() => api<ScheduleView>("/api/backup/schedule"));
   const [typed, setTyped] = createSignal<Partial<BackupSchedule>>({});
   const [passphrase, setPassphrase] = createSignal("");
-  const proof = createFactorProof(undefined, () => !here().applicationHalf);
+  const saved = createDone("Saved.");
   const asks = () => scheduleAsks(here().applicationHalf, passphrase());
   const [forgetting, setForgetting] = createSignal(false);
   const [removing, setRemoving] = createSignal<BackupFile>();
@@ -508,7 +509,6 @@ function Schedule() {
     mutate(saved);
     setTyped({});
     setPassphrase("");
-    proof.clear();
   };
 
   /**
@@ -558,16 +558,22 @@ function Schedule() {
             </Switch>
             <Form
               verb="Save schedule"
-              done="Saved."
-              disabled={asks() && !proof.ready()}
+              done={saved.sentence()}
               act={async () => {
-                const proved = asks() ? await proof.take() : {};
-                settle(
-                  await api<ScheduleView>("/api/backup/schedule", {
-                    method: "PUT",
-                    body: scheduleBody(here().applicationHalf, wanted(current()), passphrase(), proved),
-                  }),
+                const view = await provedIf(
+                  asks(),
+                  {
+                    for: "Save the schedule",
+                    about: "Whoever sets the passphrase can open every file the schedule writes from then on.",
+                    verb: "Save schedule",
+                  },
+                  (proof) =>
+                    api<ScheduleView>("/api/backup/schedule", {
+                      method: "PUT",
+                      body: scheduleBody(here().applicationHalf, wanted(current()), passphrase(), proof),
+                    }),
                 );
+                if (saved.went(view)) settle(view);
               }}
               actions={
                 <Show when={current().passphrase_set}>
@@ -619,11 +625,6 @@ function Schedule() {
                     : `Needed before the schedule can be switched on. At least ${MIN_PASSPHRASE_LEN} characters, and not one you use for manual backups.`
                 }
               />
-              {/* Whoever sets the passphrase can open every file the schedule
-                  writes from then on, so it costs what a take costs. */}
-              <Show when={asks()}>
-                <FactorProofField of={proof} />
-              </Show>
             </Form>
 
             <Show when={forgetting()}>

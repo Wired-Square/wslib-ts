@@ -147,6 +147,16 @@ test("an answer whose whole body is not JSON fails as a parse error", async () =
   assert.ok(error instanceof SyntaxError, `failed as: ${String(error)}`);
 });
 
+test("a refusal keeps the body it came in, fields beside the sentence and all", async () => {
+  const body = { error: "too many tries", retry_after: 30 };
+  respond = () => Promise.resolve(Response.json(body, { status: 429 }));
+
+  const error = await api("/api/session/totp/off").catch((error: unknown) => error);
+
+  assert.ok(error instanceof ApiError);
+  assert.deepEqual([error.message, error.body], ["too many tries", body]);
+});
+
 test("a refusal whose body is cut off by the caller's signal fails as unanswered", async () => {
   respond = (signal) => {
     const body = new ReadableStream<Uint8Array>({

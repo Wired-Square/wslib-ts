@@ -42,12 +42,16 @@ export class ApiError extends Refusal {
   /** How far the box's clock is off, on a code refused for it. */
   readonly clockSkew: ClockSkew | undefined;
 
-  constructor(status: number, message: string, fromErrorBody: boolean, clockSkew?: ClockSkew) {
+  /** The `ApiErrorBody` the refusal came in, with any fields beside `error`. */
+  readonly body: ApiErrorBody | undefined;
+
+  constructor(status: number, message: string, fromErrorBody: boolean, clockSkew?: ClockSkew, body?: ApiErrorBody) {
     super(message, { unanswered: status === 0 });
     this.name = "ApiError";
     this.status = status;
     this.fromErrorBody = fromErrorBody;
     this.clockSkew = clockSkew;
+    this.body = body;
   }
 }
 
@@ -319,7 +323,7 @@ async function refusal(response: Answer, signal: RequestInit["signal"]): Promise
     const body = JSON.parse(text) as Partial<ApiErrorBody>;
     if (typeof body?.error === "string" && body.error !== "") {
       const clockSkew = body.clock_skew as ClockSkew | undefined;
-      return new ApiError(response.status, body.error, true, clockSkew);
+      return new ApiError(response.status, body.error, true, clockSkew, body as ApiErrorBody);
     }
   } catch {
     // Not JSON, which is a documented possibility rather than a surprise. See

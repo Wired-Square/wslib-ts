@@ -6,7 +6,7 @@
  * second-factor rule takes `FactorProofField`.
  */
 import type { Reauthentication } from "@wired-square/appliance-types";
-import { Button, Field } from "@wired-square/kit";
+import { Button, Field, Notice } from "@wired-square/kit";
 import { Show } from "solid-js";
 
 import { createPasskeyHere } from "./FactorProof";
@@ -18,6 +18,8 @@ export interface PasswordAgainProps {
   /** A passkey is chosen in place of the password. */
   passkey?: boolean;
   onPasskey?: (chosen: boolean) => void;
+  /** Said in place of the hint: why the last proof was not taken. */
+  refused?: string | undefined;
 }
 
 const HINT = "Asked for again because what this does outlives the session asking for it.";
@@ -35,11 +37,13 @@ export function PasswordAgain(props: PasswordAgainProps) {
             autocomplete="current-password"
             required
             hint={HINT}
+            error={props.refused ?? ""}
             value={props.value}
             onValue={props.onValue}
           />
         }
       >
+        <Notice tone="bad">{props.refused}</Notice>
         <p class="app-muted">Your passkey is asked for when you go ahead. {HINT}</p>
       </Show>
       <Show when={props.onPasskey && (props.passkey || passkeyHere())}>

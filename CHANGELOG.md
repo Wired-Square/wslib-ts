@@ -252,6 +252,24 @@ and `constants` are exported from the root. No dependencies and no peers.
 
 ## `@wired-square/appliance-ui`
 
+### 0.12.0
+
+- `withProof({ for }, send)` asks the signed-in account's proof in a dialog of its own, offering what
+  `FactorProofField` offers, and hands it to `send`, which builds the request. It resolves to what `send` resolves to,
+  or `undefined` when cancelled. `withPassword` does the same for a `reauthenticate` route, with the password or a
+  passkey. `for` titles the dialog; `about`, `verb` and `tone` are optional. A passkey is asked for when the dialog is
+  sent.
+- The dialog stays open on a refused proof, its sentence beside the field and the field cleared: a body marked
+  `"proof": "refused"`, a `clock_skew`, a 429 with `retry_after`, or a 403 with one of today's reauth sentences or
+  `STALE_PROOF`. Any other refusal closes it and rejects. `ApiError.body` keeps the refusal's `ApiErrorBody`.
+- `ProofHost` renders the dialog; `Shell` mounts one, and a client with only `SessionProvider` mounts its own. A proof
+  asked with no host throws, and a second while one is open is refused. The testing `mount` includes one.
+- Backup's Take, Restore and Schedule, Accounts, your own password, 2FA and Add a passkey ask through `withProof` once
+  the form is sent; a form keeps no proof field. Add a passkey whose options have expired asks for the proof again
+  rather than refusing.
+- The "Prove it is you with" line keeps the form's gap above it.
+- `FactorProofField`, `createFactorProof`, `PasswordAgain` and `reauthentication` stay exported for now.
+
 ### 0.11.0
 
 - `useRefresh` stops its timer while the tab is hidden, and on being shown reads once and starts it again. A screen

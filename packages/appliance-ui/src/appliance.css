@@ -26,6 +26,11 @@
   stroke-linejoin: round;
 }
 
+/* After a tickbox or a notice, which bring no gap of their own. */
+.app-proof-way {
+  margin-block-start: 1rem;
+}
+
 /* --- reading one record ------------------------------------------------- */
 
 /* A short list of labelled facts about one thing — a certificate's subject,
