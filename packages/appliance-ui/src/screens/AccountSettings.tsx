@@ -119,6 +119,13 @@ import type { SecurityView } from "./SecuritySettings";
  */
 const OWN_PASSWORD_HINT = "Change your own password in the Password view.";
 
+/** The view `AccountSettings` shows `role` for the routed `view`, for a host writing its canonical address. */
+export function accountView(role: Role, view: string | undefined): SecurityView | "accounts" {
+  const own = securityViews().find((shown) => shown.id === view);
+  if (own) return own.id;
+  return ROLE_LADDER.indexOf(role) >= ROLE_LADDER.indexOf("admin") ? "accounts" : "passkeys";
+}
+
 /** The roles an account may hold in an app, and `""` for none. */
 const APP_ROLES = ["", "viewer", "operator", "admin"] as const;
 
@@ -358,7 +365,8 @@ export function AccountSettings(props: Routed & { me: Me; apps?: string[] }) {
   );
   const security = securityViews<"accounts">();
   const accounts: View<SecurityView | "accounts"> = { id: "accounts", label: "Accounts", panel: list };
-  const onAccounts = () => admin() && !security.some((view) => view.id === route.selected);
+  const shown = () => accountView(props.me.role, route.selected);
+  const onAccounts = () => shown() === "accounts";
   createEffect(
     on(onAccounts, (yes) => {
       if (yes) void load();
@@ -371,7 +379,7 @@ export function AccountSettings(props: Routed & { me: Me; apps?: string[] }) {
         aria-label="Users"
         group="users"
         views={[...security, ...(admin() ? [accounts] : [])]}
-        selected={onAccounts() ? "accounts" : route.selected}
+        selected={shown()}
         onChange={(to) => {
           setAdded(undefined);
           route.onChange(to);

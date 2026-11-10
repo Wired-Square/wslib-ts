@@ -1005,6 +1005,21 @@ test("An admin sees four views, and a view id it does not know opens Accounts", 
   assert.equal(selectedPill(root), "2FA");
 });
 
+test("accountView names the view AccountSettings shows, for a host's canonical address", async () => {
+  const { accountView } = await load<typeof import("../src/screens/AccountSettings.tsx")>(
+    "/src/screens/AccountSettings.tsx",
+  );
+  for (const view of ["passkeys", "password", "two-step"]) {
+    assert.equal(accountView("viewer", view), view);
+    assert.equal(accountView("hostadmin", view), view);
+  }
+  for (const view of ["accounts", "add", undefined]) {
+    assert.equal(accountView("operator", view), "passkeys", String(view));
+    assert.equal(accountView("admin", view), "accounts", String(view));
+    assert.equal(accountView("hostadmin", view), "accounts", String(view));
+  }
+});
+
 test("SecuritySettings is the three views alone, opening on Passkeys", async () => {
   const { SecuritySettings } = await load<typeof import("../src/screens/SecuritySettings.tsx")>(
     "/src/screens/SecuritySettings.tsx",

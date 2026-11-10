@@ -260,6 +260,12 @@ and `constants` are exported from the root. No dependencies and no peers.
 
 ## `@wired-square/appliance-ui`
 
+### 0.14.0
+
+- `accountView(role, view)` names the view `AccountSettings` shows `role` for the routed `view`: `passkeys`,
+  `password` or `two-step` as given, and otherwise `accounts` for an admin or above and `passkeys` for anybody else,
+  so a host can write the canonical address without restating the rule.
+
 ### 0.13.0
 
 - Breaking: `FactorProofField`, `createFactorProof`, their types `FactorProofState` and `ProofWay`, `PasswordAgain`,

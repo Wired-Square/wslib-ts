@@ -66,7 +66,7 @@
  * migration note will list.**
  */
 export { About } from "./About";
-export { AccountSettings } from "./AccountSettings";
+export { AccountSettings, accountView } from "./AccountSettings";
 export { AuditLog } from "./AuditLog";
 export { Logs } from "./Logs";
 export { LogViews } from "./LogViews";
