@@ -1,6 +1,6 @@
 {
   "name": "@wired-square/icons",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Wired Square's glyphs: plain SVG on a 24 grid, a sprite, their names, and Solid components.",
   "license": "MIT",
   "repository": {
