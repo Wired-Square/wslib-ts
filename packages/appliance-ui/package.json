@@ -1,6 +1,6 @@
 {
   "name": "@wired-square/appliance-ui",
-  "version": "0.13.0",
+  "version": "0.14.0",
   "description": "The appliance's browser half: the shell, the Settings screens and their parts, and test helpers.",
   "license": "MIT",
   "repository": {
