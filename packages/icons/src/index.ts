@@ -26,6 +26,7 @@ export const ICON_NAMES = [
   "lock",
   "moon",
   "more",
+  "morse",
   "overcast",
   "page",
   "paperclip",

@@ -29,8 +29,8 @@ npm install @wired-square/icons
 
 A glyph's name is its file's, in kebab-case: `alert`, `arrow-down`, `arrow-left`, `arrow-right`, `arrow-up`, `bang`,
 `bust`, `calendar`, `check`, `chevron-down`, `chevron-left`, `chevron-right`, `chevron-up`, `clear`, `cloud`,
-`copy`, `database`, `envelope`, `film`, `gauge`, `handset`, `info`, `landscape`, `lock`, `moon`, `more`, `overcast`,
-`page`, `paperclip`, `pencil`, `plus`, `portico`, `scheme-system`, `speaker`, `speech-bubble`, `sun`, `timer`,
+`copy`, `database`, `envelope`, `film`, `gauge`, `handset`, `info`, `landscape`, `lock`, `moon`, `more`, `morse`,
+`overcast`, `page`, `paperclip`, `pencil`, `plus`, `portico`, `scheme-system`, `speaker`, `speech-bubble`, `sun`, `timer`,
 `trash`, `unlock` and `x`.
 
 ## Without a bundler

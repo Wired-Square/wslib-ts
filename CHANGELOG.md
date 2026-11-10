@@ -575,6 +575,10 @@ and no peers.
 
 ## `@wired-square/icons`
 
+### 0.1.3
+
+- `morse`: a telegraph key sending dot, dash, dot, for Morse code.
+
 ### 0.1.2
 
 - `bust`, `calendar`, `envelope`, `film`, `handset`, `landscape`, `page`, `paperclip`, `portico`, `speaker` and

@@ -188,6 +188,14 @@ export const more = (props: IconProps = {}) => (
   </Glyph>
 );
 
+export const morse = (props: IconProps = {}) => (
+  <Glyph {...props}>
+    <rect x="3" y="17" width="18" height="3" rx="1"/>
+    <circle cx="17.5" cy="11.5" r="2"/>
+    <path d="M5 15l10.5-3M8 17v-2.5M5 5.5h.01M9.5 5.5h5M19 5.5h.01"/>
+  </Glyph>
+);
+
 export const overcast = (props: IconProps = {}) => (
   <Glyph {...props}>
     <path style="stroke: var(--icon-sun, currentColor)" d="M6.12 10.99A3.5 3.5 0 0 1 11.78 6.88"/>
