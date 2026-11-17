@@ -171,12 +171,14 @@ try {
 
   const icons = `
     const { ICON_NAMES } = await import("@wired-square/icons");
-    const sprite = (await import("node:fs")).readFileSync(new URL(import.meta.resolve("@wired-square/icons/sprite.svg")), "utf8");
+    const { readFileSync } = await import("node:fs");
+    const sprite = readFileSync(new URL(import.meta.resolve("@wired-square/icons/sprite.svg")), "utf8");
+    const css = readFileSync(new URL(import.meta.resolve("@wired-square/icons/icons.css")), "utf8");
     const glyph = import.meta.resolve("@wired-square/icons/glyphs/check.svg");
-    process.stdout.write(String(ICON_NAMES.includes("check") && sprite.includes('id="icon-check"') && glyph.endsWith("/dist/glyphs/check.svg")));
+    process.stdout.write(String(ICON_NAMES.includes("check") && sprite.includes('id="icon-check"') && css.includes(".ws-icon {") && glyph.endsWith("/dist/glyphs/check.svg")));
   `;
   if (execFileSync("node", ["--input-type=module", "-e", icons], { cwd: work, encoding: "utf8" }) !== "true") {
-    problems.push("plain node imported @wired-square/icons, but its names, sprite.svg or glyph files are missing");
+    problems.push("plain node imported @wired-square/icons, but its names, sprite.svg, icons.css or glyph files are missing");
   }
   writeFileSync(join(work, "icons.ts"), `import { ICON_NAMES, type IconName } from "@wired-square/icons";\n    export const typed: IconName = ICON_NAMES[0];\n`);
   try {

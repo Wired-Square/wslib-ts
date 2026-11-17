@@ -2,6 +2,12 @@
 
 ## `@wired-square/kit`
 
+### 0.4.4
+
+- The default glyphs carry no inline style, so they draw under a CSP of `style-src 'self'`: a 2 `stroke-width`
+  attribute and the class `ws-icon`, and the scheme picker's sun `ws-icon-sun`. `kit.css` reads `--icon-stroke` and
+  `--icon-sun` on them, as before, in an icon button too.
+
 ### 0.4.3
 
 - A `Field`, `Select`, `TextArea` or `NothingYet` directly in a `Section`, outside a form, has 1rem below it unless it
@@ -574,6 +580,16 @@ are CSS custom properties: each series names its own, and the axes use the kit's
 and no peers.
 
 ## `@wired-square/icons`
+
+### 0.2.0
+
+- The Solid components carry no inline style, so they draw under a CSP of `style-src 'self'`. Each has a 2
+  `stroke-width` attribute and the class `ws-icon`, which a passed `class` joins; the sun and cloud parts have
+  `ws-icon-sun` and `ws-icon-cloud`.
+- `./icons.css`: `.ws-icon` reads `--icon-stroke`, `.ws-icon-sun` `--icon-sun` and `.ws-icon-cloud` `--icon-cloud`.
+
+Migrating: on the components, `--icon-stroke`, `--icon-sun` and `--icon-cloud` now need `icons.css` imported, or a
+plain `stroke-width` or `stroke` rule on `.ws-icon` and the part classes. The sprite and the glyph files are unchanged.
 
 ### 0.1.4
 

@@ -30,14 +30,34 @@ test.each(ICON_NAMES)("%s renders a hidden 1em svg on the 24 grid, its shapes in
   expect(svg.getAttribute("width")).toBe("1em");
   expect(svg.getAttribute("aria-hidden")).toBe("true");
   expect(svg.getAttribute("stroke")).toBe("currentColor");
-  expect(svg.getAttribute("style")).toMatch(/stroke-width: ?var\(--icon-stroke, 2\)/);
+  expect(svg.getAttribute("stroke-width")).toBe("2");
+  expect(svg.getAttribute("class")).toBe("ws-icon");
   expect(svg.children.length).toBeGreaterThan(0);
   for (const shape of svg.children) expect(shape.namespaceURI).toBe(SVG);
 });
 
+test.each(ICON_NAMES)("%s carries no inline style, so it draws under a CSP without 'unsafe-inline'", (name) => {
+  const root = mount(glyphs[camel(name) as keyof typeof glyphs]);
+  expect(root.querySelectorAll("[style]")).toHaveLength(0);
+});
+
+test.each([
+  ["sun", ["ws-icon-sun", "ws-icon-sun"]],
+  ["cloud", ["ws-icon-cloud"]],
+  ["overcast", ["ws-icon-sun", "ws-icon-sun", "ws-icon-cloud"]],
+] as const)("%s's parts carry their colour classes", (name, parts) => {
+  const svg = mount(glyphs[name]).querySelector("svg")!;
+  expect([...svg.children].map((shape) => shape.getAttribute("class"))).toEqual(parts);
+});
+
+test("a glyph's class joins ws-icon rather than replacing it", () => {
+  const svg = mount(() => glyphs.copy({ class: "stored-copy-icon", classList: { busy: true } })).querySelector("svg")!;
+  expect([...svg.classList].sort()).toEqual(["busy", "stored-copy-icon", "ws-icon"]);
+});
+
 test("a glyph's props reach its svg, over the defaults", () => {
   const svg = mount(() => glyphs.check({ class: "big", width: "2em", "aria-hidden": false, "aria-label": "Saved", role: "img" })).querySelector("svg")!;
-  expect(svg.getAttribute("class")).toBe("big");
+  expect(svg.getAttribute("class")).toBe("ws-icon big");
   expect(svg.getAttribute("width")).toBe("2em");
   expect(svg.getAttribute("aria-label")).toBe("Saved");
   expect(svg.getAttribute("aria-hidden")).toBe("false");

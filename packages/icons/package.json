@@ -1,6 +1,6 @@
 {
   "name": "@wired-square/icons",
-  "version": "0.1.4",
+  "version": "0.2.0",
   "description": "Wired Square's glyphs: plain SVG on a 24 grid, a sprite, their names, and Solid components.",
   "license": "MIT",
   "repository": {
@@ -9,7 +9,9 @@
     "directory": "packages/icons"
   },
   "type": "module",
-  "sideEffects": false,
+  "sideEffects": [
+    "./icons.css"
+  ],
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -19,12 +21,14 @@
       "solid": "./src/solid.tsx",
       "default": "./src/solid.tsx"
     },
+    "./icons.css": "./icons.css",
     "./sprite.svg": "./dist/sprite.svg",
     "./glyphs/*.svg": "./dist/glyphs/*.svg"
   },
   "files": [
     "dist",
     "src/solid.tsx",
+    "icons.css",
     "preview.svg"
   ],
   "publishConfig": {

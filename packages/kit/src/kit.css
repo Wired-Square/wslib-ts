@@ -204,6 +204,17 @@
   stroke-linejoin: round;
 }
 
+/* --- glyphs ------------------------------------------------------------- */
+
+/* `svg.ws-icon`, after `.app-btn--icon svg`, so `--icon-stroke` reaches a glyph in an icon button. */
+svg.ws-icon {
+  stroke-width: var(--icon-stroke, 2);
+}
+
+.ws-icon-sun {
+  stroke: var(--icon-sun, currentColor);
+}
+
 /* --- fields ------------------------------------------------------------- */
 
 .app-field {

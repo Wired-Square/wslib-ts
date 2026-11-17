@@ -2,7 +2,7 @@
 import type { JSX } from "solid-js";
 
 const glyph = (children: JSX.Element) => (
-  <svg aria-hidden="true" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" style="stroke-width: var(--icon-stroke, 2)" stroke-linecap="round" stroke-linejoin="round">
+  <svg aria-hidden="true" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ws-icon">
     {children}
   </svg>
 );
@@ -18,8 +18,8 @@ export const glyphs = {
   schemeLight: () =>
     glyph(
       <>
-        <circle style="stroke: var(--icon-sun, currentColor)" cx="12" cy="12" r="4.25"/>
-        <path style="stroke: var(--icon-sun, currentColor)" d="M12 3v3.25M12 17.75V21M3 12h3.25M17.75 12H21M5.64 5.64l2.3 2.3M16.06 16.06l2.3 2.3M18.36 5.64l-2.3 2.3M7.94 16.06l-2.3 2.3"/>
+        <circle class="ws-icon-sun" cx="12" cy="12" r="4.25"/>
+        <path class="ws-icon-sun" d="M12 3v3.25M12 17.75V21M3 12h3.25M17.75 12H21M5.64 5.64l2.3 2.3M16.06 16.06l2.3 2.3M18.36 5.64l-2.3 2.3M7.94 16.06l-2.3 2.3"/>
       </>,
     ),
   schemeDark: () => glyph(<path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5z"/>),

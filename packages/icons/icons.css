@@ -1,0 +1,11 @@
+.ws-icon {
+  stroke-width: var(--icon-stroke, 2);
+}
+
+.ws-icon-sun {
+  stroke: var(--icon-sun, currentColor);
+}
+
+.ws-icon-cloud {
+  stroke: var(--icon-cloud, currentColor);
+}
