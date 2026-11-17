@@ -27,11 +27,12 @@ npm install @wired-square/icons
 | `./sprite.svg` | Every glyph as a `<symbol id="icon-<name>">` |
 | `./glyphs/<name>.svg` | Each glyph alone |
 
-A glyph's name is its file's, in kebab-case: `alert`, `arrow-down`, `arrow-left`, `arrow-right`, `arrow-up`, `bang`,
-`bust`, `calendar`, `check`, `chevron-down`, `chevron-left`, `chevron-right`, `chevron-up`, `clear`, `cloud`,
-`copy`, `database`, `envelope`, `film`, `gauge`, `handset`, `info`, `landscape`, `lock`, `moon`, `more`, `morse`,
-`overcast`, `page`, `paperclip`, `pencil`, `plus`, `portico`, `scheme-system`, `speaker`, `speech-bubble`, `sun`, `timer`,
-`trash`, `unlock` and `x`.
+A glyph's name is its file's, in kebab-case: `alert`, `arrow-down`, `arrow-down-circle`, `arrow-left`, `arrow-right`,
+`arrow-up`, `bang`, `bust`, `calendar`, `certificate`, `certificate-pen`, `certificate-struck`, `check`, `chevron-down`,
+`chevron-left`, `chevron-right`, `chevron-up`, `clear`, `cloud`, `copy`, `database`, `envelope`, `envelope-key`, `exit`,
+`film`, `gauge`, `handset`, `info`, `landscape`, `ledger`, `lock`, `moon`, `more`, `morse`, `overcast`, `page`,
+`paperclip`, `pencil`, `plus`, `portico`, `safe`, `scheme-system`, `seal`, `server`, `speaker`, `speech-bubble`, `sun`,
+`timer`, `trash`, `tunnel`, `unlock` and `x`.
 
 ## Without a bundler
 
