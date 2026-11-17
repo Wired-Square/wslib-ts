@@ -13,6 +13,14 @@ export const alert = (props: IconProps = {}) => (
   </Glyph>
 );
 
+export const arrowDownCircle = (props: IconProps = {}) => (
+  <Glyph {...props}>
+    <circle cx="12" cy="12" r="9"/>
+    <path d="M12 7.25v9.5"/>
+    <path d="M15.9 13.13 12 16.75 8.1 13.13"/>
+  </Glyph>
+);
+
 export const arrowDown = (props: IconProps = {}) => (
   <Glyph {...props}>
     <path d="M12 4.75 12 19.25"/>
@@ -58,10 +66,39 @@ export const bust = (props: IconProps = {}) => (
 
 export const calendar = (props: IconProps = {}) => (
   <Glyph {...props}>
-    <rect x="3" y="5" width="18" height="16" rx="2"/>
-    <path d="M8 3v4M16 3v4"/>
-    <path d="M3 10h18"/>
-    <path d="M8 14h.01M12 14h.01M16 14h.01M8 17.5h.01M12 17.5h.01"/>
+    <rect x="3" y="5.5" width="18" height="15" rx="2"/>
+    <path d="M7.5 3.5v4M16.5 3.5v4"/>
+    <path d="M3 11h18"/>
+    <path d="M7.5 14.5h.01M12 14.5h.01M16.5 14.5h.01M7.5 17.5h.01M12 17.5h.01"/>
+  </Glyph>
+);
+
+export const certificatePen = (props: IconProps = {}) => (
+  <Glyph {...props}>
+    <path d="M9.5 16.5H5a2 2 0 0 1-2-2V5.5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2V6M21 11.5v3a2 2 0 0 1-2 2h-4.5"/>
+    <circle cx="12" cy="16" r="2.75"/>
+    <path d="M10.5 18.5 9.5 21M13.5 18.5l1 2.5"/>
+    <path d="M6.5 7.5h7.5"/>
+    <path d="M15 12.5 18 11.5l3.25-3.25-2.5-2.5L15.5 9z"/>
+  </Glyph>
+);
+
+export const certificateStruck = (props: IconProps = {}) => (
+  <Glyph {...props}>
+    <path d="M9.5 16.5H5a2 2 0 0 1-2-2V5.5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-4.5"/>
+    <circle cx="12" cy="16" r="2.75"/>
+    <path d="M10.5 18.5 9.5 21M13.5 18.5l1 2.5"/>
+    <path d="M7 7.5h10M9 11h6"/>
+    <path d="M3 3l18 18"/>
+  </Glyph>
+);
+
+export const certificate = (props: IconProps = {}) => (
+  <Glyph {...props}>
+    <path d="M9.5 16.5H5a2 2 0 0 1-2-2V5.5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-4.5"/>
+    <circle cx="12" cy="16" r="2.75"/>
+    <path d="M10.5 18.5 9.5 21M13.5 18.5l1 2.5"/>
+    <path d="M7 7.5h10M9 11h6"/>
   </Glyph>
 );
 
@@ -122,10 +159,29 @@ export const database = (props: IconProps = {}) => (
   </Glyph>
 );
 
+export const envelopeKey = (props: IconProps = {}) => (
+  <Glyph {...props}>
+    <path d="M11.5 19H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v5"/>
+    <path d="M3.5 6.5 12 12.5l8.5-6"/>
+    <circle cx="14.5" cy="18" r="2.5"/>
+    <path d="M17 18h4v2M19 18v1.5"/>
+  </Glyph>
+);
+
 export const envelope = (props: IconProps = {}) => (
   <Glyph {...props}>
     <rect x="3" y="5" width="18" height="14" rx="2"/>
-    <path d="M4 7l8 6 8-6"/>
+    <path d="M3.5 6.5 12 12.5l8.5-6"/>
+    <path d="M3.5 18.5l6-5M20.5 18.5l-6-5"/>
+  </Glyph>
+);
+
+export const exit = (props: IconProps = {}) => (
+  <Glyph {...props}>
+    <path d="M12 9V3.5h8v17h-8V15"/>
+    <path d="M16.5 12h.01"/>
+    <path d="M14 12H3.5"/>
+    <path d="M7.25 8.25 3.5 12l3.75 3.75"/>
   </Glyph>
 );
 
@@ -146,7 +202,7 @@ export const gauge = (props: IconProps = {}) => (
 
 export const handset = (props: IconProps = {}) => (
   <Glyph {...props}>
-    <path d="M5 3h4l1.5 5-2.5 1.5a11 11 0 0 0 6.5 6.5L16 13.5l5 1.5v4a2 2 0 0 1-2 2A16 16 0 0 1 3 5a2 2 0 0 1 2-2z"/>
+    <path d="M7.05 3.51L10.23 6.7 9.17 9.17A6.08 6.08 0 0 0 14.83 14.83L17.3 13.77 20.49 16.95 18.01 19.42A14.64 14.64 0 0 1 4.58 5.99z"/>
   </Glyph>
 );
 
@@ -163,6 +219,14 @@ export const landscape = (props: IconProps = {}) => (
     <rect x="3" y="5" width="18" height="14" rx="2"/>
     <circle cx="8" cy="9.5" r="1.5"/>
     <path d="M3 17l5-5 5 5 3-3 4.5 4.5"/>
+  </Glyph>
+);
+
+export const ledger = (props: IconProps = {}) => (
+  <Glyph {...props}>
+    <rect x="4" y="3" width="16" height="18" rx="2"/>
+    <path d="M8.5 3v18"/>
+    <path d="M11.5 7.5h5M11.5 11.5h5M11.5 15.5h5"/>
   </Glyph>
 );
 
@@ -214,7 +278,7 @@ export const page = (props: IconProps = {}) => (
 
 export const paperclip = (props: IconProps = {}) => (
   <Glyph {...props}>
-    <path d="M7 9v7a5 5 0 0 0 10 0V6a3 3 0 0 0-6 0v10a1.5 1.5 0 0 0 3 0V9"/>
+    <path d="M13 8.5v7.5a1.75 1.75 0 0 1-3.5 0V6.25a2.75 2.75 0 0 1 5.5 0V16.5a4.25 4.25 0 0 1-8.5 0V9"/>
   </Glyph>
 );
 
@@ -239,10 +303,36 @@ export const portico = (props: IconProps = {}) => (
   </Glyph>
 );
 
+export const safe = (props: IconProps = {}) => (
+  <Glyph {...props}>
+    <rect x="3" y="3.5" width="18" height="15.5" rx="2"/>
+    <path d="M7 19v1.5M17 19v1.5"/>
+    <circle cx="10.5" cy="11.25" r="3.5"/>
+    <path d="M10.5 11.25h.01"/>
+    <path d="M17 8.5v5.5"/>
+  </Glyph>
+);
+
 export const schemeSystem = (props: IconProps = {}) => (
   <Glyph {...props}>
     <rect x="3" y="4" width="18" height="12" rx="1.5"/>
     <path d="M10 16l-1 4h6l-1-4"/>
+  </Glyph>
+);
+
+export const seal = (props: IconProps = {}) => (
+  <Glyph {...props}>
+    <path d="M13.6 3.96A1.8 1.8 0 0 1 16.56 5.18 1.8 1.8 0 0 1 18.82 7.44 1.8 1.8 0 0 1 20.04 10.4 1.8 1.8 0 0 1 20.04 13.6 1.8 1.8 0 0 1 18.82 16.56 1.8 1.8 0 0 1 16.56 18.82 1.8 1.8 0 0 1 13.6 20.04 1.8 1.8 0 0 1 10.4 20.04 1.8 1.8 0 0 1 7.44 18.82 1.8 1.8 0 0 1 5.18 16.56 1.8 1.8 0 0 1 3.96 13.6 1.8 1.8 0 0 1 3.96 10.4 1.8 1.8 0 0 1 5.18 7.44 1.8 1.8 0 0 1 7.44 5.18 1.8 1.8 0 0 1 10.4 3.96 1.8 1.8 0 0 1 13.6 3.96z"/>
+    <circle cx="12" cy="12" r="4"/>
+  </Glyph>
+);
+
+export const server = (props: IconProps = {}) => (
+  <Glyph {...props}>
+    <rect x="3" y="4.5" width="18" height="15" rx="1.5"/>
+    <path d="M3 12h18"/>
+    <path d="M6.5 8.25h5M6.5 15.75h5"/>
+    <path d="M15 8.25h.01M17.5 8.25h.01M15 15.75h.01M17.5 15.75h.01"/>
   </Glyph>
 );
 
@@ -280,6 +370,14 @@ export const trash = (props: IconProps = {}) => (
     <path d="M9.5 6.5v-2h5v2"/>
     <path d="M6 6.5 7 20h10l1-13.5"/>
     <path d="M10 10.5v6M14 10.5v6"/>
+  </Glyph>
+);
+
+export const tunnel = (props: IconProps = {}) => (
+  <Glyph {...props}>
+    <path d="M3.5 20v-8a8.5 8.5 0 0 1 17 0v8"/>
+    <path d="M8.5 20v-7a3.5 3.5 0 0 1 7 0v7"/>
+    <path d="M2.5 20h19"/>
   </Glyph>
 );
 

@@ -575,6 +575,13 @@ and no peers.
 
 ## `@wired-square/icons`
 
+### 0.1.4
+
+- `arrow-down-circle`, `certificate`, `certificate-pen`, `certificate-struck`, `envelope-key`, `exit`, `ledger`,
+  `safe`, `seal`, `server` and `tunnel`: pictures for certificates and their authority, revocation and signing, servers,
+  DKIM keys, VPNs, a password vault, an activity log, an update and leaving.
+- `calendar`, `envelope`, `handset` and `paperclip` are redrawn.
+
 ### 0.1.3
 
 - `morse`: a telegraph key sending dot, dash, dot, for Morse code.
