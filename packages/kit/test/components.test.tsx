@@ -2,6 +2,7 @@ import { expect, test, vi } from "vitest";
 import { createSignal } from "solid-js";
 
 import { Button, FeedStatus, Field, Form, IconSet, Menu, MenuItem, MenuItemCheckbox, MenuItemRadio, MenuItemUnavailable, NothingYet, Notice, TabButton, Tabs, TextArea, Tick, Toggle, Views, viewOf } from "../src/index";
+import { glyphs } from "../src/glyphs";
 import { mount } from "../src/testing";
 import { forcedColours, read, rule, sourceFiles } from "./css";
 
@@ -309,6 +310,20 @@ test("an IconSet replaces the glyphs it names below it, keeping the outer set's 
   const plain = mount(() => <Menu aria-label="Actions">{null}</Menu>);
   expect(plain.querySelector('.app-menu__trigger > svg[viewBox="0 0 24 24"] > circle')!.namespaceURI).toBe("http://www.w3.org/2000/svg");
   expect(rule(read("kit.css"), ".app-menu__trigger > svg")).toMatch(/margin-block: calc\(\(var\(--app-control-line-height\) - 1\) \* 0\.5em\);/);
+});
+
+test("the default glyphs carry no inline style, their stroke width and sun coming from kit.css, over an icon button's", () => {
+  for (const glyph of Object.values(glyphs)) {
+    const root = mount(glyph);
+    expect(root.querySelectorAll("[style]")).toHaveLength(0);
+    expect(root.querySelector("svg")!.getAttribute("class")).toBe("ws-icon");
+    expect(root.querySelector("svg")!.getAttribute("stroke-width")).toBe("2");
+  }
+  expect([...mount(glyphs.schemeLight).querySelectorAll("svg > *")].map((part) => part.getAttribute("class"))).toEqual(["ws-icon-sun", "ws-icon-sun"]);
+  const css = read("kit.css");
+  expect(rule(css, "svg.ws-icon")).toMatch(/stroke-width: var\(--icon-stroke, 2\);/);
+  expect(rule(css, ".ws-icon-sun")).toMatch(/stroke: var\(--icon-sun, currentColor\);/);
+  expect(css.indexOf("\nsvg.ws-icon {")).toBeGreaterThan(css.indexOf("\n.app-btn--icon svg {"));
 });
 
 test("a Menu given chevron draws IconSet's chevron after its face, out of its name, and one without draws none", () => {

@@ -9,8 +9,10 @@ import { fail } from "./files.mjs";
 
 const repo = join(import.meta.dirname, "..");
 const icons = join(repo, "packages/icons");
+// The sprite keeps the var inline: in a `<use>`, a fixed stroke-width on the symbol would beat the page's.
 const STROKE = 'fill="none" stroke="currentColor" style="stroke-width: var(--icon-stroke, 2)" stroke-linecap="round" stroke-linejoin="round"';
-const SVG_PROPS = `viewBox="0 0 24 24" width="1em" height="1em" ${STROKE}`;
+const SVG_PROPS = 'viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"';
+const PART = /style="stroke: var\(--icon-([a-z-]+), currentColor\)"/g;
 
 const glyphs = readdirSync(join(icons, "glyphs"))
   .filter((file) => file.endsWith(".svg"))
@@ -19,7 +21,8 @@ const glyphs = readdirSync(join(icons, "glyphs"))
     const name = file.slice(0, -4);
     const svg = readFileSync(join(icons, "glyphs", file), "utf8");
     const body = svg.match(/^<svg[^>]*>([\s\S]*)<\/svg>\s*$/)[1].split("\n").map((line) => line.trim()).filter(Boolean);
-    return { name, camel: name.replace(/-(\w)/g, (_, c) => c.toUpperCase()), body };
+    const jsx = body.map((line) => line.replace(PART, 'class="ws-icon-$1"'));
+    return { name, camel: name.replace(/-(\w)/g, (_, c) => c.toUpperCase()), body, jsx };
   });
 
 const indent = (lines, by) => lines.map((line) => `${" ".repeat(by)}${line}`).join("\n");
@@ -32,17 +35,21 @@ ${glyphs.map(({ name }) => `  "${name}",`).join("\n")}
 export type IconName = (typeof ICON_NAMES)[number];
 `;
 
-const solid = `${banner}import type { JSX } from "solid-js";
+const solid = `${banner}import { splitProps } from "solid-js";
+import type { JSX } from "solid-js";
 
 export type IconProps = JSX.SvgSVGAttributes<SVGSVGElement>;
 
-const Glyph = (props: IconProps) => <svg aria-hidden="true" ${SVG_PROPS} {...props} />;
+const Glyph = (props: IconProps) => {
+  const [own, rest] = splitProps(props, ["class"]);
+  return <svg aria-hidden="true" ${SVG_PROPS} class={own.class ? \`ws-icon \${own.class}\` : "ws-icon"} {...rest} />;
+};
 ${glyphs
   .map(
-    ({ camel, body }) => `
+    ({ camel, jsx }) => `
 export const ${camel} = (props: IconProps = {}) => (
   <Glyph {...props}>
-${indent(body, 4)}
+${indent(jsx, 4)}
   </Glyph>
 );`,
   )
@@ -53,7 +60,7 @@ const KIT = { schemeSystem: "scheme-system", schemeLight: "sun", schemeDark: "mo
 const kit = `${banner}import type { JSX } from "solid-js";
 
 const glyph = (children: JSX.Element) => (
-  <svg aria-hidden="true" ${SVG_PROPS}>
+  <svg aria-hidden="true" ${SVG_PROPS} class="ws-icon">
     {children}
   </svg>
 );
@@ -61,8 +68,8 @@ const glyph = (children: JSX.Element) => (
 export const glyphs = {
 ${Object.entries(KIT)
   .map(([slot, name]) => {
-    const { body } = glyphs.find((glyph) => glyph.name === name);
-    return body.length === 1 ? `  ${slot}: () => glyph(${body[0]}),` : `  ${slot}: () =>\n    glyph(\n      <>\n${indent(body, 8)}\n      </>,\n    ),`;
+    const { jsx } = glyphs.find((glyph) => glyph.name === name);
+    return jsx.length === 1 ? `  ${slot}: () => glyph(${jsx[0]}),` : `  ${slot}: () =>\n    glyph(\n      <>\n${indent(jsx, 8)}\n      </>,\n    ),`;
   })
   .join("\n")}
 };

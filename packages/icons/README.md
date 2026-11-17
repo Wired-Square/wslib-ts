@@ -24,6 +24,7 @@ npm install @wired-square/icons
 |---|---|
 | `.` | Compiled JavaScript with types: `ICON_NAMES` and the `IconName` type |
 | `./solid` | One function per glyph, named in camelCase (`schemeSystem` for `scheme-system`), as TSX behind the `solid` export condition |
+| `./icons.css` | The rules that let `--icon-stroke`, `--icon-sun` and `--icon-cloud` reach the components |
 | `./sprite.svg` | Every glyph as a `<symbol id="icon-<name>">` |
 | `./glyphs/<name>.svg` | Each glyph alone |
 
@@ -58,14 +59,20 @@ the shape of a kit `IconSet` glyph, so it can stand in for one.
 
 ## Stroke and colour parts
 
-`--icon-stroke` sets the stroke's width, 2 by default, on the svg or any ancestor, through a sprite's `<use>` too:
-`.large { --icon-stroke: 1.5; }`.
+The components carry no inline style, so they draw under a CSP of `style-src 'self'`. Each has a 2 `stroke-width` as
+an attribute and the class `ws-icon`, so any stylesheet rule can set the width: `.large .ws-icon { stroke-width: 1.5; }`.
+Import `@wired-square/icons/icons.css` to set it with `--icon-stroke` instead, on the svg or any ancestor:
+`.large { --icon-stroke: 1.5; }`. A component's `class` joins `ws-icon`.
 
-The sun in `sun` and `overcast` reads `--icon-sun`, and the cloud in `cloud` and `overcast` reads `--icon-cloud`,
-each falling back to `currentColor`: `.weather { --icon-sun: var(--app-warn); }`.
+The sun in `sun` and `overcast` has the class `ws-icon-sun`, and the cloud in `cloud` and `overcast` `ws-icon-cloud`,
+each drawn in `currentColor` unless a rule says otherwise. With `icons.css` they read `--icon-sun` and `--icon-cloud`:
+`.weather { --icon-sun: var(--app-warn); }`.
+
+The sprite and the glyph files set the stroke with an inline style that reads the same three properties, falling back
+to 2 and `currentColor`, so they need no stylesheet, through a `<use>` too.
 
 ## Peers
 
 - `solid-js` ^1.9.11, optional, for `./solid`.
 
-`.`, the sprite and the glyph files need nothing installed.
+`.`, `icons.css`, the sprite and the glyph files need nothing installed.

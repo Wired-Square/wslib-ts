@@ -1,9 +1,13 @@
 // Written by scripts/icons.mjs from packages/icons/glyphs; the gates fail when it differs.
+import { splitProps } from "solid-js";
 import type { JSX } from "solid-js";
 
 export type IconProps = JSX.SvgSVGAttributes<SVGSVGElement>;
 
-const Glyph = (props: IconProps) => <svg aria-hidden="true" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" style="stroke-width: var(--icon-stroke, 2)" stroke-linecap="round" stroke-linejoin="round" {...props} />;
+const Glyph = (props: IconProps) => {
+  const [own, rest] = splitProps(props, ["class"]);
+  return <svg aria-hidden="true" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class={own.class ? `ws-icon ${own.class}` : "ws-icon"} {...rest} />;
+};
 
 export const alert = (props: IconProps = {}) => (
   <Glyph {...props}>
@@ -140,7 +144,7 @@ export const clear = (props: IconProps = {}) => (
 
 export const cloud = (props: IconProps = {}) => (
   <Glyph {...props}>
-    <path style="stroke: var(--icon-cloud, currentColor)" d="M7 19a4 4 0 0 1-.6-7.96A5.5 5.5 0 0 1 17 9.5a4.75 4.75 0 0 1 0 9.5z"/>
+    <path class="ws-icon-cloud" d="M7 19a4 4 0 0 1-.6-7.96A5.5 5.5 0 0 1 17 9.5a4.75 4.75 0 0 1 0 9.5z"/>
   </Glyph>
 );
 
@@ -262,9 +266,9 @@ export const morse = (props: IconProps = {}) => (
 
 export const overcast = (props: IconProps = {}) => (
   <Glyph {...props}>
-    <path style="stroke: var(--icon-sun, currentColor)" d="M6.12 10.99A3.5 3.5 0 0 1 11.78 6.88"/>
-    <path style="stroke: var(--icon-sun, currentColor)" d="M9 2v1.5M2 9h1.5M4.05 4.05l1.06 1.06M13.95 4.05l-1.06 1.06M3.75 13.65l1.06-1.06"/>
-    <path style="stroke: var(--icon-cloud, currentColor)" d="M8.5 21a3.5 3.5 0 0 1-.5-6.96A4.75 4.75 0 0 1 17.2 12.5a4.25 4.25 0 0 1 .3 8.5z"/>
+    <path class="ws-icon-sun" d="M6.12 10.99A3.5 3.5 0 0 1 11.78 6.88"/>
+    <path class="ws-icon-sun" d="M9 2v1.5M2 9h1.5M4.05 4.05l1.06 1.06M13.95 4.05l-1.06 1.06M3.75 13.65l1.06-1.06"/>
+    <path class="ws-icon-cloud" d="M8.5 21a3.5 3.5 0 0 1-.5-6.96A4.75 4.75 0 0 1 17.2 12.5a4.25 4.25 0 0 1 .3 8.5z"/>
   </Glyph>
 );
 
@@ -352,8 +356,8 @@ export const speechBubble = (props: IconProps = {}) => (
 
 export const sun = (props: IconProps = {}) => (
   <Glyph {...props}>
-    <circle style="stroke: var(--icon-sun, currentColor)" cx="12" cy="12" r="4.25"/>
-    <path style="stroke: var(--icon-sun, currentColor)" d="M12 3v3.25M12 17.75V21M3 12h3.25M17.75 12H21M5.64 5.64l2.3 2.3M16.06 16.06l2.3 2.3M18.36 5.64l-2.3 2.3M7.94 16.06l-2.3 2.3"/>
+    <circle class="ws-icon-sun" cx="12" cy="12" r="4.25"/>
+    <path class="ws-icon-sun" d="M12 3v3.25M12 17.75V21M3 12h3.25M17.75 12H21M5.64 5.64l2.3 2.3M16.06 16.06l2.3 2.3M18.36 5.64l-2.3 2.3M7.94 16.06l-2.3 2.3"/>
   </Glyph>
 );
 
